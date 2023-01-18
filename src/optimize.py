@@ -12,9 +12,10 @@ from jax import vmap, lax
 from jax import ops
 from jax.config import config
 config.update('jax_enable_x64', True)
+config.update("jax_debug_nans", True)
 
 from jax_md.util import *
-from jax_md import space, smap, energy, minimize, quantity, simulate, partition, rigid_body
+from jax_md import space, smap, energy, minimize, quantity, simulate, partition # , rigid_body
 from jax_md import dataclasses
 from jax_md import util
 
@@ -72,4 +73,6 @@ if __name__ == "__main__":
     eval_params = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_steps=10,
                                      morse_ii_eps=10.0, morse_ii_alpha=5.0)
     # eval_params(init_params, key=key)
-    value_and_grad(eval_params)(init_params, key)
+    val, _grad = value_and_grad(eval_params)(init_params, key)
+    print(f"Value: {val}")
+    print(f"Grad: {_grad}")

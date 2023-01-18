@@ -193,3 +193,10 @@ c1 = [1, 0, 0]
 c2 = [0, 1, 0]
 SHELL_COLORS = jnp.array([c1 + c2*5]*12).reshape(-1, 3)
 SHELL_BODY_POS = vmap(rigid_body.transform, (0, None))(SHELL_RB, SHELL_VERTEX_SHAPE).reshape(-1, 3)
+
+
+if __name__ == "__main__":
+    def foo(height):
+        spider_pos = get_spider_positions(5.0, height, z=0.0)
+        return jnp.sum(spider_pos)
+    print(grad(foo)(5.0))

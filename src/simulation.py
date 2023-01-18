@@ -14,9 +14,11 @@ from jax.config import config
 config.update('jax_enable_x64', True)
 
 from jax_md.util import *
-from jax_md import space, smap, energy, minimize, quantity, simulate, partition, rigid_body
+from jax_md import space, smap, energy, minimize, quantity, simulate, partition # , rigid_body
 from jax_md import dataclasses
 from jax_md import util
+
+import mod_rigid_body as rigid_body
 
 import common
 from common import SHELL_VERTEX_RADIUS, SPIDER_BASE_RADIUS, SPIDER_HEAD_HEIGHT, \
@@ -43,7 +45,8 @@ def initialize_system(base_radius, head_height,
     spider_rb = rigid_body.RigidBody(center=jnp.array([center]),
                                      orientation=rigid_body.Quaternion(jnp.array([vertex.orientation.vec])))
     # Make spider rigid body shape
-    masses = jnp.full(spider_points.shape[0], spider_point_masses)
+    # masses = jnp.full(spider_points.shape[0], spider_point_masses)
+    masses = jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])
     spider_shape = rigid_body.point_union_shape(spider_points, masses).set(point_species=spider_species)
 
 
