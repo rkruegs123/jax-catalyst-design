@@ -31,9 +31,10 @@ from common import get_spider_positions
 spider_base_species = jnp.max(SHELL_VERTEX_SHAPE.point_species) + 1
 spider_species = jnp.array([[spider_base_species] * 5 + [spider_base_species + 1]]).flatten()
 
+# note: we need mass_err to avoid nans
 def initialize_system(base_radius, head_height,
                       initial_separation_coeff=0.5,
-                      spider_point_masses=1.0):
+                      spider_point_masses=1.0, mass_err=1e-6):
 
     spider_points = get_spider_positions(base_radius, head_height)
 
@@ -46,7 +47,8 @@ def initialize_system(base_radius, head_height,
                                      orientation=rigid_body.Quaternion(jnp.array([vertex.orientation.vec])))
     # Make spider rigid body shape
     # masses = jnp.full(spider_points.shape[0], spider_point_masses)
-    masses = jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])
+    masses = jnp.ones(spider_points.shape[0]) * spider_point_masses + jnp.arange(spider_points.shape[0]) * mass_err
+    # masses = jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])
     spider_shape = rigid_body.point_union_shape(spider_points, masses).set(point_species=spider_species)
 
 
