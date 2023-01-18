@@ -19,6 +19,8 @@ from jax_md import space, smap, energy, minimize, quantity, simulate, partition 
 from jax_md import dataclasses
 from jax_md import util
 
+import optax
+
 import common
 from common import SHELL_VERTEX_RADIUS
 import simulation
@@ -53,8 +55,7 @@ def get_eval_params_fn(soft_eps, kT, dt, num_steps, morse_ii_eps, morse_ii_alpha
     return eval_params
 
 
-
-if __name__ == "__main__":
+def get_init_params():
     init_params = {
         # catalyst shape
         'spider_base_radius': 5.0,
@@ -68,6 +69,42 @@ if __name__ == "__main__":
         'morse_leg_alpha': 2.0,
         'morse_head_alpha': 5.0
     }
+    return init_params
+
+def train(n_iters=10, batch_size=1, n_steps=5):
+
+    key = random.PRNGKey(0)
+    keys = random.split(key, n_iters)
+
+    lr = 1e-2
+    optimizer = optax.adam(lr)
+    params = get_init_params()
+    opt_state = optimizer.init(init_params)
+
+    eval_params_fn = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_steps=n_steps,
+                                        morse_ii_eps=10.0, morse_ii_alpha=5.0) # FIXME: naming
+    grad_eval_params_fn = value_and_grad(eval_params_fn) # FIXME: naming
+
+
+    loss_file = open("loss_file.txt", "a+")
+    grad_file = open("grad_file.txt", "a+")
+
+    for i in range(n_iters):
+        iter_key = keys[i]
+        val, grads = grad_eval_params_fn(params, iter_key)
+        updates, opt_state = optimizer.pudate(grads, opt_state)
+        params = optax.apply_updates(params, updates)
+        loss_file.write(val)
+        grad_file.write(grads)
+
+    loss_file.close()
+    grad_file.close()
+
+if __name__ == "__main__":
+
+
+    """
+    init_params = get_init_params()
     key = random.PRNGKey(0)
 
     eval_params = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_steps=10,
@@ -76,3 +113,4 @@ if __name__ == "__main__":
     val, _grad = value_and_grad(eval_params)(init_params, key)
     print(f"Value: {val}")
     print(f"Grad: {_grad}")
+    """
