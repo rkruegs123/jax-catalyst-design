@@ -110,7 +110,7 @@ if __name__ == "__main__":
     init_params = get_init_params()
     key = random.PRNGKey(0)
 
-    eval_params = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_steps=10,
+    eval_params = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_steps=20,
                                      morse_ii_eps=10.0, morse_ii_alpha=5.0)
     # eval_params(init_params, key=key)
     val, _grad = value_and_grad(eval_params)(init_params, key)
