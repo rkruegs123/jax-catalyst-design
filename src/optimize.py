@@ -102,8 +102,11 @@ def train(n_iters=10, batch_size=1, n_steps=5):
 
 if __name__ == "__main__":
 
+    import time
 
-    """
+    print(f"Testing optimization...")
+
+    start = time.time()
     init_params = get_init_params()
     key = random.PRNGKey(0)
 
@@ -111,6 +114,7 @@ if __name__ == "__main__":
                                      morse_ii_eps=10.0, morse_ii_alpha=5.0)
     # eval_params(init_params, key=key)
     val, _grad = value_and_grad(eval_params)(init_params, key)
+    end = time.time()
+    print(f"Total time: {onp.round(end - start, 2)}")
     print(f"Value: {val}")
     print(f"Grad: {_grad}")
-    """

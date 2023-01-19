@@ -3,6 +3,8 @@ import numpy as onp
 from functools import partial
 from typing import Optional, Tuple, Dict, Callable, List, Union
 import matplotlib.pyplot as plt
+from pathlib import Path
+import pickle
 
 import jax.numpy as np
 
@@ -145,12 +147,28 @@ def minimize_icosahedron(displacement_fn, shift_fn, initial_rigid_body, key, ver
 
 
 def get_icosahedron(key, displacement_fn, shift_fn, icosahedron_vertex_radius,
-                    vertex_mass=1.0, patch_mass=1e-8):
+                    vertex_mass=1.0, patch_mass=1e-8, obj_dir="obj/"):
+
+    obj_dir = Path(obj_dir)
+    icosahedron_rb_path = obj_dir / "icosahedron_rb.pkl"
+    vertex_shape_path = obj_dir / "vertex_shape.pkl"
+    if icosahedron_rb_path.exists() and vertex_shape_path.exists():
+        print(f"Loading minimized icosahedron rigid body and vertex shape from data directory: {obj_dir}")
+        icosahedron_rigid_body = pickle.load(open(icosahedron_rb_path, "rb"))
+        vertex_shape = pickle.load(open(vertex_shape_path, "rb"))
+        return icosahedron_rigid_body, vertex_shape, None
+
     icosahedron_rigid_body_unminimized, vertex_shape = get_unminimized_icosahedron(displacement_fn, icosahedron_vertex_radius,
                                                             vertex_mass=vertex_mass, patch_mass=patch_mass)
 
     icosahedron_rigid_body, minimization_traj = minimize_icosahedron(displacement_fn, shift_fn, icosahedron_rigid_body_unminimized,
-                                                  key, vertex_shape, icosahedron_vertex_radius)
+                                                                     key, vertex_shape, icosahedron_vertex_radius)
+
+    # Save the stuff
+    print(f"Saving minimized icosahedron rigid body and vertex shape to data directory: {obj_dir}")
+    pickle.dump(icosahedron_rigid_body, open(icosahedron_rb_path, "wb"))
+    pickle.dump(vertex_shape, open(vertex_shape_path, "wb"))
+
     return icosahedron_rigid_body, vertex_shape, minimization_traj
 
 
