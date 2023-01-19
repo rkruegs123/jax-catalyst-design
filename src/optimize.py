@@ -83,16 +83,27 @@ def train(n_iters=10, batch_size=1, n_steps=5):
 
     eval_params_fn = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_steps=n_steps,
                                         morse_ii_eps=10.0, morse_ii_alpha=5.0) # FIXME: naming
-    grad_eval_params_fn = value_and_grad(eval_params_fn) # FIXME: naming
-
+    grad_eval_params_fn = jit(value_and_grad(eval_params_fn)) # FIXME: naming
+    batched_grad_fn = jit(vmap(grad_eval_params_fn, in_axes=(None, 0)))
 
     loss_file = open("loss_file.txt", "a+")
     grad_file = open("grad_file.txt", "a+")
 
     for i in range(n_iters):
         iter_key = keys[i]
-        val, grads = grad_eval_params_fn(params, iter_key)
-        updates, opt_state = optimizer.pudate(grads, opt_state)
+        batch_keys = random.split(iter_key, batch_size)
+        #val, grads = grad_eval_params_fn(params, iter_key)
+        val, grads = batched_grad_fn(params, batch_keys)
+
+        avg_grads = dict()
+        for k in grads[0].keys():
+            all_k_grads = list()
+            for j in range(batch_size):
+                all_k_grads.append(grads[j][k])
+            avg_k_grad = onp.mean(all_k_grads, axis=0)
+            avg_grads[k] = avg_k_grad
+
+        updates, opt_state = optimizer.update(avg_grads, opt_state)
         params = optax.apply_updates(params, updates)
         loss_file.write(val)
         grad_file.write(grads)
