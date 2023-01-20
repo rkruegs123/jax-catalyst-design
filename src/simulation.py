@@ -70,7 +70,7 @@ def run_dynamics(initial_rigid_body, shape,
                  icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
                  morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
                  morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
-                 soft_eps=10000.0, kT=1.0, dt=1e-4, num_steps=20000):
+                 soft_eps=10000.0, kT=1.0, dt=1e-4, num_inner_steps=100, num_outer_steps=100):
 
     spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter]) * 0.5
     # the two shape species are (1) the patchy particles that make up the icosahedron
@@ -117,7 +117,12 @@ def run_dynamics(initial_rigid_body, shape,
     do_step = lambda state, t: (step_fn(state), 0.)#state.position) #uncomment to return trajectory
     do_step = jit(do_step)
 
-    state, traj = lax.scan(do_step, state, jnp.arange(num_steps))
+    @remat
+    def outer_step(state, t):
+       state, _ = lax.scan(do_step, state, jnp.arange(num_inner_steps))
+       return state, t
+
+    state, traj = lax.scan(outer_step, state, jnp.arange(num_outer_steps))
     return state.position#, traj
 
 """

@@ -30,7 +30,7 @@ from simulation import run_dynamics, initialize_system, loss_fn
 
 # fixme: we're not passing a key here but run_dynamics takes one
 
-def get_eval_params_fn(soft_eps, kT, dt, num_steps, morse_ii_eps, morse_ii_alpha):
+def get_eval_params_fn(soft_eps, kT, dt, num_inner_steps, num_outer_steps, morse_ii_eps, morse_ii_alpha):
     def eval_params(params, key):
         spider_base_radius = params['spider_base_radius']
         spider_head_height = params['spider_head_height']
@@ -50,7 +50,7 @@ def get_eval_params_fn(soft_eps, kT, dt, num_steps, morse_ii_eps, morse_ii_alpha
                                  spider_leg_diameter, spider_head_diameter, key,
                                  morse_ii_eps=morse_ii_eps, morse_leg_eps=morse_leg_eps, morse_head_eps=morse_head_eps,
                                  morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha, morse_head_alpha=morse_head_alpha,
-                                 soft_eps=soft_eps, kT=kT, dt=dt, num_steps=num_steps)
+                                 soft_eps=soft_eps, kT=kT, dt=dt, num_inner_steps=num_inner_steps, num_outer_steps=num_outer_steps)
         return loss_fn(fin_state)
     return eval_params
 
@@ -71,7 +71,7 @@ def get_init_params():
     }
     return init_params
 
-def train(n_iters=10, batch_size=1, n_steps=5):
+def train(n_iters=10, batch_size=1, n_inner_teps=5, n_outer_steps=1):
 
     key = random.PRNGKey(0)
     keys = random.split(key, n_iters)
@@ -81,7 +81,7 @@ def train(n_iters=10, batch_size=1, n_steps=5):
     params = get_init_params()
     opt_state = optimizer.init(init_params)
 
-    eval_params_fn = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_steps=n_steps,
+    eval_params_fn = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_inner_steps=n_inner_steps, num_outer_steps=n_outer_steps,
                                         morse_ii_eps=10.0, morse_ii_alpha=5.0) # FIXME: naming
     grad_eval_params_fn = jit(value_and_grad(eval_params_fn)) # FIXME: naming
     batched_grad_fn = jit(vmap(grad_eval_params_fn, in_axes=(None, 0)))
@@ -121,8 +121,8 @@ if __name__ == "__main__":
     init_params = get_init_params()
     key = random.PRNGKey(0)
 
-    eval_params = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_steps=20,
-                                     morse_ii_eps=10.0, morse_ii_alpha=5.0)
+    eval_params = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_inner_steps=4,
+                                     num_outer_steps=4, morse_ii_eps=10.0, morse_ii_alpha=5.0)
     # eval_params(init_params, key=key)
     val, _grad = value_and_grad(eval_params)(init_params, key)
     end = time.time()
