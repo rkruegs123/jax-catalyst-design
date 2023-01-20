@@ -86,8 +86,9 @@ def train(n_iters=10, batch_size=1, n_inner_steps=5, n_outer_steps=1):
     grad_eval_params_fn = jit(value_and_grad(eval_params_fn)) # FIXME: naming
     batched_grad_fn = jit(vmap(grad_eval_params_fn, in_axes=(None, 0)))
 
-    loss_file = open("loss_file.txt", "a+")
-    grad_file = open("grad_file.txt", "a+")
+    loss_file = open("loss_file.txt", "a")
+    grad_file = open("grad_file.txt", "a")
+
 
     for i in range(n_iters):
         iter_key = keys[i]
@@ -95,6 +96,10 @@ def train(n_iters=10, batch_size=1, n_inner_steps=5, n_outer_steps=1):
         #val, grads = grad_eval_params_fn(params, iter_key)
         val, grads = batched_grad_fn(params, batch_keys)
 
+        avg_grads = {k: jnp.mean(grads[k], axis=0) for k in grads}
+        print(avg_grads)
+        print(val)
+        '''
         avg_grads = dict()
         for k in grads[0].keys():
             all_k_grads = list()
@@ -102,23 +107,26 @@ def train(n_iters=10, batch_size=1, n_inner_steps=5, n_outer_steps=1):
                 all_k_grads.append(grads[j][k])
             avg_k_grad = onp.mean(all_k_grads, axis=0)
             avg_grads[k] = avg_k_grad
+        '''
 
         updates, opt_state = optimizer.update(avg_grads, opt_state)
         params = optax.apply_updates(params, updates)
-        loss_file.write(val)
-        grad_file.write(grads)
+        loss_file.write(str(val)+'\n')
+        grad_file.write(str(grads) + '\n')
 
     loss_file.close()
     grad_file.close()
 
 if __name__ == "__main__":
 
-    import time
     
     print(f"Testing optimization...")
-    train(n_iters=100, batch_size=10, n_inner_steps=100, n_outer_steps=100)
+    tot_steps = 4#10000
+    n_steps = int(jnp.sqrt(tot_steps))
+    train(n_iters=2, batch_size=2, n_inner_steps=n_steps, n_outer_steps=n_steps)
 
     '''
+    import time
     start = time.time()
     init_params = get_init_params()
     key = random.PRNGKey(0)
