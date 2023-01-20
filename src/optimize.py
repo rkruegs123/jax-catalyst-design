@@ -71,7 +71,7 @@ def get_init_params():
     }
     return init_params
 
-def train(n_iters=10, batch_size=1, n_inner_teps=5, n_outer_steps=1):
+def train(n_iters=10, batch_size=1, n_inner_steps=5, n_outer_steps=1):
 
     key = random.PRNGKey(0)
     keys = random.split(key, n_iters)
@@ -79,7 +79,7 @@ def train(n_iters=10, batch_size=1, n_inner_teps=5, n_outer_steps=1):
     lr = 1e-2
     optimizer = optax.adam(lr)
     params = get_init_params()
-    opt_state = optimizer.init(init_params)
+    opt_state = optimizer.init(params)
 
     eval_params_fn = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_inner_steps=n_inner_steps, num_outer_steps=n_outer_steps,
                                         morse_ii_eps=10.0, morse_ii_alpha=5.0) # FIXME: naming
@@ -114,18 +114,21 @@ def train(n_iters=10, batch_size=1, n_inner_teps=5, n_outer_steps=1):
 if __name__ == "__main__":
 
     import time
-
+    
     print(f"Testing optimization...")
+    train(n_iters=100, batch_size=10, n_inner_steps=100, n_outer_steps=100)
 
+    '''
     start = time.time()
     init_params = get_init_params()
     key = random.PRNGKey(0)
 
-    eval_params = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_inner_steps=4,
-                                     num_outer_steps=4, morse_ii_eps=10.0, morse_ii_alpha=5.0)
+    eval_params = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, num_inner_steps=100,
+                                     num_outer_steps=100, morse_ii_eps=10.0, morse_ii_alpha=5.0)
     # eval_params(init_params, key=key)
     val, _grad = value_and_grad(eval_params)(init_params, key)
     end = time.time()
     print(f"Total time: {onp.round(end - start, 2)}")
     print(f"Value: {val}")
     print(f"Grad: {_grad}")
+    '''
