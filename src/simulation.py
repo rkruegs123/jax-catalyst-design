@@ -75,11 +75,11 @@ def initialize_system(base_radius, head_height, leg_diameter,
 shape_species = onp.array(list(onp.zeros(12)) + [1], dtype=int).flatten()
 n_point_species = 4
 # shape=both_shapes
-def run_dynamics(initial_rigid_body, shape,
+def _run_dynamics(initial_rigid_body, shape,
                  icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
                  morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
                  morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
-                 soft_eps=10000.0, kT=1.0, dt=1e-4, 
+                 soft_eps=10000.0, kT=1.0, dt=1e-4,
                  # num_inner_steps=100, num_outer_steps=100
                  num_steps=100
 ):
@@ -140,7 +140,26 @@ def run_dynamics(initial_rigid_body, shape,
 
     # state, traj = lax.scan(outer_step, state, jnp.arange(num_outer_steps))
     state, traj = scan(do_step, state, jnp.arange(num_steps))
-    return state.position#, traj
+    return state.position, traj
+
+
+def run_dynamics(initial_rigid_body, shape,
+                 icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
+                 morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
+                 morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
+                 soft_eps=10000.0, kT=1.0, dt=1e-4,
+                 # num_inner_steps=100, num_outer_steps=100
+                 num_steps=100
+):
+    state, _ = _run_dynamics(
+        initial_rigid_body, shape,
+        icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
+        morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
+        morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
+        soft_eps=10000.0, kT=1.0, dt=1e-4,
+        # num_inner_steps=100, num_outer_steps=100
+        num_steps=100)
+    return state
 
 """
 Preliminary loss function: maximizing the distance from VERTEX_TO_BIND to the rest
