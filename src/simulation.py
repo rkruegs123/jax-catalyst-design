@@ -128,7 +128,8 @@ def _run_dynamics(initial_rigid_body, shape,
     mass = shape.mass(shape_species)
     state = init_fn(key, initial_rigid_body, mass=mass)
 
-    do_step = lambda state, t: (step_fn(state), 0.)#state.position) #uncomment to return trajectory
+    # do_step = lambda state, t: (step_fn(state), 0.)#state.position) #uncomment to return trajectory
+    do_step = lambda state, t: (step_fn(state), state.position)
     do_step = jit(do_step)
 
     """
