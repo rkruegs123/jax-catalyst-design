@@ -18,8 +18,8 @@ from jax_md import space, smap, energy, minimize, quantity, simulate, partition 
 from jax_md import dataclasses
 from jax_md import util
 
-#import mod_rigid_body as rigid_body
-from jax_md import rigid_body
+import mod_rigid_body as rigid_body
+#from jax_md import rigid_body
 
 import common
 from common import SHELL_VERTEX_RADIUS, SPIDER_BASE_RADIUS, SPIDER_HEAD_HEIGHT, \
