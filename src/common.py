@@ -184,7 +184,7 @@ def get_spider_positions(base_radius, head_height, z=0.0):
         return spider_pos, i
 
     spider_base, _ = lax.scan(scan_fn, spider_pos, jnp.arange(len(spider_pos)))
-    spider_head = jnp.array([[0., 0., head_height + z]])
+    spider_head = jnp.array([[0., 0., -1 * (head_height + z)]])
 
     return jnp.array(jnp.concatenate([spider_base, spider_head]))
 
