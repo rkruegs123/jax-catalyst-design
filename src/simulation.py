@@ -18,7 +18,8 @@ from jax_md import space, smap, energy, minimize, quantity, simulate, partition 
 from jax_md import dataclasses
 from jax_md import util
 
-import mod_rigid_body as rigid_body
+#import mod_rigid_body as rigid_body
+from jax_md import rigid_body
 
 import common
 from common import SHELL_VERTEX_RADIUS, SPIDER_BASE_RADIUS, SPIDER_HEAD_HEIGHT, \
@@ -54,8 +55,8 @@ def initialize_system(base_radius, head_height, leg_diameter,
     disp_vector /= jnp.linalg.norm(disp_vector)
     center = vertex.center + disp_vector * (SHELL_VERTEX_RADIUS + leg_diameter / 2) * initial_separation_coeff # shift away from vertex
     spider_rb = rigid_body.RigidBody(center=jnp.array([center]),
-                                     #orientation=rigid_body.Quaternion(jnp.array([vertex.orientation.vec])))
-                                     orientation=rigid_body.Quaternion(jnp.array([0.0, 0.0, 1.0, 0.0])))
+                                     orientation=rigid_body.Quaternion(jnp.array([vertex.orientation.vec])))
+                                     #orientation=rigid_body.Quaternion(jnp.array([[0.0, 0.0, 1.0, 0.0]])))
     # Make spider rigid body shape
     # masses = jnp.full(spider_points.shape[0], spider_point_masses)
     masses = jnp.ones(spider_points.shape[0]) * spider_point_masses + jnp.arange(spider_points.shape[0]) * mass_err
