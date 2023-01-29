@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import time
 import datetime
 from pathlib import Path
+from tqdm import tqdm
 
 import jax.numpy as np
 
@@ -69,15 +70,15 @@ def get_init_params():
     init_params = {
         # catalyst shape
         'spider_base_radius': 5.0,
-        'spider_head_height': 3.0,
+        'spider_head_height': 2.0,
         'spider_leg_diameter': 1.0,
-        'spider_head_diameter': 3.0,
+        'spider_head_diameter': 1.0,
 
         # catalyst energy
-        'morse_leg_eps': 2.0,
-        'morse_head_eps': 200.0,
-        'morse_leg_alpha': 2.0,
-        'morse_head_alpha': 5.0
+        'morse_leg_eps': 10.0,
+        'morse_head_eps': 1000.0,
+        'morse_leg_alpha': 1.0,
+        'morse_head_alpha': 0.1
         # 'morse_leg_eps': 0.0,
         # 'morse_head_eps': 0.0,
         # 'morse_leg_alpha': 0.0,
@@ -91,6 +92,7 @@ def train(args):
     n_iters = args['n_iters']
     n_steps = args['n_steps']
     data_dir = args['data_dir']
+    lr = args['lr']
 
     data_dir = Path(data_dir)
     if not data_dir.exists():
@@ -100,7 +102,6 @@ def train(args):
     key = random.PRNGKey(0)
     keys = random.split(key, n_iters)
 
-    lr = 1e-2
     optimizer = optax.adam(lr)
     params = get_init_params()
     opt_state = optimizer.init(params)
@@ -117,7 +118,7 @@ def train(args):
 
 
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    run_name = f"catalyst_{timestamp}"
+    run_name = f"catalyst_{timestamp}_b{batch_size}_n{n_steps}_lr{lr}"
     run_dir = data_dir / run_name
     run_dir.mkdir(parents=False, exist_ok=False)
 
@@ -130,14 +131,14 @@ def train(args):
 
 
     loss_path = run_dir / "loss.txt"
-    loss_file = open(loss_path, "a")
+    # loss_file = open(loss_path, "a")
     grad_path = run_dir / "grads.txt"
-    grad_file = open(grad_path, "a")
+    # grad_file = open(grad_path, "a")
     params_path = run_dir / "params_per_iter.txt"
-    params_file = open(params_path, "a")
+    # params_file = open(params_path, "a")
 
 
-    for i in range(n_iters):
+    for i in tqdm(range(n_iters)):
         print(f"\nIteration: {i}")
         iter_key = keys[i]
         batch_keys = random.split(iter_key, batch_size)
@@ -165,9 +166,12 @@ def train(args):
         updates, opt_state = optimizer.update(avg_grads, opt_state)
         params = optax.apply_updates(params, updates)
         # loss_file.write(str(vals)+'\n')
-        loss_file.write(f"{onp.mean(vals)}\n")
-        grad_file.write(str(grads) + '\n')
-        params_file.write(str(params) + '\n')
+        with open(loss_path, "a") as f:
+            f.write(f"{onp.mean(vals)}\n")
+        with open(grad_path, "a") as f:
+            f.write(str(grads) + '\n')
+        with open(params_path, "a") as f:
+            f.write(str(params) + '\n')
 
     loss_file.close()
     grad_file.close()
@@ -181,6 +185,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size', type=int, default=3, help="Num. batches for each round of gradient descent")
     parser.add_argument('--n-iters', type=int, default=1, help="Num. iterations of gradient descent")
     parser.add_argument('--n-steps', type=int, default=10000, help="Num. steps per simulation")
+    parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
     parser.add_argument('-d', '--data-dir', type=str,
                         default="data/",
                         help='Path to base data directory')
