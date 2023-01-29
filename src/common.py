@@ -65,7 +65,7 @@ def get_unminimized_icosahedron(displacement_fn, icosahedron_vertex_radius, vert
         vec = d(neighbors, anchor)
         norm = jnp.linalg.norm(vec, axis=1).reshape(-1, 1)
         vec /= norm
-        patch_pos = anchor + icosahedron_vertex_radius * vec
+        patch_pos = anchor - icosahedron_vertex_radius * vec
         return jnp.concatenate([jnp.array([anchor]), patch_pos]) - anchor
 
 
