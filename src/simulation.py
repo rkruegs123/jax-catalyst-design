@@ -52,7 +52,7 @@ def initialize_system(base_radius, head_height, leg_diameter,
 
     # Make spider rigid body
     vertex = SHELL_RB[vertex_to_bind]
-    disp_vector = displacement_fn(jnp.mean(SHELL_RB.center, axis=0), vertex.center)
+    disp_vector = displacement_fn(vertex.center, jnp.mean(SHELL_RB.center, axis=0))
     disp_vector /= jnp.linalg.norm(disp_vector)
     center = vertex.center + disp_vector * (SHELL_VERTEX_RADIUS + leg_diameter / 2) * initial_separation_coeff # shift away from vertex
     spider_rb = rigid_body.RigidBody(center=jnp.array([center]),
