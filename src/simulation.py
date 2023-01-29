@@ -44,13 +44,14 @@ spider_species = jnp.array([[spider_base_species] * 5 + [spider_base_species + 1
 # note: we need mass_err to avoid nans
 def initialize_system(base_radius, head_height, leg_diameter,
                       initial_separation_coeff=1.1,
-                      spider_point_masses=1.0, mass_err=1e-6):
+                      spider_point_masses=1.0, mass_err=1e-6,
+                      vertex_to_bind=VERTEX_TO_BIND):
                      # spider_point_masses=jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])):
 
     spider_points = get_spider_positions(base_radius, head_height)
 
     # Make spider rigid body
-    vertex = SHELL_RB[VERTEX_TO_BIND]
+    vertex = SHELL_RB[vertex_to_bind]
     disp_vector = displacement_fn(vertex.center, jnp.mean(SHELL_RB.center, axis=0))
     disp_vector /= jnp.linalg.norm(disp_vector)
     center = vertex.center + disp_vector * (SHELL_VERTEX_RADIUS + leg_diameter / 2) * initial_separation_coeff # shift away from vertex
