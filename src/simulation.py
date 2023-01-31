@@ -80,6 +80,50 @@ def initialize_system(base_radius, head_height, leg_diameter,
 shape_species = onp.array(list(onp.zeros(12)) + [1], dtype=int).flatten()
 n_point_species = 4
 # shape=both_shapes
+
+
+def get_energy_fn(spider_leg_diameter, spider_head_diameter,
+                  morse_ii_eps, morse_leg_eps, morse_head_eps,
+                  morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
+                  soft_eps):
+    spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter]) * 0.5
+
+    zero_interaction = jnp.zeros((n_point_species, n_point_species))
+
+    morse_eps = zero_interaction.at[1, 1].set(morse_ii_eps) #icosahedral patches attract eachother
+    morse_eps = morse_eps.at[1, 2:-1].set(morse_leg_eps) # catalyst legts attract icosahedron patches
+    morse_eps = morse_eps.at[2:-1, 1].set(morse_leg_eps) #symmetry
+    morse_eps = morse_eps.at[1, -1].set(morse_head_eps)
+    morse_eps = morse_eps.at[-1, 1].set(morse_head_eps)
+
+    morse_alpha = zero_interaction.at[1, 1].set(morse_ii_alpha)
+    morse_alpha = morse_alpha.at[1, 2:-1].set(morse_leg_alpha)
+    morse_alpha = morse_alpha.at[2:-1, 1].set(morse_leg_alpha)
+    morse_alpha = morse_alpha.at[1, -1].set(morse_head_alpha)
+    morse_alpha = morse_alpha.at[-1, 1].set(morse_head_alpha)
+
+    soft_sphere_eps = zero_interaction.at[0, 0].set(soft_eps) # icosahedral centers repel each other
+    soft_sphere_eps = soft_sphere_eps.at[0, 2:].set(soft_eps) # icosahedral centers repel catalyst centers
+    # soft_sphere_eps = soft_sphere_eps.at[0, 2:].set(0.0) # icosahedral centers repel catalyst centers
+    soft_sphere_eps = soft_sphere_eps.at[2:, 0].set(soft_eps) # symmetry
+    # soft_sphere_eps = soft_sphere_eps.at[2:, 0].set(0.0) # symmetry
+
+    soft_sphere_sigma = zero_interaction.at[0, 0].set(icosahedron_vertex_radius*2)
+    soft_sphere_sigma = soft_sphere_sigma.at[0, 2:].set(icosahedron_vertex_radius + spider_radii) #icosahedral centers repel catalyst centers
+    soft_sphere_sigma = soft_sphere_sigma.at[2:, 0].set(icosahedron_vertex_radius + spider_radii)
+    soft_sphere_sigma = jnp.where(soft_sphere_sigma==0.0, 1e-5, soft_sphere_sigma) #avoids nans
+
+
+    pair_energy_soft = energy.soft_sphere_pair(displacement_fn, species=n_point_species, sigma=soft_sphere_sigma, epsilon=soft_sphere_eps)
+    pair_energy_morse = energy.morse_pair(displacement_fn, species=n_point_species, sigma=0.0, epsilon=morse_eps, alpha=morse_alpha)
+    pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
+    energy_fn = rigid_body.point_energy(pair_energy_fn, shape, shape_species)
+
+    return energy_fn
+
+
+
+
 def run_dynamics_helper(initial_rigid_body, shape,
                  icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
                  morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
@@ -89,6 +133,9 @@ def run_dynamics_helper(initial_rigid_body, shape,
                  num_steps=100
 ):
 
+
+    # Code for generating the energy function
+    """
     spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter]) * 0.5
     # the two shape species are (1) the patchy particles that make up the icosahedron
     # and (2) the catalyst. There are 12 patchy particles that make up the icosahedron
@@ -127,6 +174,13 @@ def run_dynamics_helper(initial_rigid_body, shape,
     pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
     energy_fn = rigid_body.point_energy(pair_energy_fn, shape, shape_species)
     # energy_fn = point_energy(pair_energy_fn, shape, shape_species) # use our, very special `point_energy`
+    """
+
+    energy_fn = get_energy_fn(spider_leg_diameter, spider_head_diameter,
+                              morse_ii_eps, morse_leg_eps, morse_head_eps,
+                              morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
+                              soft_eps)
+
 
     init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
     step_fn = jit(step_fn)
