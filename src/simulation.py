@@ -85,7 +85,7 @@ n_point_species = 4
 def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
                   morse_ii_eps, morse_leg_eps, morse_head_eps,
                   morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
-                  soft_eps):
+                  soft_eps, shape):
     spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter]) * 0.5
 
     zero_interaction = jnp.zeros((n_point_species, n_point_species))
@@ -176,10 +176,10 @@ def run_dynamics_helper(initial_rigid_body, shape,
     # energy_fn = point_energy(pair_energy_fn, shape, shape_species) # use our, very special `point_energy`
     """
 
-    energy_fn = get_energy_fn(spider_leg_diameter, spider_head_diameter,
+    energy_fn = get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
                               morse_ii_eps, morse_leg_eps, morse_head_eps,
                               morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
-                              soft_eps)
+                              soft_eps, shape)
 
 
     init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
