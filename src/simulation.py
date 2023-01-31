@@ -82,7 +82,7 @@ n_point_species = 4
 # shape=both_shapes
 
 
-def get_energy_fn(spider_leg_diameter, spider_head_diameter,
+def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
                   morse_ii_eps, morse_leg_eps, morse_head_eps,
                   morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
                   soft_eps):
