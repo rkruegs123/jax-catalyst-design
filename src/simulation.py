@@ -96,23 +96,14 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
     morse_eps = morse_eps.at[1, 2:-1].set(morse_leg_eps) # catalyst legts attract icosahedron patches
     morse_eps = morse_eps.at[2:-1, 1].set(morse_leg_eps) #symmetry
     morse_eps = morse_eps.at[1, -1].set(morse_head_eps)
-    morse_eps = morse_eps.at[-1, 1].set(morse_head_eps)
-    #---
-    morse_eps = morse_eps.at[0, 2:-1].set(morse_leg_eps) # catalyst legts attract icosahedron patches
-    morse_eps = morse_eps.at[2:-1, 0].set(morse_leg_eps) #symmetry
-    morse_eps = morse_eps.at[0, -1].set(morse_head_eps)
-    morse_eps = morse_eps.at[-1, 0].set(morse_head_eps)    
+    morse_eps = morse_eps.at[-1, 1].set(morse_head_eps)  
 
     morse_alpha = zero_interaction.at[1, 1].set(morse_ii_alpha)
     morse_alpha = morse_alpha.at[1, 2:-1].set(morse_leg_alpha)
     morse_alpha = morse_alpha.at[2:-1, 1].set(morse_leg_alpha)
     morse_alpha = morse_alpha.at[1, -1].set(morse_head_alpha)
     morse_alpha = morse_alpha.at[-1, 1].set(morse_head_alpha)
-    # ---
-    morse_alpha = morse_alpha.at[0, 2:-1].set(morse_leg_alpha)
-    morse_alpha = morse_alpha.at[2:-1, 0].set(morse_leg_alpha)
-    morse_alpha = morse_alpha.at[0, -1].set(morse_head_alpha)
-    morse_alpha = morse_alpha.at[-1, 0].set(morse_head_alpha)
+    
 
     soft_sphere_eps = zero_interaction.at[0, 0].set(soft_eps) # icosahedral centers repel each other
     soft_sphere_eps = soft_sphere_eps.at[0, 2:].set(soft_eps) # icosahedral centers repel catalyst centers
