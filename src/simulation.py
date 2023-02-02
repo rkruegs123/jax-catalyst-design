@@ -118,7 +118,10 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
 
 
     pair_energy_soft = energy.soft_sphere_pair(displacement_fn, species=n_point_species, sigma=soft_sphere_sigma, epsilon=soft_sphere_eps)
-    pair_energy_morse = energy.morse_pair(displacement_fn, species=n_point_species, sigma=0.0, epsilon=morse_eps, alpha=morse_alpha)
+    pair_energy_morse = energy.morse_pair(displacement_fn, species=n_point_species, 
+                                          sigma=0.0, epsilon=morse_eps, alpha=morse_alpha,
+                                          r_onset=10.0, r_cutoff=12.0
+    )
     pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
     energy_fn = rigid_body.point_energy(pair_energy_fn, shape, shape_species)
 
@@ -237,4 +240,53 @@ def loss_fn(body):
     return -jnp.sum(dists) / (shell_body.center.shape[0] - 1)
 
 if __name__ == "__main__":
-    pass
+
+    base_radius = 5.0
+    head_height = 3.0
+    leg_diameter = 1.0
+    initial_separation_coeff_close = 0.0
+    initial_separation_coeff_far = 2.0
+
+    initial_rigid_body_far, both_shapes, spider_rb, spider_shape = initialize_system(
+        base_radius, head_height, leg_diameter,
+        initial_separation_coeff=initial_separation_coeff_far,
+        spider_point_masses=1.0, mass_err=1e-6,
+        vertex_to_bind=VERTEX_TO_BIND)
+
+    initial_rigid_body_close, _, _, _ = initialize_system(
+        base_radius, head_height, leg_diameter,
+        initial_separation_coeff=initial_separation_coeff_close,
+        spider_point_masses=1.0, mass_err=1e-6,
+        vertex_to_bind=VERTEX_TO_BIND)
+
+    head_diameter = 1.0
+
+
+    params = {
+        "icosahedron_vertex_radius": SHELL_VERTEX_RADIUS,
+        "spider_leg_diameter": leg_diameter,
+        "spider_head_diameter": head_diameter,
+        "morse_ii_eps": 10.0,
+        "morse_leg_eps": 10.0,
+        "morse_head_eps": 100000.0,
+        "morse_ii_alpha": 5.0,
+        "morse_leg_alpha": 1.0,
+        "morse_head_alpha": 1.0,
+        "soft_eps": 1000.0,
+        "shape": both_shapes
+    }
+
+    """
+    energy_fn = get_energy_fn(icosahedron_vertex_radius=SHELL_VERTEX_RADIUS, 
+                              spider_leg_diameter=leg_diameter, spider_head_diameter=head_diameter,
+                              morse_ii_eps=10.0, morse_leg_eps=10.0, morse_head_eps=100000.0,
+                              morse_ii_alpha=5.0, morse_leg_alpha=1.0, morse_head_alpha=1.0,
+                              soft_eps=1000.0, shape=both_shapes)
+    """
+    energy_fn = get_energy_fn(**params)
+
+    far_val = energy_fn(initial_rigid_body_far)
+    close_val = energy_fn(initial_rigid_body_close)
+    print(f"Far: {far_val}")
+    print(f"Close: {close_val}")
+    pdb.set_trace()
