@@ -46,7 +46,7 @@ def initialize_system(base_radius, head_height, leg_diameter,
                       initial_separation_coeff=1.1,
                       spider_point_masses=1.0, mass_err=1e-6,
                       vertex_to_bind=VERTEX_TO_BIND):
-                     # spider_point_masses=jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])):
+                      # spider_point_masses=jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])):
 
     spider_points = get_spider_positions(base_radius, head_height)
 
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     base_radius = 5.0
     head_height = 3.0
     leg_diameter = 1.0
-    initial_separation_coeff_close = 0.0
+    initial_separation_coeff_close = 0.1
     initial_separation_coeff_far = 2.0
 
     initial_rigid_body_far, both_shapes, spider_rb, spider_shape = initialize_system(
@@ -262,7 +262,7 @@ if __name__ == "__main__":
     head_diameter = 1.0
 
 
-    params = {
+    energy_params = {
         "icosahedron_vertex_radius": SHELL_VERTEX_RADIUS,
         "spider_leg_diameter": leg_diameter,
         "spider_head_diameter": head_diameter,
@@ -273,8 +273,16 @@ if __name__ == "__main__":
         "morse_leg_alpha": 1.0,
         "morse_head_alpha": 1.0,
         "soft_eps": 1000.0,
-        "shape": both_shapes
     }
+
+    init_params = {
+        "base_radius": base_radius,
+        "head_height": head_height,
+        "leg_diameter": leg_diameter,
+        "initial_separation_coeff": initial_separation_coeff_close
+    }
+    params = {"energy": energy_params, "init": init_params}
+        
 
     """
     energy_fn = get_energy_fn(icosahedron_vertex_radius=SHELL_VERTEX_RADIUS, 
@@ -283,10 +291,28 @@ if __name__ == "__main__":
                               morse_ii_alpha=5.0, morse_leg_alpha=1.0, morse_head_alpha=1.0,
                               soft_eps=1000.0, shape=both_shapes)
     """
-    energy_fn = get_energy_fn(**params)
+    # energy_fn = get_energy_fn(**params)
 
-    far_val = energy_fn(initial_rigid_body_far)
-    close_val = energy_fn(initial_rigid_body_close)
+
+    def eval_params(params):
+        energy_params = params['energy']
+        init_params = params['init']
+
+        initial_rigid_body_close, both_shapes, spider_rb, spider_shape = initialize_system(
+            **init_params
+        )
+
+        energy_fn = get_energy_fn(shape=both_shapes, **energy_params)
+        # far_val = energy_fn(initial_rigid_body_far)
+        close_val = energy_fn(initial_rigid_body_close)
+        return close_val
+    # close_val = energy_fn(initial_rigid_body_close)
+    eval_params_grad = grad(eval_params)
+    the_thing = eval_params_grad(params)
+
+
+
+    pdb.set_trace()
     print(f"Far: {far_val}")
     print(f"Close: {close_val}")
     pdb.set_trace()

@@ -36,3 +36,11 @@ For next time:
   - once we get some interactions, do the same thing on the cluster, pickle th etrajcetory, upload it to colab, and visualize it
   - total pain, but has to be done
 
+## Feb 2, 2023
+
+dear diary, today we tested the gradients some more. we found out that it makes sense for some gradients to be zero depending on the initial parameters. for example, say the legs and head of the spider aren't touchin anything  --  then ofcourse the grad w.r.t. their diameters will be 0. 
+
+given this, we don't understand why we got 0s for some of the optmization yesterday. to debug this, we propose the following steps:
+- continue the test in __main__ in `simulation.py` to take the grad of th esimulatoin rather than of a single energy evaluatoin. use the parameters we used for ht energy evaluation. if this is fine (i.e. all grads that we expect to be non-zero are non-zero), gthen redo optimization. If optimization doesn't work, probably juts soething wrong there. 
+
+Once we are ready (ie.e. aoptimization grads work), should fiddle around in the colab to find a reasonable set of starting parameters.
