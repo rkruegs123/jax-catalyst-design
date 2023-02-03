@@ -70,15 +70,15 @@ def get_init_params():
     init_params = {
         # catalyst shape
         'spider_base_radius': 5.0,
-        'spider_head_height': 2.0,
+        'spider_head_height': 6.0,
         'spider_leg_diameter': 1.0,
         'spider_head_diameter': 1.0,
 
         # catalyst energy
-        'morse_leg_eps': 10.0,
-        'morse_head_eps': 1000.0,
+        'morse_leg_eps': 2.5,
+        'morse_head_eps': 100000.0,
         'morse_leg_alpha': 1.0,
-        'morse_head_alpha': 0.1
+        'morse_head_alpha': 1.0
         # 'morse_leg_eps': 0.0,
         # 'morse_head_eps': 0.0,
         # 'morse_leg_alpha': 0.0,
@@ -106,7 +106,7 @@ def train(args):
     params = get_init_params()
     opt_state = optimizer.init(params)
 
-    eval_params_fn = get_eval_params_fn(soft_eps=10000.0, kT=1.0, dt=1e-4, 
+    eval_params_fn = get_eval_params_fn(soft_eps=1000.0, kT=0.5, dt=1e-3, 
                                         # num_inner_steps=n_inner_steps, num_outer_steps=n_outer_steps,
                                         num_steps=n_steps,
                                         morse_ii_eps=10.0, morse_ii_alpha=5.0) # FIXME: naming

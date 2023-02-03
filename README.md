@@ -44,3 +44,12 @@ given this, we don't understand why we got 0s for some of the optmization yester
 - continue the test in __main__ in `simulation.py` to take the grad of th esimulatoin rather than of a single energy evaluatoin. use the parameters we used for ht energy evaluation. if this is fine (i.e. all grads that we expect to be non-zero are non-zero), gthen redo optimization. If optimization doesn't work, probably juts soething wrong there. 
 
 Once we are ready (ie.e. aoptimization grads work), should fiddle around in the colab to find a reasonable set of starting parameters.
+
+## Feb 3, 2032
+
+We got some stuff working today. First, we confirmed that gradients (w.r.t. the energy function) propagate through the optimization. However, we realized that the grads w.r.t. the *loss* function are 0 -- we suspect this is due to the loss function being in a local minimum. One cause for beign ina  local minimum could be that the nearest local minimum is this the "explosion", for which the loss is similar/identical (maybe) as in thefully bound state
+
+Some things to address are (i) constraints on the spider/UFO/unidenfied shape, and (ii) constraints on the loss function. These include the following:
+- the leg/bond of the spider should have excluded volume. This would prevent the explosion thing because the leg couldn't overlap with the rest of the shell
+- we should include additional constraints in the loss function to descibe waht we want. te most immediate is that the rest of the shell should stay together (e.g. the sum of the pairwise distances for the remainiing 11 things). this will also miitigate the explosoin thing, potentially in a better way
+constraints of this form could also smooth the landscape
