@@ -241,10 +241,14 @@ def loss_fn(body):
 
 if __name__ == "__main__":
 
+    from pprint import pprint
+    import time
+
+
     base_radius = 5.0
     head_height = 3.0
     leg_diameter = 1.0
-    initial_separation_coeff_close = 0.1
+    initial_separation_coeff_close = 0.5
     initial_separation_coeff_far = 2.0
 
     initial_rigid_body_far, both_shapes, spider_rb, spider_shape = initialize_system(
@@ -278,7 +282,7 @@ if __name__ == "__main__":
     init_params = {
         "base_radius": base_radius,
         "head_height": head_height,
-        "leg_diameter": leg_diameter,
+        # "leg_diameter": leg_diameter,
         "initial_separation_coeff": initial_separation_coeff_close
     }
     params = {"energy": energy_params, "init": init_params}
@@ -294,9 +298,10 @@ if __name__ == "__main__":
     # energy_fn = get_energy_fn(**params)
 
 
-    def eval_params(params):
+    def eval_params_init(params):
         energy_params = params['energy']
         init_params = params['init']
+        init_params["leg_diameter"] = energy_params["spider_leg_diameter"]
 
         initial_rigid_body_close, both_shapes, spider_rb, spider_shape = initialize_system(
             **init_params
@@ -307,12 +312,54 @@ if __name__ == "__main__":
         close_val = energy_fn(initial_rigid_body_close)
         return close_val
     # close_val = energy_fn(initial_rigid_body_close)
-    eval_params_grad = grad(eval_params)
-    the_thing = eval_params_grad(params)
+    # eval_params_init_grad = grad(eval_params_init)
+    # the_thing = eval_params_init_grad(params)
 
 
+
+    sim_params = {
+        "spider_leg_diameter": leg_diameter,
+        "spider_head_diameter": head_diameter,
+        "morse_ii_eps": 100.0,
+        "morse_leg_eps": 1.0,
+        "morse_head_eps": 1.0,
+        "morse_ii_alpha": 5.0,
+        "morse_leg_alpha": 2.0,
+        "morse_head_alpha": 2.0,
+        "soft_eps": 1000.0,
+    }
+    
+    params = {'init': init_params, 'sim': sim_params}
+
+    key = random.PRNGKey(0)
+    def eval_params_sim(params):
+        sim_params = params['sim']
+        init_params = params['init']
+        init_params["leg_diameter"] = sim_params["spider_leg_diameter"]
+
+        initial_rigid_body_close, both_shapes, spider_rb, spider_shape = initialize_system(
+            **init_params
+        )
+
+
+        fin_state = run_dynamics(initial_rigid_body_close, both_shapes,
+                                 SHELL_VERTEX_RADIUS, key=key, num_steps=1000,
+                                 **sim_params
+        )
+
+        energy_fn = get_energy_fn(SHELL_VERTEX_RADIUS, shape=both_shapes, **sim_params)
+        # far_val = energy_fn(initial_rigid_body_far)
+        # fin_val = energy_fn(fin_state)
+        fin_val = loss_fn(fin_state)
+        return fin_val
+    start = time.time()
+    eval_params_sim_grad = value_and_grad(eval_params_sim)
+    end = time.time()
+    the_other_thing_val, the_other_thing_grad = eval_params_sim_grad(params)
+    pdb.set_trace()
+    pprint(the_other_thing_grad)
+    print(the_other_thing_val)
+    print(f"Total time: {onp.round(end - start, 2)}")
 
     pdb.set_trace()
-    print(f"Far: {far_val}")
-    print(f"Close: {close_val}")
-    pdb.set_trace()
+
