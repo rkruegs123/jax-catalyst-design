@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 import jax.numpy as np
 
+import jax
 from jax import random, grad, value_and_grad, remat, jacfwd
 from jax import jit
 from jax import vmap, lax
@@ -37,9 +38,11 @@ from simulation import run_dynamics, initialize_system, loss_fn
 def get_eval_params_fn(soft_eps, kT, dt, 
                        # num_inner_steps, num_outer_steps, 
                        num_steps,
-                       morse_ii_eps, morse_ii_alpha
+                       morse_ii_eps, morse_ii_alpha,
+                       initial_separation_coeff
 ):
     def eval_params(params, key):
+
         spider_base_radius = params['spider_base_radius']
         spider_head_height = params['spider_head_height']
         spider_leg_diameter = params['spider_leg_diameter']
@@ -50,7 +53,9 @@ def get_eval_params_fn(soft_eps, kT, dt,
         morse_leg_alpha = params['morse_leg_alpha']
         morse_head_alpha = params['morse_head_alpha']
 
-        initial_rigid_body, both_shapes, _, _ = initialize_system(spider_base_radius, spider_head_height, spider_leg_diameter)
+        initial_rigid_body, both_shapes, _, _ = initialize_system(
+            spider_base_radius, spider_head_height, 
+            spider_leg_diameter, initial_separation_coeff=initial_separation_coeff)
 
         # For now, we omit the full trajectory and rely on JAX compiler.
         # If still slow, try taking its computation out of the function
@@ -76,7 +81,7 @@ def get_init_params():
 
         # catalyst energy
         'morse_leg_eps': 2.5,
-        'morse_head_eps': 100000.0,
+        'morse_head_eps': 10000.0,
         'morse_leg_alpha': 1.0,
         'morse_head_alpha': 1.0
         # 'morse_leg_eps': 0.0,
@@ -106,13 +111,13 @@ def train(args):
     params = get_init_params()
     opt_state = optimizer.init(params)
 
-    eval_params_fn = get_eval_params_fn(soft_eps=1000.0, kT=0.5, dt=1e-3, 
+    eval_params_fn = get_eval_params_fn(soft_eps=100000.0, kT=0.5, dt=1e-3, 
                                         # num_inner_steps=n_inner_steps, num_outer_steps=n_outer_steps,
                                         num_steps=n_steps,
-                                        morse_ii_eps=10.0, morse_ii_alpha=5.0) # FIXME: naming
-    grad_eval_params_fn = jit(value_and_grad(eval_params_fn)) # FIXME: naming
+                                        morse_ii_eps=10.0, morse_ii_alpha=5.0,
+                                        initial_separation_coeff=0.0) # FIXME: separation coefficient is hardcoded for now
+    grad_eval_params_fn = jit(value_and_grad(eval_params_fn))
     batched_grad_fn = jit(vmap(grad_eval_params_fn, in_axes=(None, 0)))
-
 
 
 
@@ -173,9 +178,9 @@ def train(args):
         with open(params_path, "a") as f:
             f.write(str(params) + '\n')
 
-    loss_file.close()
-    grad_file.close()
-    params_file.close()
+    # loss_file.close()
+    # grad_file.close()
+    # params_file.close()
 
 if __name__ == "__main__":
     import argparse

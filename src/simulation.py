@@ -86,6 +86,7 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
                   morse_ii_eps, morse_leg_eps, morse_head_eps,
                   morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
                   soft_eps, shape):
+
     spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter]) * 0.5
 
     zero_interaction = jnp.zeros((n_point_species, n_point_species))
@@ -220,11 +221,11 @@ def run_dynamics(initial_rigid_body, shape,
     state, _ = run_dynamics_helper(
         initial_rigid_body, shape,
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
-        morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
-        morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
-        soft_eps=10000.0, kT=1.0, dt=1e-4,
+        morse_ii_eps=morse_ii_eps, morse_leg_eps=morse_leg_eps, morse_head_eps=morse_head_eps,
+        morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha, morse_head_alpha=morse_head_alpha,
+        soft_eps=soft_eps, kT=kT, dt=dt,
         # num_inner_steps=100, num_outer_steps=100
-        num_steps=100)
+        num_steps=num_steps)
     return state
 
 """

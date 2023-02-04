@@ -53,3 +53,19 @@ Some things to address are (i) constraints on the spider/UFO/unidenfied shape, a
 - the leg/bond of the spider should have excluded volume. This would prevent the explosion thing because the leg couldn't overlap with the rest of the shell
 - we should include additional constraints in the loss function to descibe waht we want. te most immediate is that the rest of the shell should stay together (e.g. the sum of the pairwise distances for the remainiing 11 things). this will also miitigate the explosoin thing, potentially in a better way
 constraints of this form could also smooth the landscape
+
+### Part 2
+
+An interesting night -- we found that we had hardcoded all of the values in run_dynamics, but not in run_dynamics_helper. This explained our 0.0 gradients.
+
+We ran our working parameter set in the colab with several keys and initial separation coefficients to midlly evaluate its robustness.
+
+We just launched a bunch of jobs.
+
+Next time, we want to:
+- look at what the loss function is telling us about what we're asking for
+  - change the loss function accordingly
+- consider making the legs repulsive/having some excluded volume
+
+
+papers to read for next week: diffussion model paper from Baker lab, ICLR paper
