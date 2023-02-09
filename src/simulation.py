@@ -25,7 +25,7 @@ import common
 from common import SHELL_VERTEX_RADIUS, SPIDER_BASE_RADIUS, SPIDER_HEAD_HEIGHT, \
     SPIDER_LEG_DIAMETER, SPIDER_HEAD_DIAMETER, VERTEX_TO_BIND, SHELL_RB, SHELL_VERTEX_SHAPE, \
     SHELL_DIAMETERS, SHELL_COLORS, SHELL_BODY_POS
-from common import displacement_fn, shift_fn, d
+from common import displacement_fn, shift_fn, d, d_prod
 from common import get_spider_positions
 from checkpoint import checkpoint_scan
 
@@ -94,16 +94,31 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
     
     
     morse_eps = zero_interaction.at[1, 1].set(morse_ii_eps) #icosahedral patches attract eachother
+    
+    """
     morse_eps = morse_eps.at[1, 2:-1].set(morse_leg_eps) # catalyst legts attract icosahedron patches
     morse_eps = morse_eps.at[2:-1, 1].set(morse_leg_eps) #symmetry
     morse_eps = morse_eps.at[1, -1].set(morse_head_eps)
     morse_eps = morse_eps.at[-1, 1].set(morse_head_eps)  
+    """
+    morse_eps = morse_eps.at[0, 2:-1].set(morse_leg_eps) # catalyst legts attract icosahedron vertices
+    morse_eps = morse_eps.at[2:-1, 0].set(morse_leg_eps) #symmetry
+    morse_eps = morse_eps.at[0, -1].set(morse_head_eps)
+    morse_eps = morse_eps.at[-1, 0].set(morse_head_eps)  
+
 
     morse_alpha = zero_interaction.at[1, 1].set(morse_ii_alpha)
+
+    """
     morse_alpha = morse_alpha.at[1, 2:-1].set(morse_leg_alpha)
     morse_alpha = morse_alpha.at[2:-1, 1].set(morse_leg_alpha)
     morse_alpha = morse_alpha.at[1, -1].set(morse_head_alpha)
     morse_alpha = morse_alpha.at[-1, 1].set(morse_head_alpha)
+    """
+    morse_alpha = morse_alpha.at[0, 2:-1].set(morse_leg_alpha)
+    morse_alpha = morse_alpha.at[2:-1, 0].set(morse_leg_alpha)
+    morse_alpha = morse_alpha.at[0, -1].set(morse_head_alpha)
+    morse_alpha = morse_alpha.at[-1, 0].set(morse_head_alpha)
     
 
     soft_sphere_eps = zero_interaction.at[0, 0].set(soft_eps) # icosahedral centers repel each other
@@ -238,7 +253,24 @@ def loss_fn(body):
     shell_body = body[:-1]
     disps = d(shell_body.center, body[VERTEX_TO_BIND].center)
     dists = space.distance(disps)
-    return -jnp.sum(dists) / (shell_body.center.shape[0] - 1)
+
+    # Term that keeps the rest together
+    """
+    center_dists = space.distance(d_prod(shell_body.center, shell_body.center))
+    centers_dists = center_dists.at[VERTEX_TO_BIND, :].set(0.0)
+    centers_dists = center_dists.at[:, VERTEX_TO_BIND].set(0.0)
+    term2 = jnp.sum(centers_dists) * (1/10)
+    """
+    remaining_vertices = jnp.concatenate(
+        [shell_body.center[:VERTEX_TO_BIND], shell_body.center[VERTEX_TO_BIND+1:]],
+        axis=0)
+    remaining_com = jnp.mean(remaining_vertices, axis=0)
+    com_dists = space.distance(d(remaining_vertices, remaining_com))
+    term2 = com_dists.sum()
+
+    norm = (shell_body.center.shape[0] - 1)
+
+    return (-jnp.sum(dists) + term2) / norm
 
 if __name__ == "__main__":
 

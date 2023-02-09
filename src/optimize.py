@@ -71,25 +71,46 @@ def get_eval_params_fn(soft_eps, kT, dt,
     return eval_params
 
 
-def get_init_params():
-    init_params = {
-        # catalyst shape
-        'spider_base_radius': 5.0,
-        'spider_head_height': 6.0,
-        'spider_leg_diameter': 1.0,
-        'spider_head_diameter': 1.0,
+def get_init_params(mode="fixed", key=None):
+    if mode == "fixed":
 
-        # catalyst energy
-        'morse_leg_eps': 2.5,
-        'morse_head_eps': 10000.0,
-        'morse_leg_alpha': 1.0,
-        'morse_head_alpha': 1.0
-        # 'morse_leg_eps': 0.0,
-        # 'morse_head_eps': 0.0,
-        # 'morse_leg_alpha': 0.0,
-        # 'morse_head_alpha': 0.0
-    }
-    return init_params
+        init_params = {
+            # catalyst shape
+            'spider_base_radius': 5.0,
+            'spider_head_height': 6.0,
+            'spider_leg_diameter': 1.0,
+            'spider_head_diameter': 1.0,
+
+            # catalyst energy
+            'morse_leg_eps': 2.5,
+            'morse_head_eps': 10000.0,
+            'morse_leg_alpha': 1.0,
+            'morse_head_alpha': 1.0
+            # 'morse_leg_eps': 0.0,
+            # 'morse_head_eps': 0.0,
+            # 'morse_leg_alpha': 0.0,
+            # 'morse_head_alpha': 0.0
+        }
+        return init_params
+    elif mode == "random":
+        
+        param_keys = random.split(key, 8)
+
+        init_params = {
+            # catalyst shape
+            'spider_base_radius': random.uniform(param_keys[0], minval=3.0, maxval=6.0),
+            'spider_head_height': random.uniform(param_keys[1], minval=3.0, maxval=10.0),
+            'spider_leg_diameter': random.uniform(param_keys[2], minval=0.5, maxval=2.5),
+            'spider_head_diameter': random.uniform(param_keys[3], minval=1.0, maxval=4.0),
+
+            # catalyst energy
+            'morse_leg_eps': random.uniform(param_keys[4], minval=0.1, maxval=10.0),
+            'morse_head_eps': jnp.exp(random.uniform(param_keys[5], minval=0.1, maxval=6.0)),
+            'morse_leg_alpha': random.uniform(param_keys[6], minval=1.0, maxval=4.0),
+            'morse_head_alpha': random.uniform(param_keys[7], minval=0.1, maxval=2.0),
+        }
+        return init_params
+
 
 def train(args):
 
@@ -98,32 +119,37 @@ def train(args):
     n_steps = args['n_steps']
     data_dir = args['data_dir']
     lr = args['lr']
+    init_method = args['init_method']
+    key_seed = args['key_seed']
+
+    initial_separation_coefficient = args['init_separate']
 
     data_dir = Path(data_dir)
     if not data_dir.exists():
         raise RuntimeError(f"No data directory exists at location: {data_dir}")
 
 
-    key = random.PRNGKey(0)
+    key = random.PRNGKey(key_seed)
     keys = random.split(key, n_iters)
 
     optimizer = optax.adam(lr)
-    params = get_init_params()
+    params = get_init_params(mode=init_method, key=key)
     opt_state = optimizer.init(params)
 
     eval_params_fn = get_eval_params_fn(soft_eps=100000.0, kT=0.5, dt=1e-3, 
                                         # num_inner_steps=n_inner_steps, num_outer_steps=n_outer_steps,
                                         num_steps=n_steps,
                                         morse_ii_eps=10.0, morse_ii_alpha=5.0,
-                                        initial_separation_coeff=0.0) # FIXME: separation coefficient is hardcoded for now
+                                        initial_separation_coeff=initial_separation_coefficient) # FIXME: separation coefficient is hardcoded for now
     grad_eval_params_fn = jit(value_and_grad(eval_params_fn))
     batched_grad_fn = jit(vmap(grad_eval_params_fn, in_axes=(None, 0)))
 
 
 
 
-    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    run_name = f"catalyst_{timestamp}_b{batch_size}_n{n_steps}_lr{lr}"
+    # timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    # run_name = f"catalyst_{timestamp}_b{batch_size}_n{n_steps}_lr{lr}"
+    run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_k{key_seed}"
     run_dir = data_dir / run_name
     run_dir.mkdir(parents=False, exist_ok=False)
 
@@ -176,7 +202,8 @@ def train(args):
         with open(grad_path, "a") as f:
             f.write(str(grads) + '\n')
         with open(params_path, "a") as f:
-            f.write(str(params) + '\n')
+            params_to_print = {k: float(v) for k, v in params.items()}
+            f.write(str(params_to_print) + '\n')
 
     # loss_file.close()
     # grad_file.close()
@@ -189,11 +216,17 @@ if __name__ == "__main__":
 
     parser.add_argument('--batch-size', type=int, default=3, help="Num. batches for each round of gradient descent")
     parser.add_argument('--n-iters', type=int, default=1, help="Num. iterations of gradient descent")
+    parser.add_argument('-k', '--key-seed', type=int, default=0, help="Random key")
     parser.add_argument('--n-steps', type=int, default=10000, help="Num. steps per simulation")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
+    parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
     parser.add_argument('-d', '--data-dir', type=str,
                         default="data/",
                         help='Path to base data directory')
+    parser.add_argument('--init-method', type=str,
+                        default="random",
+                        choices=['random', 'fixed'],
+                        help='Method for initializing parameters')
     args = vars(parser.parse_args())
 
 

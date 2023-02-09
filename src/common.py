@@ -201,6 +201,7 @@ VERTEX_TO_BIND = 5
 
 displacement_fn, shift_fn = space.free()
 d = vmap(displacement_fn, (0, None))
+d_prod = space.map_product(displacement_fn)
 
 _key = random.PRNGKey(0)
 SHELL_RB, SHELL_VERTEX_SHAPE, _ = get_icosahedron(_key, displacement_fn, shift_fn, SHELL_VERTEX_RADIUS)

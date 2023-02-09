@@ -69,3 +69,14 @@ Next time, we want to:
 
 
 papers to read for next week: diffussion model paper from Baker lab, ICLR paper
+
+
+## Feb 5, 2032
+
+we want to see random parmeters converge
+
+we have been running some with fixed parameters to see if it could solv eht eproblem of recombining. it oculdn't, so far.
+
+if this doesn't work, a couple things we could try:
+- random parameters w/o the extra loss term. confirm that we can converge there
+- try differetn optimizers (note: make a flag for this)
