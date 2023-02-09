@@ -802,7 +802,8 @@ def _transform_to_diagonal_frame(shape: RigidPointUnion) -> RigidPointUnion:
     total_mass = jnp.sum(shape.masses)
     I, = shape.moment_of_inertia()
 
-    I_diag, U = jnp.linalg.eigh(I)
+    # I_diag, U = jnp.linalg.eigh(I)
+    I_diag, U = jnp.linalg.eig(I)
 
     points = jnp.einsum('ni,ij->nj', shape.points, U)
     return RigidPointUnion(points,
