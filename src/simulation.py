@@ -61,8 +61,8 @@ def initialize_system(base_radius, head_height, leg_diameter,
     # Make spider rigid body shape
     # masses = jnp.full(spider_points.shape[0], spider_point_masses)
     masses = jnp.ones(spider_points.shape[0]) * spider_point_masses + jnp.arange(spider_points.shape[0]) * mass_err
-#     masses = spider_point_masses
-#     masses = jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])
+    # masses = spider_point_masses
+    # masses = jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])
     spider_shape = rigid_body.point_union_shape(spider_points, masses).set(point_species=spider_species)
 
 
