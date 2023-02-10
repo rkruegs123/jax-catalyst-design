@@ -1,0 +1,16 @@
+Exhaustive reading list:
+1. Michael/Ryan Adams ICLR paper
+  - Neuromechanical Autoencoders: Learning to Couple Elastic and Neural Network Nonlinearity
+2. Baker paper diffusion
+  - https://www.biorxiv.org/content/10.1101/2022.12.09.519842v2.abstract
+3. Digital Alchemy for Materials Design: Colloids and Beyond
+  - https://pubs.acs.org/doi/abs/10.1021/acsnano.5b04181
+4. Generate Biomedicines Chroma web page and paper:
+  - https://generatebiomedicines.com/chroma
+  - https://www.biorxiv.org/content/10.1101/2022.12.01.518682v1?rss=1
+5. How flexibility can enhance catalysis
+  - https://arxiv.org/abs/2212.08352
+6. Catalysis from the bottom-up
+  - https://arxiv.org/abs/2211.12107
+
+Read (1)-(3)
