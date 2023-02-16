@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 import jax.numpy as np
 
+import jax.debug
 from jax import random, grad, value_and_grad, remat, jacfwd
 from jax import jit
 from jax import vmap, lax
@@ -52,6 +53,7 @@ def get_leg_energy_fn(soft_sphere_eps, bond_diameter, shape):
 
         # We want to compute 12 * 5 distances. For each bond, distance to each vertex
         all_dists_fn = vmap(vmap(dist_point_to_line_segment, (0, None)), (None, 0))
+        jax.debug.breakpoint()
         all_dists = all_dists_fn(position[bond_pairs], position[vertices])
 
         # Get the soft sphere attraction for each
