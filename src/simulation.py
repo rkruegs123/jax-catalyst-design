@@ -28,6 +28,7 @@ from common import SHELL_VERTEX_RADIUS, SPIDER_BASE_RADIUS, SPIDER_HEAD_HEIGHT, 
 from common import displacement_fn, shift_fn, d, d_prod
 from common import get_spider_positions
 from checkpoint import checkpoint_scan
+import leg
 
 
 checkpoint_every = 1
@@ -91,20 +92,20 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
 
     zero_interaction = jnp.zeros((n_point_species, n_point_species))
 
-    
-    
+
+
     morse_eps = zero_interaction.at[1, 1].set(morse_ii_eps) #icosahedral patches attract eachother
-    
+
     """
     morse_eps = morse_eps.at[1, 2:-1].set(morse_leg_eps) # catalyst legts attract icosahedron patches
     morse_eps = morse_eps.at[2:-1, 1].set(morse_leg_eps) #symmetry
     morse_eps = morse_eps.at[1, -1].set(morse_head_eps)
-    morse_eps = morse_eps.at[-1, 1].set(morse_head_eps)  
+    morse_eps = morse_eps.at[-1, 1].set(morse_head_eps)
     """
     morse_eps = morse_eps.at[0, 2:-1].set(morse_leg_eps) # catalyst legts attract icosahedron vertices
     morse_eps = morse_eps.at[2:-1, 0].set(morse_leg_eps) #symmetry
     morse_eps = morse_eps.at[0, -1].set(morse_head_eps)
-    morse_eps = morse_eps.at[-1, 0].set(morse_head_eps)  
+    morse_eps = morse_eps.at[-1, 0].set(morse_head_eps)
 
 
     morse_alpha = zero_interaction.at[1, 1].set(morse_ii_alpha)
@@ -119,7 +120,7 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
     morse_alpha = morse_alpha.at[2:-1, 0].set(morse_leg_alpha)
     morse_alpha = morse_alpha.at[0, -1].set(morse_head_alpha)
     morse_alpha = morse_alpha.at[-1, 0].set(morse_head_alpha)
-    
+
 
     soft_sphere_eps = zero_interaction.at[0, 0].set(soft_eps) # icosahedral centers repel each other
     soft_sphere_eps = soft_sphere_eps.at[0, 2:].set(soft_eps) # icosahedral centers repel catalyst centers
@@ -134,7 +135,7 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
 
 
     pair_energy_soft = energy.soft_sphere_pair(displacement_fn, species=n_point_species, sigma=soft_sphere_sigma, epsilon=soft_sphere_eps)
-    pair_energy_morse = energy.morse_pair(displacement_fn, species=n_point_species, 
+    pair_energy_morse = energy.morse_pair(displacement_fn, species=n_point_species,
                                           sigma=0.0, epsilon=morse_eps, alpha=morse_alpha,
                                           r_onset=10.0, r_cutoff=12.0
     )
@@ -198,11 +199,12 @@ def run_dynamics_helper(initial_rigid_body, shape,
     # energy_fn = point_energy(pair_energy_fn, shape, shape_species) # use our, very special `point_energy`
     """
 
-    energy_fn = get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
-                              morse_ii_eps, morse_leg_eps, morse_head_eps,
-                              morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
-                              soft_eps, shape)
-
+    base_energy_fn = get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
+                                   morse_ii_eps, morse_leg_eps, morse_head_eps,
+                                   morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
+                                   soft_eps, shape)
+    leg_energy_fn = leg.get_leg_energy_fn(soft_eps, spider_leg_diameter, shape) # TODO: unrestrict leg diameter
+    energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
 
     init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
     step_fn = jit(step_fn)
@@ -319,10 +321,10 @@ if __name__ == "__main__":
         "initial_separation_coeff": initial_separation_coeff_close
     }
     params = {"energy": energy_params, "init": init_params}
-        
+
 
     """
-    energy_fn = get_energy_fn(icosahedron_vertex_radius=SHELL_VERTEX_RADIUS, 
+    energy_fn = get_energy_fn(icosahedron_vertex_radius=SHELL_VERTEX_RADIUS,
                               spider_leg_diameter=leg_diameter, spider_head_diameter=head_diameter,
                               morse_ii_eps=10.0, morse_leg_eps=10.0, morse_head_eps=100000.0,
                               morse_ii_alpha=5.0, morse_leg_alpha=1.0, morse_head_alpha=1.0,
@@ -361,7 +363,7 @@ if __name__ == "__main__":
         "morse_head_alpha": 2.0,
         "soft_eps": 1000.0,
     }
-    
+
     params = {'init': init_params, 'sim': sim_params}
 
     key = random.PRNGKey(0)
@@ -395,4 +397,3 @@ if __name__ == "__main__":
     print(f"Total time: {onp.round(end - start, 2)}")
 
     pdb.set_trace()
-
