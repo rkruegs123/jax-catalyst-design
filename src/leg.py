@@ -24,9 +24,9 @@ import mod_rigid_body as rigid_body
 from common import displacement_fn, shift_fn, d, d_prod
 
 # https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
-def dist_point_to_line_segment(line_p1, line_p2, point):
-    # line_p1 = jnp.squeeze(line_points[0])
-    # line_p2 = jnp.squeeze(line_points[1])
+def dist_point_to_line_segment(line_points, point):
+    line_p1 = jnp.squeeze(line_points[0])
+    line_p2 = jnp.squeeze(line_points[1])
 
     disp_line = displacement_fn(line_p2, line_p1)
     norm = space.distance(disp_line)
