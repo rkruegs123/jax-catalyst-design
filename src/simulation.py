@@ -204,7 +204,8 @@ def run_dynamics_helper(initial_rigid_body, shape,
                                    morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
                                    soft_eps, shape)
     leg_energy_fn = leg.get_leg_energy_fn(soft_eps, spider_leg_diameter, shape, shape_species) # TODO: unrestrict leg diameter
-    energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
+    # energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
+    energy_fn = lambda body: base_energy_fn(body)
 
     init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
     step_fn = jit(step_fn)
