@@ -47,13 +47,12 @@ bond_pairs = jnp.array([
     [-2, -1]
 ])
 vertices = jnp.arange(0, 6*12, 6)
-def get_leg_energy_fn(soft_sphere_eps, bond_diameter, shape):
+def get_leg_energy_fn(soft_sphere_eps, bond_diameter, shape, shape_species):
     def leg_energy_fn(body):
-        position = vmap(rigid_body.transform, (0, None))(body, shape)
+        position = rigid_body.union_to_points(body, shape, shape_species)
 
         # We want to compute 12 * 5 distances. For each bond, distance to each vertex
         all_dists_fn = vmap(vmap(dist_point_to_line_segment, (0, None)), (None, 0))
-        jax.debug.breakpoint()
         all_dists = all_dists_fn(position[bond_pairs], position[vertices])
 
         # Get the soft sphere attraction for each
