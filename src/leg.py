@@ -52,11 +52,12 @@ def get_leg_energy_fn(soft_sphere_eps, bond_diameter, shape, shape_species):
         position = rigid_body.union_to_points(body, shape, shape_species)
 
         # We want to compute 12 * 5 distances. For each bond, distance to each vertex
+        return dist_point_to_line_segment(position[jnp.array([0, 1])], position[3])
+        """
         all_dists_fn = vmap(vmap(dist_point_to_line_segment, (0, None)), (None, 0))
         all_dists = all_dists_fn(position[bond_pairs], position[vertices])
         return jnp.sum(all_dists)
 
-        """
         # Get the soft sphere attraction for each
         bond_energy_sm = jnp.sum(
             energy.soft_sphere(all_dists,
