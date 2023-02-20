@@ -72,7 +72,9 @@ def get_leg_energy_fn(soft_sphere_eps, bond_diameter, shape, shape_species):
 if __name__ == "__main__":
     pt_1 = jnp.array([0, 0, 0])
     pt_2 = jnp.array([1, 0, 0])
-    point_for_dist = jnp.array([[0.5, 0.5, 0],
-                                [1.0, 0.2, 1.1]])
-    print(vmap(dist_point_to_line_segment, in_axes=(None, None, 0))(pt_1, pt_2, point_for_dist))
+    line_pts = jnp.array([pt_1, pt_2])
+    point_for_dist = jnp.array([[1.5, 0.5, 0],
+                                [0.1, 0.5, 0], 
+                                [0, 0, 0.5]])
+    print(vmap(dist_point_to_line_segment, in_axes=(None, 0))(line_pts, point_for_dist))
     # print(grad(dist_point_to_line_segment, 2)(pt_1, pt_2, point_for_dist))

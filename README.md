@@ -2,6 +2,15 @@
 
 Code for designing **spider catalysts**
 
+## feb 20, 2023
+- Added term to the loss function to get the catalyst to detach from the icosahedron
+- fixed the leg diameter to be 1.5 throughout the optimization so it couldn't cheat
+- fixed issue with leg repulsion: wasn't counting the radius of the vertex
+- getting degenerate solution at the moment, may be due to initial separation coefficient
+- Played with increasing the temperature; may be causing the shell to fall apart. Should play with the morse_ii_eps vs temperature, though note that increasing morse_ii_eps will make it harder for the catalyst to get the vertex to detach
+
+
+
 ## Jan. 17, 2023
 
 For next time:
