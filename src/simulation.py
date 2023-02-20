@@ -158,47 +158,6 @@ def run_dynamics_helper(initial_rigid_body, shape,
 
 
     # Code for generating the energy function
-    """
-    spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter]) * 0.5
-    # the two shape species are (1) the patchy particles that make up the icosahedron
-    # and (2) the catalyst. There are 12 patchy particles that make up the icosahedron
-    # plus 1 catalyst rigid body, making a total of 13 bodies in the simulation
-    # shape_species = onp.array(list(onp.zeros(initial_rigid_body.center.shape[0]-1)) + [1], dtype=int).flatten()
-
-    # n_point_species = int(jnp.max(shape.point_species)+1) #starts at 0, depends on point_species being ordered
-    zero_interaction = jnp.zeros((n_point_species, n_point_species))
-
-    morse_eps = zero_interaction.at[1, 1].set(morse_ii_eps) #icosahedral patches attract eachother
-    morse_eps = morse_eps.at[1, 2:-1].set(morse_leg_eps) # catalyst legts attract icosahedron patches
-    morse_eps = morse_eps.at[2:-1, 1].set(morse_leg_eps) #symmetry
-    morse_eps = morse_eps.at[1, -1].set(morse_head_eps)
-    morse_eps = morse_eps.at[-1, 1].set(morse_head_eps)
-
-    morse_alpha = zero_interaction.at[1, 1].set(morse_ii_alpha)
-    morse_alpha = morse_alpha.at[1, 2:-1].set(morse_leg_alpha)
-    morse_alpha = morse_alpha.at[2:-1, 1].set(morse_leg_alpha)
-    morse_alpha = morse_alpha.at[1, -1].set(morse_head_alpha)
-    morse_alpha = morse_alpha.at[-1, 1].set(morse_head_alpha)
-
-    soft_sphere_eps = zero_interaction.at[0, 0].set(soft_eps) # icosahedral centers repel each other
-    soft_sphere_eps = soft_sphere_eps.at[0, 2:].set(soft_eps) # icosahedral centers repel catalyst centers
-    # soft_sphere_eps = soft_sphere_eps.at[0, 2:].set(0.0) # icosahedral centers repel catalyst centers
-    soft_sphere_eps = soft_sphere_eps.at[2:, 0].set(soft_eps) # symmetry
-    # soft_sphere_eps = soft_sphere_eps.at[2:, 0].set(0.0) # symmetry
-
-    soft_sphere_sigma = zero_interaction.at[0, 0].set(icosahedron_vertex_radius*2)
-    soft_sphere_sigma = soft_sphere_sigma.at[0, 2:].set(icosahedron_vertex_radius + spider_radii) #icosahedral centers repel catalyst centers
-    soft_sphere_sigma = soft_sphere_sigma.at[2:, 0].set(icosahedron_vertex_radius + spider_radii)
-    soft_sphere_sigma = jnp.where(soft_sphere_sigma==0.0, 1e-5, soft_sphere_sigma) #avoids nans
-
-
-    pair_energy_soft = energy.soft_sphere_pair(displacement_fn, species=n_point_species, sigma=soft_sphere_sigma, epsilon=soft_sphere_eps)
-    pair_energy_morse = energy.morse_pair(displacement_fn, species=n_point_species, sigma=0.0, epsilon=morse_eps, alpha=morse_alpha)
-    pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
-    energy_fn = rigid_body.point_energy(pair_energy_fn, shape, shape_species)
-    # energy_fn = point_energy(pair_energy_fn, shape, shape_species) # use our, very special `point_energy`
-    """
-
     base_energy_fn = get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
                                    morse_ii_eps, morse_leg_eps, morse_head_eps,
                                    morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
@@ -233,7 +192,6 @@ def run_dynamics(initial_rigid_body, shape,
                  morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
                  morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
                  soft_eps=10000.0, kT=1.0, dt=1e-4,
-                 # num_inner_steps=100, num_outer_steps=100
                  num_steps=100
 ):
     state, _ = run_dynamics_helper(
@@ -242,7 +200,6 @@ def run_dynamics(initial_rigid_body, shape,
         morse_ii_eps=morse_ii_eps, morse_leg_eps=morse_leg_eps, morse_head_eps=morse_head_eps,
         morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha, morse_head_alpha=morse_head_alpha,
         soft_eps=soft_eps, kT=kT, dt=dt,
-        # num_inner_steps=100, num_outer_steps=100
         num_steps=num_steps)
     return state
 
@@ -256,6 +213,8 @@ def loss_fn(body):
     shell_body = body[:-1]
     disps = d(shell_body.center, body[VERTEX_TO_BIND].center)
     dists = space.distance(disps)
+    vertex_far_from_icos = -jnp.sum(dists)
+    
 
     # Term that keeps the rest together
     """
@@ -269,11 +228,17 @@ def loss_fn(body):
         axis=0)
     remaining_com = jnp.mean(remaining_vertices, axis=0)
     com_dists = space.distance(d(remaining_vertices, remaining_com))
-    term2 = com_dists.sum()
+    icos_stays_together = com_dists.sum()
+
+
+    # Term that asks the catalyst to detach from the icosahedron
+    catalyst_body = body[-1]
+    dists_from_cat = space.distance(d(remaining_vertices, catalyst_body.center))
+    catalyst_detaches_from_icos = -1*dists_from_cat.sum()
 
     norm = (shell_body.center.shape[0] - 1)
 
-    return (-jnp.sum(dists) + term2) / norm
+    return (vertex_far_from_icos + icos_stays_together + catalyst_detaches_from_icos) / norm
 
 if __name__ == "__main__":
 
