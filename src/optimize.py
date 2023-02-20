@@ -78,7 +78,7 @@ def get_init_params(mode="fixed", key=None):
             # catalyst shape
             'spider_base_radius': 5.0,
             'spider_head_height': 6.0,
-            'spider_leg_diameter': 1.0,
+            'spider_leg_diameter': 1.5,
             'spider_head_diameter': 1.0,
 
             # catalyst energy
