@@ -121,7 +121,7 @@ def train(args):
     lr = args['lr']
     init_method = args['init_method']
     key_seed = args['key_seed']
-
+    kT = args['temperature']
     initial_separation_coefficient = args['init_separate']
 
     data_dir = Path(data_dir)
@@ -136,7 +136,7 @@ def train(args):
     params = get_init_params(mode=init_method, key=key)
     opt_state = optimizer.init(params)
 
-    eval_params_fn = get_eval_params_fn(soft_eps=100000.0, kT=0.5, dt=1e-3, 
+    eval_params_fn = get_eval_params_fn(soft_eps=100000.0, kT=kT, dt=1e-3, 
                                         # num_inner_steps=n_inner_steps, num_outer_steps=n_outer_steps,
                                         num_steps=n_steps,
                                         morse_ii_eps=10.0, morse_ii_alpha=5.0,
@@ -149,7 +149,7 @@ def train(args):
 
     # timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     # run_name = f"catalyst_{timestamp}_b{batch_size}_n{n_steps}_lr{lr}"
-    run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_k{key_seed}"
+    run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_kT{kT}_k{key_seed}"
     run_dir = data_dir / run_name
     run_dir.mkdir(parents=False, exist_ok=False)
 
@@ -227,6 +227,7 @@ if __name__ == "__main__":
                         default="random",
                         choices=['random', 'fixed'],
                         help='Method for initializing parameters')
+    parser.add_argument('-kT', '--temperature', type=float, default=0.5, help="Temperature in kT")
     args = vars(parser.parse_args())
 
 
