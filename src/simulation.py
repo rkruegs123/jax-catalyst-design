@@ -167,7 +167,7 @@ def run_dynamics_helper(initial_rigid_body, shape,
     # energy_fn = lambda body: base_energy_fn(body)
 
     #init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
-    init_fn, step_fn = simulate.langevin(energy_fn, shift_fn, dt, kT, gamma=gamma)
+    init_fn, step_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt, kT, gamma=gamma)
     step_fn = jit(step_fn)
     mass = shape.mass(shape_species)
     state = init_fn(key, initial_rigid_body, mass=mass)
