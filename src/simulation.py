@@ -153,7 +153,7 @@ def run_dynamics_helper(initial_rigid_body, shape,
                  morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
                  soft_eps=10000.0, kT=1.0, dt=1e-4,
                  # num_inner_steps=100, num_outer_steps=100
-                 num_steps=100
+                 num_steps=100, gamma=0.1
 ):
 
 
@@ -166,7 +166,8 @@ def run_dynamics_helper(initial_rigid_body, shape,
     energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
     # energy_fn = lambda body: base_energy_fn(body)
 
-    init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
+    #init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
+    init_fn, step_fn = simulate.langevin(energy_fn, shift_fn, dt, kT, gamma=gamma)
     step_fn = jit(step_fn)
     mass = shape.mass(shape_species)
     state = init_fn(key, initial_rigid_body, mass=mass)
@@ -192,7 +193,7 @@ def run_dynamics(initial_rigid_body, shape,
                  morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
                  morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
                  soft_eps=10000.0, kT=1.0, dt=1e-4,
-                 num_steps=100
+                 num_steps=100, gamma=0.1
 ):
     state, _ = run_dynamics_helper(
         initial_rigid_body, shape,
@@ -200,7 +201,7 @@ def run_dynamics(initial_rigid_body, shape,
         morse_ii_eps=morse_ii_eps, morse_leg_eps=morse_leg_eps, morse_head_eps=morse_head_eps,
         morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha, morse_head_alpha=morse_head_alpha,
         soft_eps=soft_eps, kT=kT, dt=dt,
-        num_steps=num_steps)
+        num_steps=num_steps, gamma=gamma)
     return state
 
 """

@@ -39,7 +39,7 @@ def get_eval_params_fn(soft_eps, kT, dt,
                        # num_inner_steps, num_outer_steps, 
                        num_steps,
                        morse_ii_eps, morse_ii_alpha,
-                       initial_separation_coeff
+                       initial_separation_coeff, gamma
 ):
     def eval_params(params, key):
 
@@ -65,7 +65,7 @@ def get_eval_params_fn(soft_eps, kT, dt,
                                  morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha, morse_head_alpha=morse_head_alpha,
                                  soft_eps=soft_eps, kT=kT, dt=dt, 
                                  # num_inner_steps=num_inner_steps, num_outer_steps=num_outer_steps
-                                 num_steps=num_steps
+                                 num_steps=num_steps, gamma=gamma
         )
         return loss_fn(fin_state)
     return eval_params
@@ -123,6 +123,7 @@ def train(args):
     key_seed = args['key_seed']
     kT = args['temperature']
     initial_separation_coefficient = args['init_separate']
+    gamma = args['gamma']
 
     data_dir = Path(data_dir)
     if not data_dir.exists():
@@ -140,7 +141,8 @@ def train(args):
                                         # num_inner_steps=n_inner_steps, num_outer_steps=n_outer_steps,
                                         num_steps=n_steps,
                                         morse_ii_eps=10.0, morse_ii_alpha=5.0,
-                                        initial_separation_coeff=initial_separation_coefficient) # FIXME: separation coefficient is hardcoded for now
+                                        initial_separation_coeff=initial_separation_coefficient,
+                                        gamma=gamma) # FIXME: separation coefficient is hardcoded for now
     grad_eval_params_fn = jit(value_and_grad(eval_params_fn))
     batched_grad_fn = jit(vmap(grad_eval_params_fn, in_axes=(None, 0)))
 
@@ -149,7 +151,7 @@ def train(args):
 
     # timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     # run_name = f"catalyst_{timestamp}_b{batch_size}_n{n_steps}_lr{lr}"
-    run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_kT{kT}_k{key_seed}"
+    run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_kT{kT}_g{gamma}_k{key_seed}"
     run_dir = data_dir / run_name
     run_dir.mkdir(parents=False, exist_ok=False)
 
@@ -228,6 +230,7 @@ if __name__ == "__main__":
                         choices=['random', 'fixed'],
                         help='Method for initializing parameters')
     parser.add_argument('-kT', '--temperature', type=float, default=0.5, help="Temperature in kT")
+    parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
     args = vars(parser.parse_args())
 
 
