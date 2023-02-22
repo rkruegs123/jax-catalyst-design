@@ -30,7 +30,7 @@ def dist_point_to_line_segment(line_points, point):
 
     disp_line = displacement_fn(line_p2, line_p1)
     norm = space.distance(disp_line)
-    u = (displacement_fn(point, line_p1) * disp_line) / norm
+    u = jnp.dot(displacement_fn(point, line_p1), disp_line) / norm**2
     u = jnp.where(u > 1, 1, u)
     u = jnp.where(u < 0, 0, u)
     pt = line_p1 + u * disp_line
@@ -70,11 +70,18 @@ def get_leg_energy_fn(soft_sphere_eps, bond_diameter, shape, shape_species):
 
 
 if __name__ == "__main__":
-    pt_1 = jnp.array([0, 0, 0])
-    pt_2 = jnp.array([1, 0, 0])
-    line_pts = jnp.array([pt_1, pt_2])
-    point_for_dist = jnp.array([[1.5, 0.5, 0],
-                                [0.1, 0.5, 0], 
-                                [0, 0, 0.5]])
-    print(vmap(dist_point_to_line_segment, in_axes=(None, 0))(line_pts, point_for_dist))
+    #pt_1 = jnp.array([0, 0, 0])
+    #pt_2 = jnp.array([1, 0, 0])
+    #line_pts = jnp.array([pt_1, pt_2])
+    #point_for_dist = jnp.array([[1.5, 0.5, 0],
+    #                            [0.1, 0.5, 0], 
+    #                            [0, 0, 0.5]])
+
+    point_for_dist = jnp.array([-2.16241278, -0.58582545,  3.10412613])
+    pt_1 = jnp.array([-5.57976037, -1.48088655,  8.11028434])
+    pt_2 = jnp.array([-1.94783784,  4.29471522,  4.45723335])
+
+    print(dist_point_to_line_segment(jnp.array([pt_1, pt_2]), point_for_dist))
+    print(dist_point_to_line_segment(jnp.array([pt_2, pt_1]), point_for_dist))
+    #print(vmap(dist_point_to_line_segment, in_axes=(None, 0))(line_pts, point_for_dist))
     # print(grad(dist_point_to_line_segment, 2)(pt_1, pt_2, point_for_dist))
