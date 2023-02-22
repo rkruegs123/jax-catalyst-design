@@ -219,7 +219,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size', type=int, default=3, help="Num. batches for each round of gradient descent")
     parser.add_argument('--n-iters', type=int, default=1, help="Num. iterations of gradient descent")
     parser.add_argument('-k', '--key-seed', type=int, default=0, help="Random key")
-    parser.add_argument('--n-steps', type=int, default=10000, help="Num. steps per simulation")
+    parser.add_argument('--n-steps', type=int, default=5000, help="Num. steps per simulation")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
     parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
     parser.add_argument('-d', '--data-dir', type=str,
@@ -229,7 +229,7 @@ if __name__ == "__main__":
                         default="random",
                         choices=['random', 'fixed'],
                         help='Method for initializing parameters')
-    parser.add_argument('-kT', '--temperature', type=float, default=0.5, help="Temperature in kT")
+    parser.add_argument('-kT', '--temperature', type=float, default=2.0, help="Temperature in kT")
     parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
     args = vars(parser.parse_args())
 

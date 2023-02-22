@@ -240,7 +240,7 @@ def loss_fn(body):
 
     norm = (shell_body.center.shape[0] - 1)
 
-    return (vertex_far_from_icos + icos_stays_together + catalyst_detaches_from_icos) / norm
+    return (vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos) / norm
 
 if __name__ == "__main__":
 
