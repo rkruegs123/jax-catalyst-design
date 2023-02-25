@@ -27,11 +27,13 @@ from common import SHELL_VERTEX_RADIUS, SPIDER_BASE_RADIUS, SPIDER_HEAD_HEIGHT, 
     SHELL_DIAMETERS, SHELL_COLORS, SHELL_BODY_POS
 from common import displacement_fn, shift_fn, d, d_prod
 from common import get_spider_positions
+from common import dtype
 from checkpoint import checkpoint_scan
 import leg
 
 
-checkpoint_every = 1
+
+checkpoint_every = 100
 if checkpoint_every is None:
     scan = lax.scan
 else:
@@ -56,12 +58,12 @@ def initialize_system(base_radius, head_height, leg_diameter,
     disp_vector = displacement_fn(vertex.center, jnp.mean(SHELL_RB.center, axis=0))
     disp_vector /= jnp.linalg.norm(disp_vector)
     center = vertex.center + disp_vector * (SHELL_VERTEX_RADIUS + leg_diameter / 2) * initial_separation_coeff # shift away from vertex
-    spider_rb = rigid_body.RigidBody(center=jnp.array([center]),
-                                     orientation=rigid_body.Quaternion(jnp.array([vertex.orientation.vec])))
+    spider_rb = rigid_body.RigidBody(center=jnp.array([center], dtype=dtype),
+                                     orientation=rigid_body.Quaternion(jnp.array([vertex.orientation.vec], dtype=dtype)))
                                      #orientation=rigid_body.Quaternion(jnp.array([[0.0, 0.0, 1.0, 0.0]])))
     # Make spider rigid body shape
     # masses = jnp.full(spider_points.shape[0], spider_point_masses)
-    masses = jnp.ones(spider_points.shape[0]) * spider_point_masses + jnp.arange(spider_points.shape[0]) * mass_err
+    masses = jnp.ones(spider_points.shape[0], dtype=dtype) * spider_point_masses + jnp.arange(spider_points.shape[0]) * mass_err
     # masses = spider_point_masses
     # masses = jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])
     spider_shape = rigid_body.point_union_shape(spider_points, masses).set(point_species=spider_species)
@@ -88,7 +90,7 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
                   morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
                   soft_eps, shape):
 
-    spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter]) * 0.5
+    spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter], dtype=dtype) * 0.5
 
     zero_interaction = jnp.zeros((n_point_species, n_point_species))
 
@@ -151,7 +153,7 @@ def run_dynamics_helper(initial_rigid_body, shape,
                  icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
                  morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
                  morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
-                 soft_eps=10000.0, kT=1.0, dt=1e-4,
+                 soft_eps=10000.0, kT=1.0, dt=1e-3,
                  # num_inner_steps=100, num_outer_steps=100
                  num_steps=100, gamma=0.1
 ):
@@ -166,7 +168,7 @@ def run_dynamics_helper(initial_rigid_body, shape,
     energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
     # energy_fn = lambda body: base_energy_fn(body)
 
-    #init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
+    # init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
     gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
     init_fn, step_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt, kT, gamma=gamma_rb)
     step_fn = jit(step_fn)
@@ -193,7 +195,7 @@ def run_dynamics(initial_rigid_body, shape,
                  icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
                  morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
                  morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
-                 soft_eps=10000.0, kT=1.0, dt=1e-4,
+                 soft_eps=10000.0, kT=1.0, dt=1e-3,
                  num_steps=100, gamma=0.1
 ):
     state, _ = run_dynamics_helper(
@@ -210,7 +212,7 @@ Preliminary loss function: maximizing the distance from VERTEX_TO_BIND to the re
 of the icosahedron
 """
 # vertex_mask = jnp.where(jnp.arange(12) == VERTEX_TO_BIND, 0, 1)
-def loss_fn(body):
+def loss_fn_helper(body):
     # body is of length 13 -- first 12 for shell, last 1 is catalyst
     shell_body = body[:-1]
     disps = d(shell_body.center, body[VERTEX_TO_BIND].center)
@@ -240,7 +242,12 @@ def loss_fn(body):
 
     norm = (shell_body.center.shape[0] - 1)
 
-    return (vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos) / norm
+    return vertex_far_from_icos / norm, icos_stays_together / norm, catalyst_detaches_from_icos / norm
+
+def loss_fn(body):
+    vertex_far_from_icos, icos_stays_together, catalyst_detaches_from_icos = loss_fn_helper(body)
+    # return vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos
+    return vertex_far_from_icos + 3.0 * icos_stays_together
 
 if __name__ == "__main__":
 

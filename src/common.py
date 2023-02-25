@@ -25,6 +25,8 @@ from jax_md import util
 
 Array = util.Array
 f64 = util.f64
+f32 = util.f32
+dtype = f64
 
 
 def get_unminimized_icosahedron(displacement_fn, icosahedron_vertex_radius, vertex_mass=1.0, patch_mass=1e-8):
@@ -44,7 +46,7 @@ def get_unminimized_icosahedron(displacement_fn, icosahedron_vertex_radius, vert
         [0.0, -1*phi, 1.0],
         [0.0, phi, -1.0],
         [0.0, -1*phi, -1.0],
-    ])
+    ], dtype=dtype)
 
     '''
     The vertex rigid body consists of the vertex and its 5 patches, where we
@@ -66,16 +68,16 @@ def get_unminimized_icosahedron(displacement_fn, icosahedron_vertex_radius, vert
         norm = jnp.linalg.norm(vec, axis=1).reshape(-1, 1)
         vec /= norm
         patch_pos = anchor - icosahedron_vertex_radius * vec
-        return jnp.concatenate([jnp.array([anchor]), patch_pos]) - anchor
+        return jnp.concatenate([jnp.array([anchor], dtype=dtype), patch_pos]) - anchor
 
 
-    positions = jnp.array(get_vertex_rigid_body_positions()) # first position is vertex, rest are patches
+    positions = jnp.array(get_vertex_rigid_body_positions(), dtype=dtype) # first position is vertex, rest are patches
     num_patches = positions.shape[0] - 1 #don't count vertex particle
-    species = jnp.zeros(num_patches + 1, dtype = jnp.int32)
+    species = jnp.zeros(num_patches + 1, dtype=jnp.int32)
     species = species.at[1:].set(1) # first particle is the vertex, rest are patches
     # species = onp.array(species, dtype = int)
     patch_mass = jnp.ones(num_patches)*patch_mass # should be zero, but zeros cause nans in the gradient
-    mass = jnp.concatenate((jnp.array([vertex_mass]), patch_mass), axis = 0)
+    mass = jnp.concatenate((jnp.array([vertex_mass], dtype=dtype), patch_mass), axis=0)
     # mass = onp.array(mass)
     vertex_shape = rigid_body.point_union_shape(positions, mass).set(point_species=species)
 
@@ -184,9 +186,9 @@ def get_spider_positions(base_radius, head_height, z=0.0):
         return spider_pos, i
 
     spider_base, _ = lax.scan(scan_fn, spider_pos, jnp.arange(len(spider_pos)))
-    spider_head = jnp.array([[0., 0., -1 * (head_height + z)]])
+    spider_head = jnp.array([[0., 0., -1 * (head_height + z)]], dtype=dtype)
 
-    return jnp.array(jnp.concatenate([spider_base, spider_head]))
+    return jnp.array(jnp.concatenate([spider_base, spider_head]), dtype=dtype)
 
 
 SHELL_VERTEX_RADIUS = 2.0
@@ -207,7 +209,7 @@ _key = random.PRNGKey(0)
 SHELL_RB, SHELL_VERTEX_SHAPE, _ = get_icosahedron(_key, displacement_fn, shift_fn, SHELL_VERTEX_RADIUS)
 
 # Global variables for visualization
-SHELL_DIAMETERS = 2*SHELL_VERTEX_RADIUS*jnp.array([[1.0] + [0.2] * 5]*12).flatten() # Note: Just for visualization. Fake patch radius.
+SHELL_DIAMETERS = 2*SHELL_VERTEX_RADIUS*jnp.array([[1.0] + [0.2] * 5]*12, dtype=dtype).flatten() # Note: Just for visualization. Fake patch radius.
 c1 = [1, 0, 0]
 c2 = [0, 1, 0]
 SHELL_COLORS = jnp.array([c1 + c2*5]*12).reshape(-1, 3)

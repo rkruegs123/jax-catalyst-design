@@ -27,7 +27,7 @@ from jax_md import util
 import optax
 
 import common
-from common import SHELL_VERTEX_RADIUS
+from common import SHELL_VERTEX_RADIUS, dtype
 import simulation
 from simulation import run_dynamics, initialize_system, loss_fn
 
