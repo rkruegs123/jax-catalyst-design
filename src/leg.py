@@ -72,7 +72,7 @@ def get_leg_energy_fn(soft_sphere_eps, bond_diameter, shape, shape_species):
             energy.soft_sphere(all_dists,
                                epsilon=soft_sphere_eps,
                                sigma=bond_diameter,
-                               alpha=leg_alpha))
+                               alpha=jnp.array(leg_alpha)))
         return bond_energy_sm
 
     return leg_energy_fn
