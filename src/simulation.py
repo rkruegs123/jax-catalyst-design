@@ -247,8 +247,8 @@ def loss_fn_helper(body):
 def loss_fn(body):
     vertex_far_from_icos, icos_stays_together, catalyst_detaches_from_icos = loss_fn_helper(body)
     # return vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos
-    # return vertex_far_from_icos + 3.0 * icos_stays_together
-    return vertex_far_from_icos + icos_stays_together
+    return vertex_far_from_icos + 2.0 * icos_stays_together
+    # return vertex_far_from_icos + icos_stays_together
 
 if __name__ == "__main__":
 

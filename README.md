@@ -2,6 +2,13 @@
 
 Code for designing **spider catalysts**
 
+## feb 28, 2023
+- key 1000 is d5 1e-4 10k steps, legs and both loss terms (no coefficient). legs have same alpha.
+- key 1001 is 2 * icos_stays_together (dt1e-3, legs have same alpha, with legs, 1000 steps)
+- key 1002 is leg_alpha always 2 for the legs. otherwise same -- dt1e-3, legs, 1000 steps, no coefficient
+- key 1003 is no legs
+- key 1004 is 1001 wit hbatch size 10 (and redo to confirm we are actually using the coeff)
+
 ## feb 22, 2023
 - we can get the catalyst to fall off with an initial separation of 0.1, temp of 2.0, morse_leg_eps=0.0, and running for 5k steps with hand-designed parameters
 - added coefficient on the non-explosion part of the loss because it was lower for something that was exploding than good results
