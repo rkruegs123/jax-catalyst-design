@@ -8,6 +8,9 @@ Code for designing **spider catalysts**
 - key 1002 is leg_alpha always 2 for the legs. otherwise same -- dt1e-3, legs, 1000 steps, no coefficient
 - key 1003 is no legs
 - key 1004 is 1001 wit hbatch size 10 (and redo to confirm we are actually using the coeff)
+- key 2000 is with langevin integrator. dt 1e-3. no nlegs. 1k steps. no coeff in loss, but both terms
+- key 2001 is above but with legs
+- key 2002 is above but also with coeff
 
 ## feb 22, 2023
 - we can get the catalyst to fall off with an initial separation of 0.1, temp of 2.0, morse_leg_eps=0.0, and running for 5k steps with hand-designed parameters
