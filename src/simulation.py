@@ -232,8 +232,12 @@ def loss_fn_helper(body):
         axis=0)
     remaining_com = jnp.mean(remaining_vertices, axis=0)
     com_dists = space.distance(d(remaining_vertices, remaining_com))
-    icos_stays_together = com_dists.sum()
-
+    #icos_stays_together = com_dists.sum()
+    
+    mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: 1e6, r_onset=4.25, r_cutoff=4.4)
+    mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: 1e6, r_onset=3.0, r_cutoff=3.4)
+    tight_range = lambda dr: mult_iso_cutoff_right(dr) * (1 - mult_iso_cutoff_left_inv(dr)) 
+    icos_stays_together = jnp.sum(tight_range(com_dist))
 
     # Term that asks the catalyst to detach from the icosahedron
     catalyst_body = body[-1]
@@ -248,8 +252,8 @@ def loss_fn(body, eta):
     vertex_far_from_icos, icos_stays_together, catalyst_detaches_from_icos = loss_fn_helper(body)
     # return vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos
     # return vertex_far_from_icos + 2.0 * icos_stays_together
-    return vertex_far_from_icos + jnp.exp(eta * (icos_stays_together - 0.34))
-    # return vertex_far_from_icos + icos_stays_together
+    # return vertex_far_from_icos + jnp.exp(eta * (icos_stays_together - 0.34))
+    return vertex_far_from_icos + icos_stays_together
 
 if __name__ == "__main__":
 
