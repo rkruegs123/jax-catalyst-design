@@ -39,7 +39,7 @@ def get_eval_params_fn(soft_eps, kT, dt,
                        # num_inner_steps, num_outer_steps, 
                        num_steps,
                        morse_ii_eps, morse_ii_alpha,
-                       initial_separation_coeff, gamma
+                       initial_separation_coeff, gamma, eta
 ):
     def eval_params(params, key):
 
@@ -68,7 +68,7 @@ def get_eval_params_fn(soft_eps, kT, dt,
                                  # num_inner_steps=num_inner_steps, num_outer_steps=num_outer_steps
                                  num_steps=num_steps, gamma=gamma
         )
-        return loss_fn(fin_state)
+        return loss_fn(fin_state, eta=eta)
     return eval_params
 
 
@@ -125,6 +125,7 @@ def train(args):
     kT = args['temperature']
     initial_separation_coefficient = args['init_separate']
     gamma = args['gamma']
+    eta = args['eta']
 
     data_dir = Path(data_dir)
     if not data_dir.exists():
@@ -143,7 +144,7 @@ def train(args):
                                         num_steps=n_steps,
                                         morse_ii_eps=10.0, morse_ii_alpha=5.0,
                                         initial_separation_coeff=initial_separation_coefficient,
-                                        gamma=gamma) # FIXME: separation coefficient is hardcoded for now
+                                        gamma=gamma, eta=eta) # FIXME: separation coefficient is hardcoded for now
     grad_eval_params_fn = jit(value_and_grad(eval_params_fn))
     batched_grad_fn = jit(vmap(grad_eval_params_fn, in_axes=(None, 0)))
 
@@ -152,8 +153,9 @@ def train(args):
 
     # timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     # run_name = f"catalyst_{timestamp}_b{batch_size}_n{n_steps}_lr{lr}"
-    run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_kT{kT}_g{gamma}_k{key_seed}"
+    run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_kT{kT}_g{gamma}_e{eta}_k{key_seed}"
     run_dir = data_dir / run_name
+    print(f"Making directory: {run_dir}")
     run_dir.mkdir(parents=False, exist_ok=False)
 
     params_str = ""
@@ -165,6 +167,8 @@ def train(args):
 
 
     loss_path = run_dir / "loss.txt"
+    losses_path = run_dir / "losses.txt"
+    std_path = run_dir / "std.txt"
     # loss_file = open(loss_path, "a")
     grad_path = run_dir / "grads.txt"
     # grad_file = open(grad_path, "a")
@@ -199,7 +203,10 @@ def train(args):
 
         updates, opt_state = optimizer.update(avg_grads, opt_state)
         params = optax.apply_updates(params, updates)
-        # loss_file.write(str(vals)+'\n')
+        with open(std_path, "a") as f:
+            f.write(f"{onp.std(vals)}\n")
+        with open(losses_path, "a") as f:
+            f.write(f"{vals}\n")
         with open(loss_path, "a") as f:
             f.write(f"{onp.mean(vals)}\n")
         with open(grad_path, "a") as f:
@@ -232,6 +239,7 @@ if __name__ == "__main__":
                         help='Method for initializing parameters')
     parser.add_argument('-kT', '--temperature', type=float, default=2.0, help="Temperature in kT")
     parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
+    parser.add_argument('--eta', type=float, default=0.4, help="Coefficient for exponential loss term")
     args = vars(parser.parse_args())
 
 

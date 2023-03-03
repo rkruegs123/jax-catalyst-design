@@ -244,10 +244,11 @@ def loss_fn_helper(body):
 
     return vertex_far_from_icos / norm, icos_stays_together / norm, catalyst_detaches_from_icos / norm
 
-def loss_fn(body):
+def loss_fn(body, eta):
     vertex_far_from_icos, icos_stays_together, catalyst_detaches_from_icos = loss_fn_helper(body)
     # return vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos
-    return vertex_far_from_icos + 2.0 * icos_stays_together
+    # return vertex_far_from_icos + 2.0 * icos_stays_together
+    return vertex_far_from_icos + jnp.exp(eta * (icos_stays_together - 0.34))
     # return vertex_far_from_icos + icos_stays_together
 
 if __name__ == "__main__":
@@ -361,7 +362,7 @@ if __name__ == "__main__":
         energy_fn = get_energy_fn(SHELL_VERTEX_RADIUS, shape=both_shapes, **sim_params)
         # far_val = energy_fn(initial_rigid_body_far)
         # fin_val = energy_fn(fin_state)
-        fin_val = loss_fn(fin_state)
+        fin_val = loss_fn(fin_state) # FIXME: will fail without an eta
         return fin_val
     start = time.time()
     eval_params_sim_grad = value_and_grad(eval_params_sim)
