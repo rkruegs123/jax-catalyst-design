@@ -153,6 +153,7 @@ def train(args):
 
     # timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     # run_name = f"catalyst_{timestamp}_b{batch_size}_n{n_steps}_lr{lr}"
+    # run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_kT{kT}_g{gamma}_e{eta}_k{key_seed}"
     run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_kT{kT}_g{gamma}_e{eta}_k{key_seed}"
     run_dir = data_dir / run_name
     print(f"Making directory: {run_dir}")
