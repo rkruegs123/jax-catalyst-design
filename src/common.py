@@ -176,7 +176,7 @@ def get_icosahedron(key, displacement_fn, shift_fn, icosahedron_vertex_radius,
 
 
 def get_spider_positions(base_radius, head_height, z=0.0):
-    spider_pos = jnp.zeros((5, 3))
+    spider_base_init = jnp.zeros((5, 3))
 
     def scan_fn(spider_pos, i):
         x = base_radius * jnp.cos(i * 2 * jnp.pi / 5)
@@ -185,7 +185,7 @@ def get_spider_positions(base_radius, head_height, z=0.0):
         # spider_pos[i] = onp.array([x, y, z])
         return spider_pos, i
 
-    spider_base, _ = lax.scan(scan_fn, spider_pos, jnp.arange(len(spider_pos)))
+    spider_base, _ = lax.scan(scan_fn, spider_base_init, jnp.arange(len(spider_base_init)))
     spider_head = jnp.array([[0., 0., -1 * (head_height + z)]], dtype=dtype)
 
     return jnp.array(jnp.concatenate([spider_base, spider_head]), dtype=dtype)
