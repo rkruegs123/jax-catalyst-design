@@ -26,7 +26,7 @@ from common import SHELL_VERTEX_RADIUS, SPIDER_BASE_RADIUS, SPIDER_HEAD_HEIGHT, 
     SPIDER_LEG_DIAMETER, SPIDER_HEAD_DIAMETER, VERTEX_TO_BIND, SHELL_RB, SHELL_VERTEX_SHAPE, \
     SHELL_DIAMETERS, SHELL_COLORS, SHELL_BODY_POS
 from common import displacement_fn, shift_fn, d, d_prod
-from common import get_spider_positions
+from common import get_spider_positions, n_connectors
 from common import dtype
 from checkpoint import checkpoint_scan
 import leg
@@ -42,7 +42,10 @@ else:
 
 
 spider_base_species = jnp.max(SHELL_VERTEX_SHAPE.point_species) + 1
-spider_species = jnp.array([[spider_base_species] * 5 + [spider_base_species + 1]]).flatten()
+spider_connector_species = spider_base_species + 1
+spider_species = jnp.array([[spider_base_species] * 5 \
+                            + [spider_connector_species] * n_connectors \
+                            + [spider_base_species + 2]]).flatten()
 
 # note: we need mass_err to avoid nans
 def initialize_system(base_radius, head_height, leg_diameter,
@@ -81,16 +84,17 @@ def initialize_system(base_radius, head_height, leg_diameter,
 # radii = [leg_radius + head_radius]
 
 shape_species = onp.array(list(onp.zeros(12)) + [1], dtype=int).flatten()
-n_point_species = 4
+n_point_species = 5
 # shape=both_shapes
 
 
-def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
+def get_energy_fn(icosahedron_vertex_radius,
+                  spider_leg_diameter, spider_connector_diameter, spider_head_diameter,
                   morse_ii_eps, morse_leg_eps, morse_head_eps,
                   morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
                   soft_eps, shape):
 
-    spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter], dtype=dtype) * 0.5
+    spider_radii = jnp.array([spider_leg_diameter, spider_connector_diameter, spider_head_diameter], dtype=dtype) * 0.5
 
     zero_interaction = jnp.zeros((n_point_species, n_point_species))
 
@@ -104,8 +108,8 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
     morse_eps = morse_eps.at[1, -1].set(morse_head_eps)
     morse_eps = morse_eps.at[-1, 1].set(morse_head_eps)
     """
-    morse_eps = morse_eps.at[0, 2:-1].set(morse_leg_eps) # catalyst legts attract icosahedron vertices
-    morse_eps = morse_eps.at[2:-1, 0].set(morse_leg_eps) #symmetry
+    morse_eps = morse_eps.at[0, 2:-2].set(morse_leg_eps) # catalyst legts attract icosahedron vertices
+    morse_eps = morse_eps.at[2:-2, 0].set(morse_leg_eps) #symmetry
     morse_eps = morse_eps.at[0, -1].set(morse_head_eps)
     morse_eps = morse_eps.at[-1, 0].set(morse_head_eps)
 
@@ -118,8 +122,8 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
     morse_alpha = morse_alpha.at[1, -1].set(morse_head_alpha)
     morse_alpha = morse_alpha.at[-1, 1].set(morse_head_alpha)
     """
-    morse_alpha = morse_alpha.at[0, 2:-1].set(morse_leg_alpha)
-    morse_alpha = morse_alpha.at[2:-1, 0].set(morse_leg_alpha)
+    morse_alpha = morse_alpha.at[0, 2:-2].set(morse_leg_alpha)
+    morse_alpha = morse_alpha.at[2:-2, 0].set(morse_leg_alpha)
     morse_alpha = morse_alpha.at[0, -1].set(morse_head_alpha)
     morse_alpha = morse_alpha.at[-1, 0].set(morse_head_alpha)
 
@@ -150,23 +154,26 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
 
 
 def run_dynamics_helper(initial_rigid_body, shape,
-                 icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
-                 morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
-                 morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
-                 soft_eps=10000.0, kT=1.0, dt=1e-3,
-                 # num_inner_steps=100, num_outer_steps=100
-                 num_steps=100, gamma=0.1
+                        icosahedron_vertex_radius,
+                        spider_leg_diameter, spider_connector_diameter, spider_head_diameter,
+                        key,
+                        morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
+                        morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
+                        soft_eps=10000.0, kT=1.0, dt=1e-3,
+                        # num_inner_steps=100, num_outer_steps=100
+                        num_steps=100, gamma=0.1
 ):
 
 
     # Code for generating the energy function
-    base_energy_fn = get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
+    base_energy_fn = get_energy_fn(icosahedron_vertex_radius,
+                                   spider_leg_diameter, spider_connector_diameter, spider_head_diameter,
                                    morse_ii_eps, morse_leg_eps, morse_head_eps,
                                    morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
                                    soft_eps, shape)
-    leg_energy_fn = leg.get_leg_energy_fn(soft_eps, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), shape, shape_species) # TODO: unrestrict leg diameter
-    energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body, leg_alpha=morse_leg_alpha)
-    # energy_fn = lambda body: base_energy_fn(body)
+    # leg_energy_fn = leg.get_leg_energy_fn(soft_eps, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), shape, shape_species) # TODO: unrestrict leg diameter
+    # energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body, leg_alpha=morse_leg_alpha)
+    energy_fn = lambda body: base_energy_fn(body)
 
     # init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
     gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
@@ -192,7 +199,9 @@ def run_dynamics_helper(initial_rigid_body, shape,
 
 
 def run_dynamics(initial_rigid_body, shape,
-                 icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
+                 icosahedron_vertex_radius,
+                 spider_leg_diameter, spider_connector_diameter, spider_head_diameter,
+                 key,
                  morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
                  morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
                  soft_eps=10000.0, kT=1.0, dt=1e-3,
@@ -200,7 +209,9 @@ def run_dynamics(initial_rigid_body, shape,
 ):
     state, _ = run_dynamics_helper(
         initial_rigid_body, shape,
-        icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
+        icosahedron_vertex_radius,
+        spider_leg_diameter, spider_connector_diameter, spider_head_diameter,
+        key,
         morse_ii_eps=morse_ii_eps, morse_leg_eps=morse_leg_eps, morse_head_eps=morse_head_eps,
         morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha, morse_head_alpha=morse_head_alpha,
         soft_eps=soft_eps, kT=kT, dt=dt,
@@ -219,7 +230,7 @@ def loss_fn_helper(body, eta):
     disps = d(shell_body.center, body[VERTEX_TO_BIND].center)
     dists = space.distance(disps)
     vertex_far_from_icos = -jnp.sum(dists)
-    
+
 
     # Term that keeps the rest together
     """
@@ -234,12 +245,12 @@ def loss_fn_helper(body, eta):
     remaining_com = jnp.mean(remaining_vertices, axis=0)
     com_dists = space.distance(d(remaining_vertices, remaining_com))
     #icos_stays_together = com_dists.sum()
-    
+
     # mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: 1e6, r_onset=4.25, r_cutoff=4.4)
     # mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: 1e6, r_onset=3.0, r_cutoff=3.4)
     mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=3.4-eta, r_cutoff=3.4)
     mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=4.25, r_cutoff=4.25+eta)
-    tight_range = lambda dr: mult_iso_cutoff_right(dr) + (INF - mult_iso_cutoff_left_inv(dr)) 
+    tight_range = lambda dr: mult_iso_cutoff_right(dr) + (INF - mult_iso_cutoff_left_inv(dr))
     icos_stays_together = jnp.sum(tight_range(com_dists))
 
     # Term that asks the catalyst to detach from the icosahedron
@@ -267,6 +278,7 @@ if __name__ == "__main__":
     base_radius = 5.0
     head_height = 3.0
     leg_diameter = 1.0
+    connector_diameter = 0.5
     initial_separation_coeff_close = 0.5
     initial_separation_coeff_far = 2.0
 
@@ -288,6 +300,7 @@ if __name__ == "__main__":
     energy_params = {
         "icosahedron_vertex_radius": SHELL_VERTEX_RADIUS,
         "spider_leg_diameter": leg_diameter,
+        "spider_connector_diameter": connector_diameter,
         "spider_head_diameter": head_diameter,
         "morse_ii_eps": 10.0,
         "morse_leg_eps": 10.0,

@@ -29,6 +29,10 @@ f32 = util.f32
 dtype = f64
 
 
+displacement_fn, shift_fn = space.free()
+d = vmap(displacement_fn, (0, None))
+d_prod = space.map_product(displacement_fn)
+
 def get_unminimized_icosahedron(displacement_fn, icosahedron_vertex_radius, vertex_mass=1.0, patch_mass=1e-8):
     d = vmap(displacement_fn, (0, None))
 
@@ -174,21 +178,51 @@ def get_icosahedron(key, displacement_fn, shift_fn, icosahedron_vertex_radius,
     return icosahedron_rigid_body, vertex_shape, minimization_traj
 
 
+n_connectors = 10
+def get_n_equidist_points(spider_base_points, idxs, n=n_connectors):
+    p1_idx, p2_idx = idxs
+    p1 = spider_base_points[p1_idx]
+    p2 = spider_base_points[p2_idx]
+    # FIXME: return n things
+    disp = displacement_fn(p2, p1)
+    dist = space.distance(disp)
+    dist_per_connector = dist / (n+1)
+    disp_norm = disp / dist
+
+    def scan_fn(equidist_points, i):
+        new_point = p1 + disp_norm * dist_per_connector * (i+1)
+        equidist_points = equidist_points.at[i, :].set(new_point)
+        return equidist_points, i
+    equidist_points, _ = lax.scan(scan_fn, jnp.zeros((n, 3)), jnp.arange(n))
+    return equidist_points
+
+
 
 def get_spider_positions(base_radius, head_height, z=0.0):
     spider_base_init = jnp.zeros((5, 3))
 
-    def scan_fn(spider_pos, i):
+    def scan_fn(spider_base_pos, i):
         x = base_radius * jnp.cos(i * 2 * jnp.pi / 5)
         y = base_radius * jnp.sin(i * 2 * jnp.pi / 5)
-        spider_pos = spider_pos.at[i, :].set(jnp.array([x, y, z]))
+        spider_pos = spider_base_pos.at[i, :].set(jnp.array([x, y, z]))
         # spider_pos[i] = onp.array([x, y, z])
-        return spider_pos, i
+        return spider_base_pos, i
 
     spider_base, _ = lax.scan(scan_fn, spider_base_init, jnp.arange(len(spider_base_init)))
+
+    base_pairs = jnp.array([
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [3, 4],
+        [4, 0]]
+    )
+    all_connectors = vmap(get_n_equidist_points, (None, 0, None))(spider_base, base_pairs, n_connectors)
+    all_connectors = all_connectors.reshape(-1, 3)
+
     spider_head = jnp.array([[0., 0., -1 * (head_height + z)]], dtype=dtype)
 
-    return jnp.array(jnp.concatenate([spider_base, spider_head]), dtype=dtype)
+    return jnp.array(jnp.concatenate([spider_base, all_connectors, spider_head]), dtype=dtype)
 
 
 SHELL_VERTEX_RADIUS = 2.0
@@ -200,10 +234,6 @@ SPIDER_HEAD_DIAMETER = 2.0
 
 VERTEX_TO_BIND = 5
 
-
-displacement_fn, shift_fn = space.free()
-d = vmap(displacement_fn, (0, None))
-d_prod = space.map_product(displacement_fn)
 
 _key = random.PRNGKey(0)
 SHELL_RB, SHELL_VERTEX_SHAPE, _ = get_icosahedron(_key, displacement_fn, shift_fn, SHELL_VERTEX_RADIUS)

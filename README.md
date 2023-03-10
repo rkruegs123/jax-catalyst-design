@@ -2,6 +2,12 @@
 
 Code for designing **spider catalysts**
 
+## march 9, 2023
+
+not ethat initial separation depednds on leg diamter. this doesn't make any sense bc the connector diameter could be bigger than the leg diameter. so we should really get rid of this dependence which we were planing on doing for awhile
+
+the simulation code wil be broken (some tests, that is, and therefore maybe the visualization? maybe not if only in __main__)
+
 ## feb 28, 2023
 - key 1000 is d5 1e-4 10k steps, legs and both loss terms (no coefficient). legs have same alpha.
 - key 1001 is 2 * icos_stays_together (dt1e-3, legs have same alpha, with legs, 1000 steps)
@@ -64,10 +70,10 @@ For next time:
 
 ## Feb 2, 2023
 
-dear diary, today we tested the gradients some more. we found out that it makes sense for some gradients to be zero depending on the initial parameters. for example, say the legs and head of the spider aren't touchin anything  --  then ofcourse the grad w.r.t. their diameters will be 0. 
+dear diary, today we tested the gradients some more. we found out that it makes sense for some gradients to be zero depending on the initial parameters. for example, say the legs and head of the spider aren't touchin anything  --  then ofcourse the grad w.r.t. their diameters will be 0.
 
 given this, we don't understand why we got 0s for some of the optmization yesterday. to debug this, we propose the following steps:
-- continue the test in __main__ in `simulation.py` to take the grad of th esimulatoin rather than of a single energy evaluatoin. use the parameters we used for ht energy evaluation. if this is fine (i.e. all grads that we expect to be non-zero are non-zero), gthen redo optimization. If optimization doesn't work, probably juts soething wrong there. 
+- continue the test in __main__ in `simulation.py` to take the grad of th esimulatoin rather than of a single energy evaluatoin. use the parameters we used for ht energy evaluation. if this is fine (i.e. all grads that we expect to be non-zero are non-zero), gthen redo optimization. If optimization doesn't work, probably juts soething wrong there.
 
 Once we are ready (ie.e. aoptimization grads work), should fiddle around in the colab to find a reasonable set of starting parameters.
 

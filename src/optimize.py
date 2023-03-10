@@ -35,8 +35,8 @@ from simulation import run_dynamics, initialize_system, loss_fn
 
 # fixme: we're not passing a key here but run_dynamics takes one
 
-def get_eval_params_fn(soft_eps, kT, dt, 
-                       # num_inner_steps, num_outer_steps, 
+def get_eval_params_fn(soft_eps, kT, dt,
+                       # num_inner_steps, num_outer_steps,
                        num_steps,
                        morse_ii_eps, morse_ii_alpha,
                        initial_separation_coeff, gamma, eta
@@ -47,6 +47,7 @@ def get_eval_params_fn(soft_eps, kT, dt,
         spider_head_height = params['spider_head_height']
         # spider_leg_diameter = 1.5 #params['spider_leg_diameter']
         spider_leg_diameter = params['spider_leg_diameter']
+        spider_connector_diameter = params['spider_connector_diameter']
         spider_head_diameter = params['spider_head_diameter']
 
         morse_leg_eps = params['morse_leg_eps']
@@ -55,16 +56,16 @@ def get_eval_params_fn(soft_eps, kT, dt,
         morse_head_alpha = params['morse_head_alpha']
 
         initial_rigid_body, both_shapes, _, _ = initialize_system(
-            spider_base_radius, spider_head_height, 
+            spider_base_radius, spider_head_height,
             spider_leg_diameter, initial_separation_coeff=initial_separation_coeff)
 
         # For now, we omit the full trajectory and rely on JAX compiler.
         # If still slow, try taking its computation out of the function
         fin_state = run_dynamics(initial_rigid_body, both_shapes, SHELL_VERTEX_RADIUS,
-                                 spider_leg_diameter, spider_head_diameter, key,
+                                 spider_leg_diameter, spider_connector_diameter, spider_head_diameter, key,
                                  morse_ii_eps=morse_ii_eps, morse_leg_eps=morse_leg_eps, morse_head_eps=morse_head_eps,
                                  morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha, morse_head_alpha=morse_head_alpha,
-                                 soft_eps=soft_eps, kT=kT, dt=dt, 
+                                 soft_eps=soft_eps, kT=kT, dt=dt,
                                  # num_inner_steps=num_inner_steps, num_outer_steps=num_outer_steps
                                  num_steps=num_steps, gamma=gamma
         )
@@ -80,6 +81,7 @@ def get_init_params(mode="fixed", key=None):
             'spider_base_radius': 5.0,
             'spider_head_height': 6.0,
             'spider_leg_diameter': 1.0,
+            'spider_connector_diameter': 0.25,
             'spider_head_diameter': 1.0,
 
             # catalyst energy
@@ -94,21 +96,22 @@ def get_init_params(mode="fixed", key=None):
         }
         return init_params
     elif mode == "random":
-        
-        param_keys = random.split(key, 8)
+
+        param_keys = random.split(key, 9)
 
         init_params = {
             # catalyst shape
             'spider_base_radius': random.uniform(param_keys[0], minval=3.0, maxval=6.0),
             'spider_head_height': random.uniform(param_keys[1], minval=3.0, maxval=10.0),
             'spider_leg_diameter': random.uniform(param_keys[2], minval=0.5, maxval=2.5),
-            'spider_head_diameter': random.uniform(param_keys[3], minval=1.0, maxval=4.0),
+            'spider_connector_diameter': random.uniform(param_keys[3], minval=0.1, maxval=0.5),
+            'spider_head_diameter': random.uniform(param_keys[4], minval=1.0, maxval=4.0),
 
             # catalyst energy
-            'morse_leg_eps': random.uniform(param_keys[4], minval=0.1, maxval=10.0),
-            'morse_head_eps': jnp.exp(random.uniform(param_keys[5], minval=0.1, maxval=6.0)),
-            'morse_leg_alpha': random.uniform(param_keys[6], minval=1.0, maxval=4.0),
-            'morse_head_alpha': random.uniform(param_keys[7], minval=0.1, maxval=2.0),
+            'morse_leg_eps': random.uniform(param_keys[5], minval=0.1, maxval=10.0),
+            'morse_head_eps': jnp.exp(random.uniform(param_keys[6], minval=0.1, maxval=6.0)),
+            'morse_leg_alpha': random.uniform(param_keys[7], minval=1.0, maxval=4.0),
+            'morse_head_alpha': random.uniform(param_keys[8], minval=0.1, maxval=2.0),
         }
         return init_params
 
@@ -139,7 +142,7 @@ def train(args):
     params = get_init_params(mode=init_method, key=key)
     opt_state = optimizer.init(params)
 
-    eval_params_fn = get_eval_params_fn(soft_eps=100000.0, kT=kT, dt=1e-3, 
+    eval_params_fn = get_eval_params_fn(soft_eps=100000.0, kT=kT, dt=1e-3,
                                         # num_inner_steps=n_inner_steps, num_outer_steps=n_outer_steps,
                                         num_steps=n_steps,
                                         morse_ii_eps=10.0, morse_ii_alpha=5.0,
@@ -262,4 +265,3 @@ if __name__ == "__main__":
     print(f"Value: {val}")
     # print(f"Grad: {_grad}")
     """
-
