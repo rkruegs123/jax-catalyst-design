@@ -10,6 +10,7 @@ from jax import random, grad, value_and_grad, remat, jacfwd
 from jax import jit
 from jax import vmap, lax
 from jax import ops
+import jax.debug
 from jax.config import config
 config.update('jax_enable_x64', True)
 
@@ -33,7 +34,7 @@ import leg
 
 
 
-checkpoint_every = 100
+checkpoint_every = 1
 if checkpoint_every is None:
     scan = lax.scan
 else:
@@ -44,7 +45,7 @@ else:
 spider_base_species = jnp.max(SHELL_VERTEX_SHAPE.point_species) + 1
 spider_connector_species = spider_base_species + 1
 spider_species = jnp.array([[spider_base_species] * 5 \
-                            + [spider_connector_species] * n_connectors \
+                            + [spider_connector_species] * n_connectors * 5 \
                             + [spider_base_species + 2]]).flatten()
 
 # note: we need mass_err to avoid nans
@@ -70,7 +71,6 @@ def initialize_system(base_radius, head_height, leg_diameter,
     # masses = spider_point_masses
     # masses = jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])
     spider_shape = rigid_body.point_union_shape(spider_points, masses).set(point_species=spider_species)
-
 
     # Combine spider and icosahedron to initialize
     both_shapes = rigid_body.concatenate_shapes(SHELL_VERTEX_SHAPE, spider_shape)
@@ -264,10 +264,10 @@ def loss_fn_helper(body, eta):
 
 def loss_fn(body, eta):
     vertex_far_from_icos, icos_stays_together, catalyst_detaches_from_icos = loss_fn_helper(body, eta)
-    # return vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos
+    return vertex_far_from_icos + icos_stays_together + catalyst_detaches_from_icos
     # return vertex_far_from_icos + 2.0 * icos_stays_together
     # return vertex_far_from_icos + jnp.exp(eta * (icos_stays_together - 0.34))
-    return vertex_far_from_icos + icos_stays_together
+    # return vertex_far_from_icos + icos_stays_together
 
 if __name__ == "__main__":
 

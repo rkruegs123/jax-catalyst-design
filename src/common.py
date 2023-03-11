@@ -14,6 +14,7 @@ from jax import jit
 from jax import vmap, lax
 from jax import ops
 from jax.config import config
+import jax.debug
 config.update('jax_enable_x64', True)
 
 from jax_md.util import *
@@ -204,7 +205,7 @@ def get_spider_positions(base_radius, head_height, z=0.0):
     def scan_fn(spider_base_pos, i):
         x = base_radius * jnp.cos(i * 2 * jnp.pi / 5)
         y = base_radius * jnp.sin(i * 2 * jnp.pi / 5)
-        spider_pos = spider_base_pos.at[i, :].set(jnp.array([x, y, z]))
+        spider_base_pos = spider_base_pos.at[i, :].set(jnp.array([x, y, z]))
         # spider_pos[i] = onp.array([x, y, z])
         return spider_base_pos, i
 
@@ -222,7 +223,9 @@ def get_spider_positions(base_radius, head_height, z=0.0):
 
     spider_head = jnp.array([[0., 0., -1 * (head_height + z)]], dtype=dtype)
 
-    return jnp.array(jnp.concatenate([spider_base, all_connectors, spider_head]), dtype=dtype)
+    spider_positions = jnp.array(jnp.concatenate([spider_base, all_connectors, spider_head]), dtype=dtype)
+
+    return spider_positions
 
 
 SHELL_VERTEX_RADIUS = 2.0

@@ -129,7 +129,7 @@ def eig_bwd(type_complex, perturbation, res, g):
     grad = (XH_i @ (grad_eigval + tmp)) @ XH
 
     # if not jnp.iscomplexobj(eigval):
-        # grad = grad.real
+    #     grad = grad.real
     # grad = grad.real.astype(jnp.float64)
 
     return grad,
