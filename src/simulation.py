@@ -145,7 +145,8 @@ def get_energy_fn(icosahedron_vertex_radius,
                                           sigma=0.0, epsilon=morse_eps, alpha=morse_alpha,
                                           r_onset=10.0, r_cutoff=12.0
     )
-    pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
+    # pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
+    pair_energy_fn = lambda R, **kwargs: pair_energy_morse(R, **kwargs)
     energy_fn = rigid_body.point_energy(pair_energy_fn, shape, shape_species)
 
     return energy_fn
