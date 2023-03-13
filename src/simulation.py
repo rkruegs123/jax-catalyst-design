@@ -356,7 +356,7 @@ if __name__ == "__main__":
         "spider_head_diameter": head_diameter,
         "morse_ii_eps": 100.0,
         "morse_leg_eps": 1.0,
-        "morse_head_eps": 1.0,
+        "morse_head_eps": 100000.0,
         "morse_ii_alpha": 5.0,
         "morse_leg_alpha": 2.0,
         "morse_head_alpha": 2.0,
