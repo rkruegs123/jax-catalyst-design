@@ -2,6 +2,11 @@
 
 Code for designing **spider catalysts**
 
+## march 13, 2023
+
+we think the energy matrices are wrong. have to check that. doesn't seem to be a morse epsilon between the head and the rvertices. whhat?
+
+
 ## march 9, 2023
 
 not ethat initial separation depednds on leg diamter. this doesn't make any sense bc the connector diameter could be bigger than the leg diameter. so we should really get rid of this dependence which we were planing on doing for awhile

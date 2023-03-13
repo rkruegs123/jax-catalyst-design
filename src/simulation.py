@@ -145,11 +145,11 @@ def get_energy_fn(icosahedron_vertex_radius,
                                           sigma=0.0, epsilon=morse_eps, alpha=morse_alpha,
                                           r_onset=10.0, r_cutoff=12.0
     )
-    # pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
-    pair_energy_fn = lambda R, **kwargs: pair_energy_morse(R, **kwargs)
+    pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
+    # pair_energy_fn = lambda R, **kwargs: pair_energy_morse(R, **kwargs)
     energy_fn = rigid_body.point_energy(pair_energy_fn, shape, shape_species)
 
-    return energy_fn
+    return energy_fn, (morse_eps, morse_alpha, soft_sphere_sigma)
 
 
 
@@ -167,11 +167,11 @@ def run_dynamics_helper(initial_rigid_body, shape,
 
 
     # Code for generating the energy function
-    base_energy_fn = get_energy_fn(icosahedron_vertex_radius,
-                                   spider_leg_diameter, spider_connector_diameter, spider_head_diameter,
-                                   morse_ii_eps, morse_leg_eps, morse_head_eps,
-                                   morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
-                                   soft_eps, shape)
+    base_energy_fn, _ = get_energy_fn(icosahedron_vertex_radius,
+                                      spider_leg_diameter, spider_connector_diameter, spider_head_diameter,
+                                      morse_ii_eps, morse_leg_eps, morse_head_eps,
+                                      morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
+                                      soft_eps, shape)
     # leg_energy_fn = leg.get_leg_energy_fn(soft_eps, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), shape, shape_species) # TODO: unrestrict leg diameter
     # energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body, leg_alpha=morse_leg_alpha)
     energy_fn = lambda body: base_energy_fn(body)
@@ -322,13 +322,13 @@ if __name__ == "__main__":
 
 
     """
-    energy_fn = get_energy_fn(icosahedron_vertex_radius=SHELL_VERTEX_RADIUS,
+    energy_fn, _ = get_energy_fn(icosahedron_vertex_radius=SHELL_VERTEX_RADIUS,
                               spider_leg_diameter=leg_diameter, spider_head_diameter=head_diameter,
                               morse_ii_eps=10.0, morse_leg_eps=10.0, morse_head_eps=100000.0,
                               morse_ii_alpha=5.0, morse_leg_alpha=1.0, morse_head_alpha=1.0,
                               soft_eps=1000.0, shape=both_shapes)
     """
-    # energy_fn = get_energy_fn(**params)
+    # energy_fn, _ = get_energy_fn(**params)
 
 
     def eval_params_init(params):
@@ -340,7 +340,7 @@ if __name__ == "__main__":
             **init_params
         )
 
-        energy_fn = get_energy_fn(shape=both_shapes, **energy_params)
+        energy_fn, _ = get_energy_fn(shape=both_shapes, **energy_params)
         # far_val = energy_fn(initial_rigid_body_far)
         close_val = energy_fn(initial_rigid_body_close)
         return close_val
@@ -352,6 +352,7 @@ if __name__ == "__main__":
 
     sim_params = {
         "spider_leg_diameter": leg_diameter,
+        "spider_connector_diameter": connector_diameter,
         "spider_head_diameter": head_diameter,
         "morse_ii_eps": 100.0,
         "morse_leg_eps": 1.0,
@@ -380,7 +381,7 @@ if __name__ == "__main__":
                                  **sim_params
         )
 
-        energy_fn = get_energy_fn(SHELL_VERTEX_RADIUS, shape=both_shapes, **sim_params)
+        energy_fn, _ = get_energy_fn(SHELL_VERTEX_RADIUS, shape=both_shapes, **sim_params)
         # far_val = energy_fn(initial_rigid_body_far)
         # fin_val = energy_fn(fin_state)
         fin_val = loss_fn(fin_state) # FIXME: will fail without an eta
