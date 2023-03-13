@@ -179,7 +179,7 @@ def get_icosahedron(key, displacement_fn, shift_fn, icosahedron_vertex_radius,
     return icosahedron_rigid_body, vertex_shape, minimization_traj
 
 
-n_connectors = 0
+n_connectors = 1
 def get_n_equidist_points(spider_base_points, idxs, n=n_connectors):
     p1_idx, p2_idx = idxs
     p1 = spider_base_points[p1_idx]
