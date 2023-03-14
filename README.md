@@ -2,6 +2,12 @@
 
 Code for designing **spider catalysts**
 
+## mar. 13, 2023
+
+Weirdly, the gradients are 0 for head_eps and head_alpha on the discret elgs branch. So, we are starting on this new branch to iteratively add things. 
+
+We are starting with a key of 10000 with no legs just to get a baseline for the gradients.
+
 ## feb 28, 2023
 - key 1000 is d5 1e-4 10k steps, legs and both loss terms (no coefficient). legs have same alpha.
 - key 1001 is 2 * icos_stays_together (dt1e-3, legs have same alpha, with legs, 1000 steps)
