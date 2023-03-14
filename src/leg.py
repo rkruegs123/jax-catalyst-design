@@ -39,7 +39,7 @@ def dist_point_to_line_segment(line_points, point):
     return space.distance(d_pt)
 
 
-"""
+
 bond_pairs = jnp.array([
     [-6, -1],
     [-5, -1],
@@ -47,6 +47,7 @@ bond_pairs = jnp.array([
     [-3, -1],
     [-2, -1]
 ], dtype=jnp.int32)
+
 """
 bond_pairs = jnp.array([
     [-6, -5],
@@ -55,6 +56,7 @@ bond_pairs = jnp.array([
     [-3, -2],
     [-2, -6]
 ], dtype=jnp.int32)
+"""
 vertices = jnp.arange(0, 6*12, 6, dtype=jnp.int32)
 test_idx = onp.array([0, 1])
 def get_leg_energy_fn(soft_sphere_eps, bond_diameter, shape, shape_species):
