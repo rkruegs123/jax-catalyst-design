@@ -160,6 +160,7 @@ def train(args):
     # run_name = f"catalyst_{timestamp}_b{batch_size}_n{n_steps}_lr{lr}"
     run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_kT{kT}_g{gamma}_min{min_com_dist}_max{max_com_dist}_e{eta}_k{key_seed}"
     run_dir = data_dir / run_name
+    print(f"Making directory: {run_dir}")
     run_dir.mkdir(parents=False, exist_ok=False)
 
     params_str = ""
