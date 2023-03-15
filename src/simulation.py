@@ -211,7 +211,7 @@ of the icosahedron
 """
 # vertex_mask = jnp.where(jnp.arange(12) == VERTEX_TO_BIND, 0, 1)
 INF = 1e6
-def loss_fn_helper(body, eta):
+def loss_fn_helper(body, eta, min_com_dist=3.4, max_com_dist=4.25):
     # body is of length 13 -- first 12 for shell, last 1 is catalyst
     shell_body = body[:-1]
     disps = d(shell_body.center, body[VERTEX_TO_BIND].center)
@@ -235,8 +235,8 @@ def loss_fn_helper(body, eta):
     
     # mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: 1e6, r_onset=4.25, r_cutoff=4.4)
     # mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: 1e6, r_onset=3.0, r_cutoff=3.4)
-    mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=3.4-eta, r_cutoff=3.4)
-    mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=4.25, r_cutoff=4.25+eta)
+    mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=min_com_dist-eta, r_cutoff=min_com_dist)
+    mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=max_com_dist, r_cutoff=max_com_dist+eta)
     tight_range = lambda dr: mult_iso_cutoff_right(dr) + (INF - mult_iso_cutoff_left_inv(dr)) 
     icos_stays_together = jnp.sum(tight_range(com_dists))
 
@@ -249,8 +249,8 @@ def loss_fn_helper(body, eta):
 
     return vertex_far_from_icos / norm, icos_stays_together / norm, catalyst_detaches_from_icos / norm
 
-def loss_fn(body, eta):
-    vertex_far_from_icos, icos_stays_together, catalyst_detaches_from_icos = loss_fn_helper(body, eta)
+def loss_fn(body, eta, min_com_dist=3.4, max_com_dist=4.25):
+    vertex_far_from_icos, icos_stays_together, catalyst_detaches_from_icos = loss_fn_helper(body, eta, min_com_dist, max_com_dist)
     # return vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos
     # return vertex_far_from_icos + 2.0 * icos_stays_together
     # return vertex_far_from_icos + jnp.exp(eta * (icos_stays_together - 0.34))
