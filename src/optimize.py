@@ -39,7 +39,9 @@ def get_eval_params_fn(soft_eps, kT, dt,
                        # num_inner_steps, num_outer_steps, 
                        num_steps,
                        morse_ii_eps, morse_ii_alpha,
-                       initial_separation_coeff, gamma
+                       initial_separation_coeff, gamma,
+                       min_com_dist, max_com_dist,
+                       eta
 ):
     def eval_params(params, key):
 
@@ -67,7 +69,7 @@ def get_eval_params_fn(soft_eps, kT, dt,
                                  # num_inner_steps=num_inner_steps, num_outer_steps=num_outer_steps
                                  num_steps=num_steps, gamma=gamma
         )
-        return loss_fn(fin_state)
+        return loss_fn(fin_state, eta, min_com_dist, max_com_dist)
     return eval_params
 
 
@@ -124,6 +126,9 @@ def train(args):
     kT = args['temperature']
     initial_separation_coefficient = args['init_separate']
     gamma = args['gamma']
+    min_com_dist = args['min_com_dist']
+    max_com_dist = args['max_com_dist']
+    eta = args['eta']
 
     data_dir = Path(data_dir)
     if not data_dir.exists():
@@ -142,7 +147,9 @@ def train(args):
                                         num_steps=n_steps,
                                         morse_ii_eps=10.0, morse_ii_alpha=5.0,
                                         initial_separation_coeff=initial_separation_coefficient,
-                                        gamma=gamma) # FIXME: separation coefficient is hardcoded for now
+                                        gamma=gamma, 
+                                        min_com_dist=min_com_dist, max_com_dist=max_com_dist,
+                                        eta=eta) # FIXME: separation coefficient is hardcoded for now
     grad_eval_params_fn = jit(value_and_grad(eval_params_fn))
     batched_grad_fn = jit(vmap(grad_eval_params_fn, in_axes=(None, 0)))
 
@@ -151,7 +158,7 @@ def train(args):
 
     # timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     # run_name = f"catalyst_{timestamp}_b{batch_size}_n{n_steps}_lr{lr}"
-    run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_kT{kT}_g{gamma}_k{key_seed}"
+    run_name = f"catalyst_b{batch_size}_n{n_steps}_lr{lr}_i{init_method}_s{initial_separation_coefficient}_kT{kT}_g{gamma}_min{min_com_dist}_max{max_com_dist}_e{eta}_k{key_seed}"
     run_dir = data_dir / run_name
     run_dir.mkdir(parents=False, exist_ok=False)
 
@@ -231,6 +238,9 @@ if __name__ == "__main__":
                         help='Method for initializing parameters')
     parser.add_argument('-kT', '--temperature', type=float, default=2.0, help="Temperature in kT")
     parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
+    parser.add_argument('-e', '--eta', type=float, default=2.5, help="steepness of anti-explosion wall")
+    parser.add_argument('-min', '--min-com-dist', type=float, default=3.4, help="low end of anti-explosion wall")
+    parser.add_argument('-max', '--max-com-dist', type=float, default=4.25, help="high end of anti-explosion wall")
     args = vars(parser.parse_args())
 
 
