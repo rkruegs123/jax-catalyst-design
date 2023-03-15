@@ -171,6 +171,8 @@ def train(args):
 
 
     loss_path = run_dir / "loss.txt"
+    losses_path = run_dir / "losses.txt"
+    std_path = run_dir / "std.txt"
     # loss_file = open(loss_path, "a")
     grad_path = run_dir / "grads.txt"
     # grad_file = open(grad_path, "a")
@@ -205,7 +207,10 @@ def train(args):
 
         updates, opt_state = optimizer.update(avg_grads, opt_state)
         params = optax.apply_updates(params, updates)
-        # loss_file.write(str(vals)+'\n')
+        with open(std_path, "a") as f:
+            f.write(f"{onp.std(vals)}\n")
+        with open(losses_path, "a") as f:
+            f.write(f"{vals}\n")
         with open(loss_path, "a") as f:
             f.write(f"{onp.mean(vals)}\n")
         with open(grad_path, "a") as f:
