@@ -186,7 +186,7 @@ def run_dynamics_helper(initial_rigid_body, shape,
 
     # state, traj = lax.scan(outer_step, state, jnp.arange(num_outer_steps))
     state, traj = scan(do_step, state, jnp.arange(num_steps))
-    return state.position, traj
+    return state.position, traj[-100:]
 
 
 def run_dynamics(initial_rigid_body, shape,
@@ -196,14 +196,14 @@ def run_dynamics(initial_rigid_body, shape,
                  soft_eps=10000.0, kT=1.0, dt=1e-4,
                  num_steps=100, gamma=0.1
 ):
-    state, _ = run_dynamics_helper(
+    state, traj = run_dynamics_helper(
         initial_rigid_body, shape,
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
         morse_ii_eps=morse_ii_eps, morse_leg_eps=morse_leg_eps, morse_head_eps=morse_head_eps,
         morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha, morse_head_alpha=morse_head_alpha,
         soft_eps=soft_eps, kT=kT, dt=dt,
         num_steps=num_steps, gamma=gamma)
-    return state
+    return state, traj
 
 """
 Preliminary loss function: maximizing the distance from VERTEX_TO_BIND to the rest

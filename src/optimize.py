@@ -61,7 +61,7 @@ def get_eval_params_fn(soft_eps, kT, dt,
 
         # For now, we omit the full trajectory and rely on JAX compiler.
         # If still slow, try taking its computation out of the function
-        fin_state = run_dynamics(initial_rigid_body, both_shapes, SHELL_VERTEX_RADIUS,
+        fin_state, traj = run_dynamics(initial_rigid_body, both_shapes, SHELL_VERTEX_RADIUS,
                                  spider_leg_diameter, spider_head_diameter, key,
                                  morse_ii_eps=morse_ii_eps, morse_leg_eps=morse_leg_eps, morse_head_eps=morse_head_eps,
                                  morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha, morse_head_alpha=morse_head_alpha,
@@ -69,7 +69,8 @@ def get_eval_params_fn(soft_eps, kT, dt,
                                  # num_inner_steps=num_inner_steps, num_outer_steps=num_outer_steps
                                  num_steps=num_steps, gamma=gamma
         )
-        return loss_fn(fin_state, eta, min_com_dist, max_com_dist)
+        v_loss_fn = vmap(loss_fn, (0, None, None, None))
+        return jnp.mean(v_loss_fn(traj, eta, min_com_dist, max_com_dist))
     return eval_params
 
 
