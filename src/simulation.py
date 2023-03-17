@@ -162,13 +162,13 @@ def run_dynamics_helper(initial_rigid_body, shape,
                                    morse_ii_eps, morse_leg_eps, morse_head_eps,
                                    morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
                                    soft_eps, shape)
-    leg_energy_fn = leg.get_leg_energy_fn(soft_eps, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), shape, shape_species) # TODO: unrestrict leg diameter
-    energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
-    # energy_fn = lambda body: base_energy_fn(body)
+    # leg_energy_fn = leg.get_leg_energy_fn(soft_eps, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), shape, shape_species) # TODO: unrestrict leg diameter
+    # energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
+    energy_fn = lambda body: base_energy_fn(body)
 
-    #init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
-    gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
-    init_fn, step_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt, kT, gamma=gamma_rb)
+    init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
+    # gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
+    # init_fn, step_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt, kT, gamma=gamma_rb)
     step_fn = jit(step_fn)
     mass = shape.mass(shape_species)
     state = init_fn(key, initial_rigid_body, mass=mass)
@@ -231,14 +231,12 @@ def loss_fn_helper(body, eta, min_com_dist=3.4, max_com_dist=4.25):
         axis=0)
     remaining_com = jnp.mean(remaining_vertices, axis=0)
     com_dists = space.distance(d(remaining_vertices, remaining_com))
-    #icos_stays_together = com_dists.sum()
+    icos_stays_together = com_dists.sum()
     
-    # mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: 1e6, r_onset=4.25, r_cutoff=4.4)
-    # mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: 1e6, r_onset=3.0, r_cutoff=3.4)
-    mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=min_com_dist-eta, r_cutoff=min_com_dist)
-    mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=max_com_dist, r_cutoff=max_com_dist+eta)
-    tight_range = lambda dr: mult_iso_cutoff_right(dr) + (INF - mult_iso_cutoff_left_inv(dr)) 
-    icos_stays_together = jnp.sum(tight_range(com_dists))
+    # mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=min_com_dist-eta, r_cutoff=min_com_dist)
+    # mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=max_com_dist, r_cutoff=max_com_dist+eta)
+    # tight_range = lambda dr: mult_iso_cutoff_right(dr) + (INF - mult_iso_cutoff_left_inv(dr)) 
+    # icos_stays_together = jnp.sum(tight_range(com_dists))
 
     # Term that asks the catalyst to detach from the icosahedron
     catalyst_body = body[-1]
@@ -254,7 +252,8 @@ def loss_fn(body, eta, min_com_dist=3.4, max_com_dist=4.25):
     # return vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos
     # return vertex_far_from_icos + 2.0 * icos_stays_together
     # return vertex_far_from_icos + jnp.exp(eta * (icos_stays_together - 0.34))
-    return vertex_far_from_icos + icos_stays_together
+    return vertex_far_from_icos
+    # return vertex_far_from_icos + icos_stays_together
 
 if __name__ == "__main__":
 

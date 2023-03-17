@@ -69,8 +69,9 @@ def get_eval_params_fn(soft_eps, kT, dt,
                                  # num_inner_steps=num_inner_steps, num_outer_steps=num_outer_steps
                                  num_steps=num_steps, gamma=gamma
         )
-        v_loss_fn = vmap(loss_fn, (0, None, None, None))
-        return jnp.mean(v_loss_fn(traj, eta, min_com_dist, max_com_dist))
+        # v_loss_fn = vmap(loss_fn, (0, None, None, None))
+        # return jnp.mean(v_loss_fn(traj, eta, min_com_dist, max_com_dist))
+        return loss_fn(fin_state, eta, min_com_dist, max_com_dist)
     return eval_params
 
 
