@@ -38,13 +38,21 @@ def dist_point_to_line_segment(line_points, point):
 
     return space.distance(d_pt)
 
-
+"""
 bond_pairs = jnp.array([
     [-6, -1],
     [-5, -1],
     [-4, -1],
     [-3, -1],
     [-2, -1]
+], dtype=jnp.int32)
+"""
+bond_pairs = jnp.array([
+    [-6, -5],
+    [-5, -4],
+    [-4, -3],
+    [-3, -2],
+    [-2, -6]
 ], dtype=jnp.int32)
 vertices = jnp.arange(0, 6*12, 6, dtype=jnp.int32)
 test_idx = onp.array([0, 1])
