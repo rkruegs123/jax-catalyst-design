@@ -2,6 +2,18 @@
 
 Code for designing **spider catalysts**
 
+## mar 20, 2023
+
+Maybe todo tomorrow?
+- maybe setup an optimization that uses the abducting parameters?
+- maybe do a stepwise optimization?
+
+TODO:
+- could think about adding reinforce term
+- fix that eig thing
+- could maybe experimeent with higher gammas
+
+
 ## feb 20, 2023
 - Added term to the loss function to get the catalyst to detach from the icosahedron
 - fixed the leg diameter to be 1.5 throughout the optimization so it couldn't cheat
