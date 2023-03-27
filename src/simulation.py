@@ -27,11 +27,13 @@ from common import SHELL_VERTEX_RADIUS, SPIDER_BASE_RADIUS, SPIDER_HEAD_HEIGHT, 
     SHELL_DIAMETERS, SHELL_COLORS, SHELL_BODY_POS
 from common import displacement_fn, shift_fn, d, d_prod
 from common import get_spider_positions
+from common import dtype
 from checkpoint import checkpoint_scan
 import leg
 
 
-checkpoint_every = 1
+
+checkpoint_every = 100
 if checkpoint_every is None:
     scan = lax.scan
 else:
@@ -56,12 +58,12 @@ def initialize_system(base_radius, head_height, leg_diameter,
     disp_vector = displacement_fn(vertex.center, jnp.mean(SHELL_RB.center, axis=0))
     disp_vector /= jnp.linalg.norm(disp_vector)
     center = vertex.center + disp_vector * (SHELL_VERTEX_RADIUS + leg_diameter / 2) * initial_separation_coeff # shift away from vertex
-    spider_rb = rigid_body.RigidBody(center=jnp.array([center]),
-                                     orientation=rigid_body.Quaternion(jnp.array([vertex.orientation.vec])))
+    spider_rb = rigid_body.RigidBody(center=jnp.array([center], dtype=dtype),
+                                     orientation=rigid_body.Quaternion(jnp.array([vertex.orientation.vec], dtype=dtype)))
                                      #orientation=rigid_body.Quaternion(jnp.array([[0.0, 0.0, 1.0, 0.0]])))
     # Make spider rigid body shape
     # masses = jnp.full(spider_points.shape[0], spider_point_masses)
-    masses = jnp.ones(spider_points.shape[0]) * spider_point_masses + jnp.arange(spider_points.shape[0]) * mass_err
+    masses = jnp.ones(spider_points.shape[0], dtype=dtype) * spider_point_masses + jnp.arange(spider_points.shape[0]) * mass_err
     # masses = spider_point_masses
     # masses = jnp.array([1.01, 1.02, 1.03, 1.04, 1.05, 1.06])
     spider_shape = rigid_body.point_union_shape(spider_points, masses).set(point_species=spider_species)
@@ -88,7 +90,7 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
                   morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
                   soft_eps, shape):
 
-    spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter]) * 0.5
+    spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter], dtype=dtype) * 0.5
 
     zero_interaction = jnp.zeros((n_point_species, n_point_species))
 
@@ -151,7 +153,7 @@ def run_dynamics_helper(initial_rigid_body, shape,
                  icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
                  morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
                  morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
-                 soft_eps=10000.0, kT=1.0, dt=1e-4,
+                 soft_eps=10000.0, kT=1.0, dt=1e-3,
                  # num_inner_steps=100, num_outer_steps=100
                  num_steps=100, gamma=0.1
 ):
@@ -193,7 +195,7 @@ def run_dynamics(initial_rigid_body, shape,
                  icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
                  morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
                  morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
-                 soft_eps=10000.0, kT=1.0, dt=1e-4,
+                 soft_eps=10000.0, kT=1.0, dt=1e-3,
                  num_steps=100, gamma=0.1
 ):
     state, traj = run_dynamics_helper(
@@ -237,6 +239,7 @@ def loss_fn_helper(body, eta, min_com_dist=3.4, max_com_dist=4.25):
     # mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=max_com_dist, r_cutoff=max_com_dist+eta)
     # tight_range = lambda dr: mult_iso_cutoff_right(dr) + (INF - mult_iso_cutoff_left_inv(dr)) 
     # icos_stays_together = jnp.sum(tight_range(com_dists))
+
 
     # Term that asks the catalyst to detach from the icosahedron
     catalyst_body = body[-1]
@@ -368,7 +371,7 @@ if __name__ == "__main__":
         energy_fn = get_energy_fn(SHELL_VERTEX_RADIUS, shape=both_shapes, **sim_params)
         # far_val = energy_fn(initial_rigid_body_far)
         # fin_val = energy_fn(fin_state)
-        fin_val = loss_fn(fin_state)
+        fin_val = loss_fn(fin_state) # FIXME: will fail without an eta
         return fin_val
     start = time.time()
     eval_params_sim_grad = value_and_grad(eval_params_sim)

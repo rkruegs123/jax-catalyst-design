@@ -57,7 +57,7 @@ bond_pairs = jnp.array([
 vertices = jnp.arange(0, 6*12, 6, dtype=jnp.int32)
 test_idx = onp.array([0, 1])
 def get_leg_energy_fn(soft_sphere_eps, bond_diameter, shape, shape_species):
-    def leg_energy_fn(body):
+    def leg_energy_fn(body, leg_alpha=2.0):
         position, _ = rigid_body.union_to_points(body, shape, shape_species)
 
         # We want to compute 12 * 5 distances. For each bond, distance to each vertex
@@ -71,7 +71,7 @@ def get_leg_energy_fn(soft_sphere_eps, bond_diameter, shape, shape_species):
             energy.soft_sphere(all_dists,
                                epsilon=soft_sphere_eps,
                                sigma=bond_diameter,
-                               alpha=2))
+                               alpha=jnp.array(leg_alpha)))
         return bond_energy_sm
 
     return leg_energy_fn

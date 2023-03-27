@@ -13,6 +13,23 @@ TODO:
 - fix that eig thing
 - could maybe experimeent with higher gammas
 
+## feb 28, 2023
+- key 1000 is d5 1e-4 10k steps, legs and both loss terms (no coefficient). legs have same alpha.
+- key 1001 is 2 * icos_stays_together (dt1e-3, legs have same alpha, with legs, 1000 steps)
+- key 1002 is leg_alpha always 2 for the legs. otherwise same -- dt1e-3, legs, 1000 steps, no coefficient
+- key 1003 is no legs
+- key 1004 is 1001 wit hbatch size 10 (and redo to confirm we are actually using the coeff)
+- key 2000 is with langevin integrator. dt 1e-3. no nlegs. 1k steps. no coeff in loss, but both terms
+- key 2001 is above but with legs
+- key 2002 is above but also with coeff
+
+## feb 22, 2023
+- we can get the catalyst to fall off with an initial separation of 0.1, temp of 2.0, morse_leg_eps=0.0, and running for 5k steps with hand-designed parameters
+- added coefficient on the non-explosion part of the loss because it was lower for something that was exploding than good results
+- running optimization for varying initial separation, random vs fixed
+- possible next steps: batch over different initial separation coefficients, try optimization with different temperatures/energy scales, think about how to get the abducted particle to leave the catalyst, add repulsive cap to spider, try catalyst on different shells (octahedron etc)
+
+
 
 ## feb 20, 2023
 - Added term to the loss function to get the catalyst to detach from the icosahedron

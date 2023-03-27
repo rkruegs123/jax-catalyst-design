@@ -27,7 +27,7 @@ from jax_md import util
 import optax
 
 import common
-from common import SHELL_VERTEX_RADIUS
+from common import SHELL_VERTEX_RADIUS, dtype
 import simulation
 from simulation import run_dynamics, initialize_system, loss_fn
 
@@ -42,12 +42,14 @@ def get_eval_params_fn(soft_eps, kT, dt,
                        initial_separation_coeff, gamma,
                        min_com_dist, max_com_dist,
                        eta
+
 ):
     def eval_params(params, key):
 
         spider_base_radius = params['spider_base_radius']
         spider_head_height = params['spider_head_height']
-        spider_leg_diameter = 1.5 #params['spider_leg_diameter']
+        # spider_leg_diameter = 1.5 #params['spider_leg_diameter']
+        spider_leg_diameter = params['spider_leg_diameter']
         spider_head_diameter = params['spider_head_diameter']
 
         morse_leg_eps = params['morse_leg_eps']
@@ -72,6 +74,7 @@ def get_eval_params_fn(soft_eps, kT, dt,
         # v_loss_fn = vmap(loss_fn, (0, None, None, None))
         # return jnp.mean(v_loss_fn(traj, eta, min_com_dist, max_com_dist))
         return loss_fn(fin_state, eta, min_com_dist, max_com_dist)
+        # return loss_fn(fin_state, eta=eta)
     return eval_params
 
 
@@ -82,7 +85,6 @@ def get_init_params(mode="fixed", key=None):
             # catalyst shape
             'spider_base_radius': 5.0,
             'spider_head_height': 6.0,
-            # 'spider_leg_diameter': 1.5,
             'spider_leg_diameter': 1.0,
             'spider_head_diameter': 1.0,
 
