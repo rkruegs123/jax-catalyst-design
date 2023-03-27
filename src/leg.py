@@ -38,7 +38,6 @@ def dist_point_to_line_segment(line_points, point):
 
     return space.distance(d_pt)
 
-
 """
 bond_pairs = jnp.array([
     [-6, -1],

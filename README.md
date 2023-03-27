@@ -2,6 +2,17 @@
 
 Code for designing **spider catalysts**
 
+## mar 20, 2023
+
+Maybe todo tomorrow?
+- maybe setup an optimization that uses the abducting parameters?
+- maybe do a stepwise optimization?
+
+TODO:
+- could think about adding reinforce term
+- fix that eig thing
+- could maybe experimeent with higher gammas
+
 ## feb 28, 2023
 - key 1000 is d5 1e-4 10k steps, legs and both loss terms (no coefficient). legs have same alpha.
 - key 1001 is 2 * icos_stays_together (dt1e-3, legs have same alpha, with legs, 1000 steps)
@@ -17,6 +28,7 @@ Code for designing **spider catalysts**
 - added coefficient on the non-explosion part of the loss because it was lower for something that was exploding than good results
 - running optimization for varying initial separation, random vs fixed
 - possible next steps: batch over different initial separation coefficients, try optimization with different temperatures/energy scales, think about how to get the abducted particle to leave the catalyst, add repulsive cap to spider, try catalyst on different shells (octahedron etc)
+
 
 
 ## feb 20, 2023
