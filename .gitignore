@@ -1,5 +1,6 @@
 *~
 src/*~
 src/__pycache__/*
+**/*~
 
 data/
