@@ -188,7 +188,7 @@ def run_dynamics_helper(initial_rigid_body, shape,
 
     # state, traj = lax.scan(outer_step, state, jnp.arange(num_outer_steps))
     state, traj = scan(do_step, state, jnp.arange(num_steps))
-    return state.position, traj[-100:]
+    return state.position, traj
 
 
 def run_dynamics(initial_rigid_body, shape,
