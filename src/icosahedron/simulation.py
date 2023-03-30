@@ -164,9 +164,9 @@ def run_dynamics_helper(initial_rigid_body, shape,
                                    morse_ii_eps, morse_leg_eps, morse_head_eps,
                                    morse_ii_alpha, morse_leg_alpha, morse_head_alpha,
                                    soft_eps, shape)
-    # leg_energy_fn = leg.get_leg_energy_fn(soft_eps, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), shape, shape_species) # TODO: unrestrict leg diameter
-    # energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
-    energy_fn = lambda body: base_energy_fn(body)
+    leg_energy_fn = leg.get_leg_energy_fn(soft_eps, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), shape, shape_species) # TODO: unrestrict leg diameter
+    energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
+    # energy_fn = lambda body: base_energy_fn(body)
 
     # init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt, kT)
     gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
@@ -252,9 +252,9 @@ def loss_fn_helper(body, eta, min_com_dist=3.4, max_com_dist=4.25):
 def loss_fn(body, eta, min_com_dist=3.4, max_com_dist=4.25):
     vertex_far_from_icos, icos_stays_together, catalyst_detaches_from_icos = loss_fn_helper(body, eta, min_com_dist, max_com_dist)
     # return vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos
-    return vertex_far_from_icos + 3.0 * icos_stays_together
+    # return vertex_far_from_icos + 3.0 * icos_stays_together
     # return vertex_far_from_icos + jnp.exp(eta * (icos_stays_together - 0.34))
-    # return vertex_far_from_icos
+    return vertex_far_from_icos
     # return vertex_far_from_icos + catalyst_detaches_from_icos
     # return catalyst_detaches_from_icos
     # return vertex_far_from_icos + icos_stays_together
