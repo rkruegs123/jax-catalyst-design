@@ -216,6 +216,62 @@ SHELL_COLORS = jnp.array([c1 + c2*5]*12).reshape(-1, 3)
 SHELL_BODY_POS = vmap(rigid_body.transform, (0, None))(SHELL_RB, SHELL_VERTEX_SHAPE).reshape(-1, 3)
 
 
+
+parameter_ranges = {
+    # catalyst shape
+    'spider_base_radius': (3.0, 6.0),
+    'spider_head_height': (3.0, 10.0),
+    'spider_leg_diameter': (0.5, 2.5),
+    'spider_head_diameter': (1.0, 4.0),
+
+    # catalyst energy
+    'morse_leg_eps': (0.1, 10.0),
+    'morse_head_eps': (0.1, 6.0), # Note: don't forget to exponentiate
+    'morse_leg_alpha': (1.0, 4.0),
+    'morse_head_alpha': (0.1, 2.0)
+}
+def get_init_params(mode="fixed", key=None):
+    if mode == "fixed":
+
+        init_params = {
+            # catalyst shape
+            'spider_base_radius': 5.0,
+            'spider_head_height': 6.0,
+            'spider_leg_diameter': 1.0,
+            'spider_head_diameter': 1.0,
+
+            # catalyst energy
+            'morse_leg_eps': 2.5,
+            'morse_head_eps': 10000.0,
+            'morse_leg_alpha': 1.0,
+            'morse_head_alpha': 1.0
+            # 'morse_leg_eps': 0.0,
+            # 'morse_head_eps': 0.0,
+            # 'morse_leg_alpha': 0.0,
+            # 'morse_head_alpha': 0.0
+        }
+        return init_params
+    elif mode == "random":
+
+        param_keys = random.split(key, 8)
+
+        init_params = {
+            # catalyst shape
+            'spider_base_radius': random.uniform(param_keys[0], minval=3.0, maxval=6.0),
+            'spider_head_height': random.uniform(param_keys[1], minval=3.0, maxval=10.0),
+            'spider_leg_diameter': random.uniform(param_keys[2], minval=0.5, maxval=2.5),
+            'spider_head_diameter': random.uniform(param_keys[3], minval=1.0, maxval=4.0),
+
+            # catalyst energy
+            'morse_leg_eps': random.uniform(param_keys[4], minval=0.1, maxval=10.0),
+            'morse_head_eps': jnp.exp(random.uniform(param_keys[5], minval=0.1, maxval=6.0)),
+            'morse_leg_alpha': random.uniform(param_keys[6], minval=1.0, maxval=4.0),
+            'morse_head_alpha': random.uniform(param_keys[7], minval=0.1, maxval=2.0),
+        }
+        return init_params
+    else:
+        raise NotImplementedError(f"Unrecognized mode: {mode}")
+
 if __name__ == "__main__":
     def foo(height):
         spider_pos = get_spider_positions(5.0, height, z=0.0)
