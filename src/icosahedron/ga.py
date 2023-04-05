@@ -153,7 +153,7 @@ def run(args, selection_method="competition"):
         # Mutation
         # FIXME: option to not mutate the current best?
         if g != n_iters - 1: # Don't mutate if last generation!!
-            for mutant in population:
+            for mutant in population[1:]: # We don't mutate the first mutant, which is a copy of the best
                 mutation_fn(mutant)
 
         with open(best_per_gen_path, "a") as f:
