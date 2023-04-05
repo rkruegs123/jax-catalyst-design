@@ -226,7 +226,7 @@ parameter_ranges = {
 
     # catalyst energy
     'morse_leg_eps': (0.1, 10.0),
-    'morse_head_eps': (0.1, 6.0), # Note: don't forget to exponentiate
+    'morse_head_eps': (5.0, 10.0), # Note: don't forget to exponentiate
     'morse_leg_alpha': (1.0, 4.0),
     'morse_head_alpha': (0.1, 2.0)
 }
@@ -264,7 +264,7 @@ def get_init_params(mode="fixed", key=None):
 
             # catalyst energy
             'morse_leg_eps': random.uniform(param_keys[4], minval=0.1, maxval=10.0),
-            'morse_head_eps': jnp.exp(random.uniform(param_keys[5], minval=0.1, maxval=6.0)),
+            'morse_head_eps': jnp.exp(random.uniform(param_keys[5], minval=5.0, maxval=10.0)),
             'morse_leg_alpha': random.uniform(param_keys[6], minval=1.0, maxval=4.0),
             'morse_head_alpha': random.uniform(param_keys[7], minval=0.1, maxval=2.0),
         }

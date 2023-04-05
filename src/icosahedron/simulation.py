@@ -219,7 +219,7 @@ def loss_fn_helper(body, eta, min_com_dist=3.4, max_com_dist=4.25):
     disps = d(shell_body.center, body[VERTEX_TO_BIND].center)
     dists = space.distance(disps)
     vertex_far_from_icos = -jnp.sum(dists)
-    
+
 
     # Term that keeps the rest together
     """
@@ -233,12 +233,12 @@ def loss_fn_helper(body, eta, min_com_dist=3.4, max_com_dist=4.25):
         axis=0)
     remaining_com = jnp.mean(remaining_vertices, axis=0)
     com_dists = space.distance(d(remaining_vertices, remaining_com))
-    icos_stays_together = com_dists.sum()
+    # icos_stays_together = com_dists.sum()
 
-    # mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=min_com_dist-eta, r_cutoff=min_com_dist)
-    # mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=max_com_dist, r_cutoff=max_com_dist+eta)
-    # tight_range = lambda dr: mult_iso_cutoff_right(dr) + (INF - mult_iso_cutoff_left_inv(dr)) 
-    # icos_stays_together = jnp.sum(tight_range(com_dists))
+    mult_iso_cutoff_right = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=min_com_dist-eta, r_cutoff=min_com_dist)
+    mult_iso_cutoff_left_inv = energy.multiplicative_isotropic_cutoff(lambda x: INF, r_onset=max_com_dist, r_cutoff=max_com_dist+eta)
+    tight_range = lambda dr: mult_iso_cutoff_right(dr) + (INF - mult_iso_cutoff_left_inv(dr))
+    icos_stays_together = jnp.sum(tight_range(com_dists))
 
     # Term that asks the catalyst to detach from the icosahedron
     catalyst_body = body[-1]
@@ -254,10 +254,10 @@ def loss_fn(body, eta, min_com_dist=3.4, max_com_dist=4.25):
     # return vertex_far_from_icos + 5.0 * icos_stays_together + catalyst_detaches_from_icos
     # return vertex_far_from_icos + 3.0 * icos_stays_together
     # return vertex_far_from_icos + jnp.exp(eta * (icos_stays_together - 0.34))
-    return vertex_far_from_icos
+    # return vertex_far_from_icos
     # return vertex_far_from_icos + catalyst_detaches_from_icos
     # return catalyst_detaches_from_icos
-    # return vertex_far_from_icos + icos_stays_together
+    return vertex_far_from_icos + icos_stays_together
 
 if __name__ == "__main__":
 
