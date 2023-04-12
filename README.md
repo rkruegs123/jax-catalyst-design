@@ -3,6 +3,17 @@
 Code for designing **spider catalysts**
 
 
+## April 12, 2023
+
+Taking stock and next steps:
+- we can currently optimize for abducting and stayin gtogether for really and gamma -- this is from treating the morse eps as a log. (With autodiff, maybe with GA).
+- we still can't get it to etach
+- we computed the energy diffetrence between the attached and detached state. It's lik e200... whereas kt=2.0. This is a problme.
+- so, we want to do the following:
+  - first,want too understand this difference. Is it the heads interaction with the other vertices? Is it the legs interaction withthe vertices? If the former, how narrow can it be?
+  - then, run a couple things by hand and see if we can get away wit ha lower head eps and higher alpha -- or, is there some other (differentiable) potential that would be steeper and allow for a stricter interactoin range, and therefore a better difference -- for example, maybe we can do this with an NN and not a Mors epotential (proof of existence)
+  - then, try to optimize using information from the above. probably looks somethin glike penalizing against the energy difference betweeen bound and unbound
+
 ## mar 20, 2023
 
 Maybe todo tomorrow?
@@ -17,7 +28,7 @@ TODO:
 
 ## mar. 13, 2023
 
-Weirdly, the gradients are 0 for head_eps and head_alpha on the discret elgs branch. So, we are starting on this new branch to iteratively add things. 
+Weirdly, the gradients are 0 for head_eps and head_alpha on the discret elgs branch. So, we are starting on this new branch to iteratively add things.
 
 We are starting with a key of 10000 with no legs just to get a baseline for the gradients.
 
@@ -85,10 +96,10 @@ For next time:
 
 ## Feb 2, 2023
 
-dear diary, today we tested the gradients some more. we found out that it makes sense for some gradients to be zero depending on the initial parameters. for example, say the legs and head of the spider aren't touchin anything  --  then ofcourse the grad w.r.t. their diameters will be 0. 
+dear diary, today we tested the gradients some more. we found out that it makes sense for some gradients to be zero depending on the initial parameters. for example, say the legs and head of the spider aren't touchin anything  --  then ofcourse the grad w.r.t. their diameters will be 0.
 
 given this, we don't understand why we got 0s for some of the optmization yesterday. to debug this, we propose the following steps:
-- continue the test in __main__ in `simulation.py` to take the grad of th esimulatoin rather than of a single energy evaluatoin. use the parameters we used for ht energy evaluation. if this is fine (i.e. all grads that we expect to be non-zero are non-zero), gthen redo optimization. If optimization doesn't work, probably juts soething wrong there. 
+- continue the test in __main__ in `simulation.py` to take the grad of th esimulatoin rather than of a single energy evaluatoin. use the parameters we used for ht energy evaluation. if this is fine (i.e. all grads that we expect to be non-zero are non-zero), gthen redo optimization. If optimization doesn't work, probably juts soething wrong there.
 
 Once we are ready (ie.e. aoptimization grads work), should fiddle around in the colab to find a reasonable set of starting parameters.
 
