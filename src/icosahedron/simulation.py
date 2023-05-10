@@ -33,7 +33,7 @@ import leg
 
 
 
-checkpoint_every = 100
+checkpoint_every = 1
 if checkpoint_every is None:
     scan = lax.scan
 else:
@@ -257,7 +257,8 @@ def loss_fn(body, eta, min_com_dist=3.4, max_com_dist=4.25):
     # return vertex_far_from_icos
     # return vertex_far_from_icos + catalyst_detaches_from_icos
     # return catalyst_detaches_from_icos
-    return vertex_far_from_icos + icos_stays_together
+    # return vertex_far_from_icos + icos_stays_together
+    return vertex_far_from_icos + icos_stays_together + catalyst_detaches_from_icos
 
 if __name__ == "__main__":
 

@@ -132,7 +132,7 @@ def run(args, selection_method="competition"):
         m_keys = random.split(iter_key, population_size)
         losses = list()
         stds = list()
-        for mutant, m_key in zip(population, m_keys):
+        for mutant, m_key in tqdm(zip(population, m_keys)):
             batch_keys = random.split(m_key, batch_size)
             mutant_losses = mapped_eval_params_fn(mutant, batch_keys)
             mutant_losses = onp.array(mutant_losses)

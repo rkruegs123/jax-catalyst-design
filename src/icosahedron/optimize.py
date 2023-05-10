@@ -54,7 +54,8 @@ def get_eval_params_fn(soft_eps, kT, dt,
         spider_head_diameter = params['spider_head_diameter']
 
         morse_leg_eps = params['morse_leg_eps']
-        morse_head_eps = params['morse_head_eps']
+        log_morse_head_eps = params['log_morse_head_eps']
+        morse_head_eps = jnp.exp(log_morse_head_eps)
         morse_leg_alpha = params['morse_leg_alpha']
         morse_head_alpha = params['morse_head_alpha']
 
