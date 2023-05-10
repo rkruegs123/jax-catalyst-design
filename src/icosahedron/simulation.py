@@ -19,7 +19,7 @@ from jax_md import dataclasses
 from jax_md import util
 
 import mod_rigid_body as rigid_body
-#from jax_md import rigid_body
+from jax_md import rigid_body as orig_rigid_body
 
 import common
 from common import SHELL_VERTEX_RADIUS, SPIDER_BASE_RADIUS, SPIDER_HEAD_HEIGHT, \
@@ -148,14 +148,48 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
 
 
 
+# Just the bare minimum -- get sthe nergy function to keep the shell together
+def get_icos_energy_fn(
+        icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
+        morse_ii_eps, morse_ii_alpha, soft_eps,
+        shape
+):
 
-def run_dynamics_helper(initial_rigid_body, shape,
-                 icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
-                 morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
-                 morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
-                 soft_eps=10000.0, kT=1.0, dt=1e-3,
-                 # num_inner_steps=100, num_outer_steps=100
-                 num_steps=100, gamma=0.1
+    spider_radii = jnp.array([spider_leg_diameter, spider_head_diameter], dtype=dtype) * 0.5
+    zero_interaction = jnp.zeros((n_point_species, n_point_species))
+
+    morse_eps = zero_interaction.at[1, 1].set(morse_ii_eps) #icosahedral patches attract eachother
+    morse_alpha = zero_interaction.at[1, 1].set(morse_ii_alpha)
+
+    soft_sphere_eps = zero_interaction.at[0, 0].set(soft_eps) # icosahedral centers repel each other
+    soft_sphere_eps = soft_sphere_eps.at[0, 2:].set(soft_eps) # icosahedral centers repel catalyst centers
+    soft_sphere_eps = soft_sphere_eps.at[2:, 0].set(soft_eps) # symmetry
+
+    soft_sphere_sigma = zero_interaction.at[0, 0].set(icosahedron_vertex_radius*2)
+    soft_sphere_sigma = soft_sphere_sigma.at[0, 2:].set(icosahedron_vertex_radius + spider_radii) #icosahedral centers repel catalyst centers
+    soft_sphere_sigma = soft_sphere_sigma.at[2:, 0].set(icosahedron_vertex_radius + spider_radii)
+    soft_sphere_sigma = jnp.where(soft_sphere_sigma == 0.0, 1e-5, soft_sphere_sigma) # avoids nans
+
+    pair_energy_soft = energy.soft_sphere_pair(displacement_fn, species=n_point_species,
+                                               sigma=soft_sphere_sigma, epsilon=soft_sphere_eps)
+    pair_energy_morse = energy.morse_pair(displacement_fn, species=n_point_species,
+                                          sigma=0.0, epsilon=morse_eps, alpha=morse_alpha,
+                                          r_onset=10.0, r_cutoff=12.0)
+    pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
+    energy_fn = rigid_body.point_energy(pair_energy_fn, shape, shape_species)
+
+    return energy_fn
+
+
+
+def run_dynamics_helper(
+        initial_rigid_body, shape,
+        icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter, key,
+        morse_ii_eps=10.0, morse_leg_eps=2.0, morse_head_eps=200.0,
+        morse_ii_alpha=5.0, morse_leg_alpha=2.0, morse_head_alpha=5.0,
+        soft_eps=10000.0, kT=1.0, dt=1e-3,
+        # num_inner_steps=100, num_outer_steps=100
+        num_steps=100, gamma=0.1
 ):
 
 
@@ -205,6 +239,107 @@ def run_dynamics(initial_rigid_body, shape,
         morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha, morse_head_alpha=morse_head_alpha,
         soft_eps=soft_eps, kT=kT, dt=dt,
         num_steps=num_steps, gamma=gamma)
+    return state, traj
+
+def run_dynamics_nn_helper(
+        initial_rigid_body, spider_shape, key,
+
+        # Parameters for the non-NN interaction
+        icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
+        morse_ii_eps=10.0, morse_ii_alpha=5.0, soft_eps=10000.0,
+
+        # FIXME: any NN parameters
+
+        kT=1.0, dt=1e-3, num_steps=100, gamma=0.1
+):
+
+    """
+    This function takes the current rigid body and returns a set of center of mass positions for
+    use in the GNN potential.
+
+    Importantly, we do not take all COM positions. We expand the shape of the catalyst, but,
+    for convenience, we do not expand the COM positions of the substrate (i.e. icosahedron).
+    This would be more physical, but shouldn't affect the accuracy, so we save this for a later
+    time.
+    """
+
+    # FIXME: something like this should be constructed outside and given for optimization, but we keep it here for now. Same for `nodes`
+    spider_shape_orb = orig_rigid_body.RigidPointUnion(
+        spider_shape.points,
+        spider_shape.masses,
+        spider_shape.point_count,
+        spider_shape.point_offset
+    )
+
+    # FIXME: same as above. Let's not have this here
+    nodes_oh = jnp.array([[1, 0, 0]] * 12 + [[0, 1, 0]] * 5 + [[0, 0, 1]], dtype=jnp.int32) # species in disguise
+
+    def rb_to_com_points(body: rigid_body.RigidBody):
+        vertex_coms = body[:12].center
+
+        catalyst_body = body[-1]
+        catalyst_points = orig_rigid_body.transform(catalyst_body, spider_shape_orb)
+
+        return jnp.concatenate([vertex_coms, catalyst_points])
+
+    catalyst_substrate_init_fn, catalyst_substrate_energy_fn = energy.graph_network(
+        displacement_fn,
+        r_cutoff=10.0, # Big for now
+        nodes=nodes_oh,
+        n_recurrences=2,
+        mlp_sizes=(64, 64),
+        mlp_kwargs=None
+    )
+
+    init_params = catalyst_substrate_init_fn(key, rb_to_com_points(initial_rigid_body))
+
+    icos_energy_fn = get_icos_energy_fn(
+        icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
+        morse_ii_eps, morse_ii_alpha, soft_eps,
+        shape)
+
+    def total_energy_fn(body: rigid_body.RigidBody, params):
+
+        # add energy function for everyting that's not catalyst <-> substrate
+        non_nn_energy = icos_energy_fn(body)
+
+        # get COMs of the rigid body
+        nn_com_points = rb_to_com_points(body)
+        # get catalyst <-> substrate energy from neural network
+        nn_energy = catalyst_substrate_energy_fn(init_params, nn_com_points)
+
+        # sum the two
+        return non_nn_energy + nn_energy
+
+    gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
+    init_fn, step_fn = simulate.nvt_langevin(total_energy_fn, shift_fn, dt, kT, gamma=gamma_rb)
+    step_fn = jit(step_fn)
+    mass = shape.mass(shape_species)
+    state = init_fn(key, initial_rigid_body, mass=mass)
+
+    # do_step = lambda state, t: (step_fn(state), 0.)#state.position) #uncomment to return trajectory
+    do_step = lambda state, t: (step_fn(state), state.position)
+    do_step = jit(do_step)
+
+    # state, traj = lax.scan(outer_step, state, jnp.arange(num_outer_steps))
+    state, traj = scan(do_step, state, jnp.arange(num_steps))
+    return state.position, traj
+
+def run_dynamics_nn(
+        initial_rigid_body, spider_shape, key,
+
+        # Parameters for the non-NN interaction
+        icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
+        morse_ii_eps=10.0, morse_ii_alpha=5.0, soft_eps=10000.0,
+
+        kT=1.0, dt=1e-3, num_steps=100, gamma=0.1
+):
+    state, traj = run_dynamics_nn_helper(
+        initial_rigid_body, spider_shape, key,
+        icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
+        morse_ii_eps=morse_ii_eps, morse_ii_alpha=morse_ii_alpha, soft_eps=soft_eps,
+        kT=kT, dt=dt, num_steps=num_steps, gamma=gamma)
+
     return state, traj
 
 """
