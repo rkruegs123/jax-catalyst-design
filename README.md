@@ -2,6 +2,11 @@
 
 Code for designing **spider catalysts**
 
+## May 16, 2023
+Have the forwrad pass working iwth a simple graph neural network. Next time, we are gonig to optimize over it. The following are some basic notes re. what we'll have to change to optimiez over it:
+- The graph network must be initizlied so that it has the right input shape. We should only do this once. So, unlike the previous neergy function case, we will need some type of "getter"/factory for the run dynamics function that will be responsible for initializing the network with the appropriate shape
+- in our previous optimizations, we were optimizing over both the energy parameters as well as the parameters describing the spider shape. In part, the latter was because the action of the morse potential is fairly sensitive to the shap eof the catalyst. But, given the expressiveness of NNs, we think it'd be best to just fix the shape. Otherwise, we'd have to deal with compatibilities between the `RigidPointUnion` class in our version of `rigid_body` vs. `jax_md.rigid_body`. So, this can also be in the getter/factory.
+
 
 ## April 12, 2023
 

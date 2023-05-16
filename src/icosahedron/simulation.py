@@ -237,7 +237,7 @@ def run_dynamics(initial_rigid_body, shape,
     return state, traj
 
 def run_dynamics_nn_helper(
-        initial_rigid_body, spider_shape, key,
+        initial_rigid_body, spider_shape, shape, key,
 
         # Parameters for the non-NN interaction
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
@@ -265,20 +265,22 @@ def run_dynamics_nn_helper(
     )
 
     # FIXME: same as above. Let's not have this here
-    nodes_oh = jnp.array([[1, 0, 0]] * 12 + [[0, 1, 0]] * 5 + [[0, 0, 1]], dtype=jnp.int32) # species in disguise
+    # nodes_oh = jnp.array([[1, 0, 0]] * 12 + [[0, 1, 0]] * 5 + [[0, 0, 1]], dtype=jnp.float32) # species in disguise
+    nodes_oh = jnp.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0])
 
     def rb_to_com_points(body: rigid_body.RigidBody):
         vertex_coms = body[:12].center
 
         catalyst_body = body[-1]
-        catalyst_points = orig_rigid_body.transform(catalyst_body, spider_shape_orb)
+        # catalyst_points = orig_rigid_body.transform(catalyst_body, spider_shape_orb)
+        catalyst_points = rigid_body.transform(catalyst_body, spider_shape_orb)
 
         return jnp.concatenate([vertex_coms, catalyst_points])
 
     catalyst_substrate_init_fn, catalyst_substrate_energy_fn = energy.graph_network(
         displacement_fn,
         r_cutoff=10.0, # Big for now
-        nodes=nodes_oh,
+        nodes=nodes_oh.T,
         n_recurrences=2,
         mlp_sizes=(64, 64),
         mlp_kwargs=None
@@ -289,7 +291,8 @@ def run_dynamics_nn_helper(
     icos_energy_fn = get_icos_energy_fn(
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
         morse_ii_eps, morse_ii_alpha, soft_eps,
-        shape)
+        shape
+    )
 
     def total_energy_fn(body: rigid_body.RigidBody, params):
 
@@ -308,7 +311,7 @@ def run_dynamics_nn_helper(
     init_fn, step_fn = simulate.nvt_langevin(total_energy_fn, shift_fn, dt, kT, gamma=gamma_rb)
     step_fn = jit(step_fn)
     mass = shape.mass(shape_species)
-    state = init_fn(key, initial_rigid_body, mass=mass)
+    state = init_fn(key, initial_rigid_body, mass=mass, params=init_params)
 
     # do_step = lambda state, t: (step_fn(state), 0.)#state.position) #uncomment to return trajectory
     do_step = lambda state, t: (step_fn(state, params=init_params), state.position)
@@ -319,7 +322,7 @@ def run_dynamics_nn_helper(
     return state.position, traj
 
 def run_dynamics_nn(
-        initial_rigid_body, spider_shape, key,
+        initial_rigid_body, spider_shape, shape, key,
 
         # Parameters for the non-NN interaction
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
@@ -328,7 +331,7 @@ def run_dynamics_nn(
         kT=1.0, dt=1e-3, num_steps=100, gamma=0.1
 ):
     state, traj = run_dynamics_nn_helper(
-        initial_rigid_body, spider_shape, key,
+        initial_rigid_body, spider_shape, shape, key,
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
         morse_ii_eps=morse_ii_eps, morse_ii_alpha=morse_ii_alpha, soft_eps=soft_eps,
         kT=kT, dt=dt, num_steps=num_steps, gamma=gamma)
@@ -413,7 +416,7 @@ if __name__ == "__main__":
     if MODE == "neural-network":
         start = time.time()
         fin_state, traj = run_dynamics_nn(
-            initial_rigid_body, spider_shape, key,
+            initial_rigid_body, spider_shape, both_shapes, key,
             icosahedron_vertex_radius=SHELL_VERTEX_RADIUS,
             spider_leg_diameter=leg_diameter, spider_head_diameter=head_diameter,
             num_steps=100, gamma=10.0)
@@ -427,5 +430,5 @@ if __name__ == "__main__":
             key=key, num_steps=1000, gamma=10.0
         )
         end = time.time()
-    print(f"The quest took {np.round(end - start, 2)} seconds")
+    print(f"The quest took {onp.round(end - start, 2)} seconds")
     pdb.set_trace()
