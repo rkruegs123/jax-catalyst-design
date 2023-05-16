@@ -3,8 +3,10 @@ import numpy as onp
 import functools
 from typing import Optional, Tuple, Dict, Callable, List, Union
 import matplotlib.pyplot as plt
+from pprint import pprint
+import time
 
-import jax.numpy as np
+import jax.numpy as jnp
 
 from jax import random, grad, value_and_grad, remat, jacfwd
 from jax import jit
@@ -213,13 +215,6 @@ def run_dynamics_helper(
     do_step = lambda state, t: (step_fn(state), state.position)
     do_step = jit(do_step)
 
-    """
-    @remat
-    def outer_step(state, t):
-       state, _ = lax.scan(do_step, state, jnp.arange(num_inner_steps))
-       return state, t
-    """
-
     # state, traj = lax.scan(outer_step, state, jnp.arange(num_outer_steps))
     state, traj = scan(do_step, state, jnp.arange(num_steps))
     return state.position, traj
@@ -247,8 +242,6 @@ def run_dynamics_nn_helper(
         # Parameters for the non-NN interaction
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
         morse_ii_eps=10.0, morse_ii_alpha=5.0, soft_eps=10000.0,
-
-        # FIXME: any NN parameters
 
         kT=1.0, dt=1e-3, num_steps=100, gamma=0.1
 ):
@@ -306,7 +299,7 @@ def run_dynamics_nn_helper(
         # get COMs of the rigid body
         nn_com_points = rb_to_com_points(body)
         # get catalyst <-> substrate energy from neural network
-        nn_energy = catalyst_substrate_energy_fn(init_params, nn_com_points)
+        nn_energy = catalyst_substrate_energy_fn(params, nn_com_points)
 
         # sum the two
         return non_nn_energy + nn_energy
@@ -318,7 +311,7 @@ def run_dynamics_nn_helper(
     state = init_fn(key, initial_rigid_body, mass=mass)
 
     # do_step = lambda state, t: (step_fn(state), 0.)#state.position) #uncomment to return trajectory
-    do_step = lambda state, t: (step_fn(state), state.position)
+    do_step = lambda state, t: (step_fn(state, params=init_params), state.position)
     do_step = jit(do_step)
 
     # state, traj = lax.scan(outer_step, state, jnp.arange(num_outer_steps))
@@ -397,124 +390,42 @@ def loss_fn(body, eta, min_com_dist=3.4, max_com_dist=4.25):
 
 if __name__ == "__main__":
 
-    from pprint import pprint
-    import time
+    MODE = "neural-network"
 
+
+    key = random.PRNGKey(0)
 
     base_radius = 5.0
     head_height = 3.0
     leg_diameter = 1.0
-    initial_separation_coeff_close = 0.5
-    initial_separation_coeff_far = 2.0
+    initial_separation_coeff = 1.0
 
-    initial_rigid_body_far, both_shapes, spider_rb, spider_shape = initialize_system(
+    initial_rigid_body, both_shapes, spider_rb, spider_shape = initialize_system(
         base_radius, head_height, leg_diameter,
-        initial_separation_coeff=initial_separation_coeff_far,
-        spider_point_masses=1.0, mass_err=1e-6,
-        vertex_to_bind=VERTEX_TO_BIND)
-
-    initial_rigid_body_close, _, _, _ = initialize_system(
-        base_radius, head_height, leg_diameter,
-        initial_separation_coeff=initial_separation_coeff_close,
+        initial_separation_coeff=initial_separation_coeff,
         spider_point_masses=1.0, mass_err=1e-6,
         vertex_to_bind=VERTEX_TO_BIND)
 
     head_diameter = 1.0
 
 
-    energy_params = {
-        "icosahedron_vertex_radius": SHELL_VERTEX_RADIUS,
-        "spider_leg_diameter": leg_diameter,
-        "spider_head_diameter": head_diameter,
-        "morse_ii_eps": 10.0,
-        "morse_leg_eps": 10.0,
-        "morse_head_eps": 100000.0,
-        "morse_ii_alpha": 5.0,
-        "morse_leg_alpha": 1.0,
-        "morse_head_alpha": 1.0,
-        "soft_eps": 1000.0,
-    }
 
-    init_params = {
-        "base_radius": base_radius,
-        "head_height": head_height,
-        # "leg_diameter": leg_diameter,
-        "initial_separation_coeff": initial_separation_coeff_close
-    }
-    params = {"energy": energy_params, "init": init_params}
-
-
-    """
-    energy_fn = get_energy_fn(icosahedron_vertex_radius=SHELL_VERTEX_RADIUS,
-                              spider_leg_diameter=leg_diameter, spider_head_diameter=head_diameter,
-                              morse_ii_eps=10.0, morse_leg_eps=10.0, morse_head_eps=100000.0,
-                              morse_ii_alpha=5.0, morse_leg_alpha=1.0, morse_head_alpha=1.0,
-                              soft_eps=1000.0, shape=both_shapes)
-    """
-    # energy_fn = get_energy_fn(**params)
-
-
-    def eval_params_init(params):
-        energy_params = params['energy']
-        init_params = params['init']
-        init_params["leg_diameter"] = energy_params["spider_leg_diameter"]
-
-        initial_rigid_body_close, both_shapes, spider_rb, spider_shape = initialize_system(
-            **init_params
+    if MODE == "neural-network":
+        start = time.time()
+        fin_state, traj = run_dynamics_nn(
+            initial_rigid_body, spider_shape, key,
+            icosahedron_vertex_radius=SHELL_VERTEX_RADIUS,
+            spider_leg_diameter=leg_diameter, spider_head_diameter=head_diameter,
+            num_steps=100, gamma=10.0)
+        end = time.time()
+    else:
+        start = time.time()
+        fin_state, traj = run_dynamics(
+            initial_rigid_body, both_shapes,
+            SHELL_VERTEX_RADIUS,
+            spider_leg_diameter=leg_diameter, spider_head_diameter=head_diameter,
+            key=key, num_steps=1000, gamma=10.0
         )
-
-        energy_fn = get_energy_fn(shape=both_shapes, **energy_params)
-        # far_val = energy_fn(initial_rigid_body_far)
-        close_val = energy_fn(initial_rigid_body_close)
-        return close_val
-    # close_val = energy_fn(initial_rigid_body_close)
-    # eval_params_init_grad = grad(eval_params_init)
-    # the_thing = eval_params_init_grad(params)
-
-
-
-    sim_params = {
-        "spider_leg_diameter": leg_diameter,
-        "spider_head_diameter": head_diameter,
-        "morse_ii_eps": 100.0,
-        "morse_leg_eps": 1.0,
-        "morse_head_eps": 1.0,
-        "morse_ii_alpha": 5.0,
-        "morse_leg_alpha": 2.0,
-        "morse_head_alpha": 2.0,
-        "soft_eps": 1000.0,
-    }
-
-    params = {'init': init_params, 'sim': sim_params}
-
-    key = random.PRNGKey(0)
-    def eval_params_sim(params):
-        sim_params = params['sim']
-        init_params = params['init']
-        init_params["leg_diameter"] = sim_params["spider_leg_diameter"]
-
-        initial_rigid_body_close, both_shapes, spider_rb, spider_shape = initialize_system(
-            **init_params
-        )
-
-
-        fin_state = run_dynamics(initial_rigid_body_close, both_shapes,
-                                 SHELL_VERTEX_RADIUS, key=key, num_steps=1000,
-                                 **sim_params
-        )
-
-        energy_fn = get_energy_fn(SHELL_VERTEX_RADIUS, shape=both_shapes, **sim_params)
-        # far_val = energy_fn(initial_rigid_body_far)
-        # fin_val = energy_fn(fin_state)
-        fin_val = loss_fn(fin_state) # FIXME: will fail without an eta
-        return fin_val
-    start = time.time()
-    eval_params_sim_grad = value_and_grad(eval_params_sim)
-    end = time.time()
-    the_other_thing_val, the_other_thing_grad = eval_params_sim_grad(params)
-    pdb.set_trace()
-    pprint(the_other_thing_grad)
-    print(the_other_thing_val)
-    print(f"Total time: {onp.round(end - start, 2)}")
-
+        end = time.time()
+    print(f"The quest took {np.round(end - start, 2)} seconds")
     pdb.set_trace()
