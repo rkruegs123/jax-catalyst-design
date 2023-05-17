@@ -18,7 +18,7 @@ from jax import vmap, lax
 from jax import ops
 from jax.config import config
 config.update('jax_enable_x64', True)
-config.update("jax_debug_nans", True)
+# config.update("jax_debug_nans", True)
 
 from jax_md.util import *
 from jax_md import space, smap, energy, minimize, quantity, simulate, partition # , rigid_body

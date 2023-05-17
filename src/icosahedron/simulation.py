@@ -29,7 +29,7 @@ from common import SHELL_VERTEX_RADIUS, SPIDER_BASE_RADIUS, SPIDER_HEAD_HEIGHT, 
     SHELL_DIAMETERS, SHELL_COLORS, SHELL_BODY_POS
 from common import displacement_fn, shift_fn, d, d_prod
 from common import get_spider_positions
-from common import dtype
+from common import dtype, get_init_params
 from checkpoint import checkpoint_scan
 import leg
 
@@ -236,8 +236,56 @@ def run_dynamics(initial_rigid_body, shape,
         num_steps=num_steps, gamma=gamma)
     return state, traj
 
+
+
+
+
+
+
+def get_init_params_spider_shape(mode="fixed", key=None):
+    to_keep = [
+        'spider_base_radius', 'spider_head_height',
+        'spider_leg_diameter', 'spider_head_diameter'
+    ]
+
+    init_morse_params = get_init_params(mode=mode, key=key)
+    return {k: init_morse_params[k] for k in to_keep}
+
+nodes_oh = jnp.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0])
+
+# This gets *all* the initial parameters for a neural network poptimzation. This includres the params of the neural network as well as any catalyst geometrical parametesr we also want to optimizer over.
+def get_init_params_nn(spider_shape, initial_rigid_body, key):
+
+    catalyst_substrate_init_fn, catalyst_substrate_energy_fn = energy.graph_network(
+        displacement_fn,
+        r_cutoff=10.0, # FIXME: Hardcoded for now
+        nodes=nodes_oh.T,
+        n_recurrences=2, # FIXME: Hardcoded for now
+        mlp_sizes=(64, 64), # FIXME: Hardcoded for now
+        mlp_kwargs=None
+    )
+
+    init_nn_params = catalyst_substrate_init_fn(
+        key,
+        rb_to_com_points(initial_rigid_body, spider_shape))
+
+    return init_nn_params, catalyst_substrate_energy_fn
+
+
+
+def rb_to_com_points(body: rigid_body.RigidBody, spider_shape):
+        vertex_coms = body[:12].center
+
+        catalyst_body = body[-1]
+        # catalyst_points = orig_rigid_body.transform(catalyst_body, spider_shape)
+        catalyst_points = rigid_body.transform(catalyst_body, spider_shape)
+
+        return jnp.concatenate([vertex_coms, catalyst_points])
+
 def run_dynamics_nn_helper(
-        initial_rigid_body, spider_shape, shape, key,
+        initial_rigid_body,
+        catalyst_substrate_energy_fn, nn_params,
+        spider_shape, shape, key,
 
         # Parameters for the non-NN interaction
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
@@ -256,53 +304,21 @@ def run_dynamics_nn_helper(
     time.
     """
 
-    # FIXME: something like this should be constructed outside and given for optimization, but we keep it here for now. Same for `nodes`
-    spider_shape_orb = orig_rigid_body.RigidPointUnion(
-        spider_shape.points,
-        spider_shape.masses,
-        spider_shape.point_count,
-        spider_shape.point_offset
-    )
-
-    # FIXME: same as above. Let's not have this here
-    # nodes_oh = jnp.array([[1, 0, 0]] * 12 + [[0, 1, 0]] * 5 + [[0, 0, 1]], dtype=jnp.float32) # species in disguise
-    nodes_oh = jnp.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0])
-
-    def rb_to_com_points(body: rigid_body.RigidBody):
-        vertex_coms = body[:12].center
-
-        catalyst_body = body[-1]
-        # catalyst_points = orig_rigid_body.transform(catalyst_body, spider_shape_orb)
-        catalyst_points = rigid_body.transform(catalyst_body, spider_shape_orb)
-
-        return jnp.concatenate([vertex_coms, catalyst_points])
-
-    catalyst_substrate_init_fn, catalyst_substrate_energy_fn = energy.graph_network(
-        displacement_fn,
-        r_cutoff=10.0, # Big for now
-        nodes=nodes_oh.T,
-        n_recurrences=2,
-        mlp_sizes=(64, 64),
-        mlp_kwargs=None
-    )
-
-    init_params = catalyst_substrate_init_fn(key, rb_to_com_points(initial_rigid_body))
-
     icos_energy_fn = get_icos_energy_fn(
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
         morse_ii_eps, morse_ii_alpha, soft_eps,
         shape
     )
 
-    def total_energy_fn(body: rigid_body.RigidBody, params):
+    def total_energy_fn(body: rigid_body.RigidBody):
 
         # add energy function for everyting that's not catalyst <-> substrate
         non_nn_energy = icos_energy_fn(body)
 
         # get COMs of the rigid body
-        nn_com_points = rb_to_com_points(body)
+        nn_com_points = rb_to_com_points(body, spider_shape)
         # get catalyst <-> substrate energy from neural network
-        nn_energy = catalyst_substrate_energy_fn(params, nn_com_points)
+        nn_energy = catalyst_substrate_energy_fn(nn_params, nn_com_points)
 
         # sum the two
         return non_nn_energy + nn_energy
@@ -311,10 +327,10 @@ def run_dynamics_nn_helper(
     init_fn, step_fn = simulate.nvt_langevin(total_energy_fn, shift_fn, dt, kT, gamma=gamma_rb)
     step_fn = jit(step_fn)
     mass = shape.mass(shape_species)
-    state = init_fn(key, initial_rigid_body, mass=mass, params=init_params)
+    state = init_fn(key, initial_rigid_body, mass=mass)
 
     # do_step = lambda state, t: (step_fn(state), 0.)#state.position) #uncomment to return trajectory
-    do_step = lambda state, t: (step_fn(state, params=init_params), state.position)
+    do_step = lambda state, t: (step_fn(state), state.position)
     do_step = jit(do_step)
 
     # state, traj = lax.scan(outer_step, state, jnp.arange(num_outer_steps))
@@ -322,7 +338,9 @@ def run_dynamics_nn_helper(
     return state.position, traj
 
 def run_dynamics_nn(
-        initial_rigid_body, spider_shape, shape, key,
+        initial_rigid_body,
+        catalyst_substrate_energy_fn, nn_params,
+        spider_shape, shape, key,
 
         # Parameters for the non-NN interaction
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
@@ -331,7 +349,8 @@ def run_dynamics_nn(
         kT=1.0, dt=1e-3, num_steps=100, gamma=0.1
 ):
     state, traj = run_dynamics_nn_helper(
-        initial_rigid_body, spider_shape, shape, key,
+        initial_rigid_body, catalyst_substrate_energy_fn, nn_params,
+        spider_shape, shape, key,
         icosahedron_vertex_radius, spider_leg_diameter, spider_head_diameter,
         morse_ii_eps=morse_ii_eps, morse_ii_alpha=morse_ii_alpha, soft_eps=soft_eps,
         kT=kT, dt=dt, num_steps=num_steps, gamma=gamma)
@@ -415,8 +434,21 @@ if __name__ == "__main__":
 
     if MODE == "neural-network":
         start = time.time()
+        """
+        spider_shape = rigid_body.RigidPointUnion(
+            spider_shape.points,
+            spider_shape.masses,
+            spider_shape.point_count,
+            spider_shape.point_offset
+        )
+        """
+        params_dict = get_init_params_spider_shape(mode="fixed", key=None)
+        init_nn_params, nn_energy_fn = get_init_params_nn(spider_shape, initial_rigid_body, key)
+        params_dict["nn"] = init_nn_params
+
         fin_state, traj = run_dynamics_nn(
-            initial_rigid_body, spider_shape, both_shapes, key,
+            initial_rigid_body, nn_energy_fn, params_dict['nn'],
+            spider_shape, both_shapes, key,
             icosahedron_vertex_radius=SHELL_VERTEX_RADIUS,
             spider_leg_diameter=leg_diameter, spider_head_diameter=head_diameter,
             num_steps=100, gamma=10.0)
