@@ -19,7 +19,8 @@ def inequality_constraints(params):
     return 0.0
 
 def problem(params):
-    return loss(params), equality_constraint(params), inequality_constraints(params)
+    # return loss(params), equality_constraint(params), inequality_constraints(params)
+    return loss(params), jnp.sum(params) - FIXED_SUM, inequality_constraints(params)
 
 
 if __name__ == "__main__":

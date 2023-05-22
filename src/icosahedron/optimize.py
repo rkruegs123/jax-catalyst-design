@@ -111,14 +111,14 @@ def train(args):
     params = get_init_params(mode=init_method, key=key)
     opt_state = optimizer.init(params)
 
-    eval_params_fn = get_eval_params_fn(soft_eps=100000.0, kT=kT, dt=1e-3,
-                                        # num_inner_steps=n_inner_steps, num_outer_steps=n_outer_steps,
-                                        num_steps=n_steps,
-                                        morse_ii_eps=10.0, morse_ii_alpha=5.0,
-                                        initial_separation_coeff=initial_separation_coefficient,
-                                        gamma=gamma,
-                                        min_com_dist=min_com_dist, max_com_dist=max_com_dist,
-                                        eta=eta) # FIXME: separation coefficient is hardcoded for now
+    eval_params_fn = get_eval_params_fn(
+        soft_eps=100000.0, kT=kT, dt=1e-3,
+        num_steps=n_steps,
+        morse_ii_eps=10.0, morse_ii_alpha=5.0,
+        initial_separation_coeff=initial_separation_coefficient,
+        gamma=gamma,
+        min_com_dist=min_com_dist, max_com_dist=max_com_dist,
+        eta=eta)
     grad_eval_params_fn = jit(value_and_grad(eval_params_fn))
     batched_grad_fn = jit(vmap(grad_eval_params_fn, in_axes=(None, 0)))
 
