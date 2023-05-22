@@ -2,6 +2,9 @@
 
 Code for designing **spider catalysts**
 
+## May 22, 2023
+- we left off working on writing the equality constraint for which we got the energy function. We need to finish writing the equality constraint, keeping tolerances in the back of our mind. We don't think it has to be it's own function.
+
 ## May 16, 2023
 Have the forwrad pass working iwth a simple graph neural network. Next time, we are gonig to optimize over it. The following are some basic notes re. what we'll have to change to optimiez over it:
 - The graph network must be initizlied so that it has the right input shape. We should only do this once. So, unlike the previous neergy function case, we will need some type of "getter"/factory for the run dynamics function that will be responsible for initializing the network with the appropriate shape
