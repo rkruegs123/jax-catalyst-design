@@ -1,43 +1,24 @@
 # Note: this file is going to be a mess. Lot's of code copied from `optimize.py`
-
-
 import pdb
-
+import time
 import numpy as onp
+
 import jax.numpy as jnp
-from jax import jit, jacrev, grad
+from jax import random, jit, vmap, jacrev
+from jax.config import config
+config.update('jax_enable_x64', True)
 
+from common import SHELL_VERTEX_RADIUS, get_init_params, VERTEX_TO_BIND
+import mod_rigid_body as rigid_body
 import modified_ipopt as mipopt
-
-
-FIXED_SUM = 10.0
-
-def loss(params):
-    return jnp.var(params)
-
-def equality_constraint(params):
-    return jnp.sum(params) - FIXED_SUM
-
-def inequality_constraints(params):
-    return 0.0
-
-def problem(params):
-    return loss(params), equality_constraint(params), inequality_constraints(params)
-
-
-
-
-
-
-
-
-
-
+from simulation import run_dynamics, initialize_system, loss_fn
+import simulation
 
 
 MORSE_II_EPS = 10.0
 MORSE_II_ALPHA = 5.0
 SOFT_EPS = 100000.0
+TARGET_ENERGY = 264.0
 
 def get_sim_fn(
         soft_eps, kT, dt,
@@ -125,17 +106,37 @@ def train(args):
         return jnp.mean(losses)
 
 
-    # 2.) Define our equality constrain
+    """
+    Takes in a bound state which is a RigidBody with N=13 elements.
+    The last element is the COM of the spider/catalyst, and VERTEX_TO_BIND
+    is the index of the vertex we are going to pull off.
 
-    def equality_constraint(fin_states):
-        raise NotImplementedError
+    In our equality constraint, we assume abduction (with the expectation
+    that the fitness landscape, under this constraint, will be biased
+    towards such behavior.
 
-    def inequality_constraints(fin_states):
-        return 0.0
+    So, to get an unbound state, we simply add a fixed z-value
+    to both the spider and the vertex to bind.
+    """
+    @jit
+    def get_unbound_state(bound_state, z_offset=10.0):
+        new_spider_pos = bound_state.center[-1] + z_offset
+        new_bound_vertex_pos = bound_state.center[VERTEX_TO_BIND] + z_offset
 
+        unbound_state_center = bound_state.center.at[-1].set(new_spider_pos)
+        unbound_state_center = unbound_state_center.at[vertex_to_bind].set(new_bound_vertex_pos)
+
+        unbound_state = rigid_body.RigidBody(
+            center=unbound_state_center,
+            orientation=bound_state.orientation)
+
+        return unbound_state
+    mapped_get_unbound_states = jit(vmap(get_unbound_state, (0, None)))
+
+    @jit
     def problem(params):
 
-        # (i) Prepare
+        # (i) Unpack our arguments
         spider_base_radius = params['spider_base_radius']
         spider_head_height = params['spider_head_height']
         spider_leg_diameter = params['spider_leg_diameter']
@@ -148,7 +149,7 @@ def train(args):
         morse_head_alpha = params['morse_head_alpha']
 
 
-        ## Have to first get our energy function
+        # (ii) Construct our energy function
         _, tmp_both_shapes, _, _ = initialize_system(
             spider_base_radius, spider_head_height,
             spider_leg_diameter, initial_separation_coeff=initial_separation_coeff)
@@ -159,15 +160,52 @@ def train(args):
             morse_leg_eps=morse_leg_eps, morse_head_eps=morse_head_eps,
             morse_ii_alpha=MORSE_II_ALPHA, morse_leg_alpha=morse_leg_alpha,
             morse_head_alpha=morse_head_alpha,
-            soft_eps=SOFT_EPS, tmp_both_shapes)
+            soft_eps=SOFT_EPS, shape=tmp_both_shapes)
         leg_energy_fn = leg.get_leg_energy_fn(soft_eps, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), shape, shape_species)
         energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
+        energy_fn = jit(energy_fn)
+        mapped_energy_fn = vmap(energy_fn)
 
 
-        # (ii) Do the thing
-        fin_states = mapped_sim_fn(params, batch_keys)
-        return avg_loss_fn(fin_states), FIXME, 0.0
+        # (iii) Compute the loss
+        fin_states = mapped_sim_fn(params, batch_keys) # Assumed to be bound
 
+        # (iv) Compute our equality constraint
+        # Note: We begin by computing the mean energy difference. The potential
+        # issue here is that high variance values could lead to the desired mean.
+        bound_energies = mapped_energy_fn(fin_states)
+        mean_bound_energy = jnp.mean(bound_energies)
+
+        unbound_states = mapped_get_unbound_state(fin_states, 10.0)
+        unbound_energies = mapped_energy_fn(unbound_states)
+        mean_unbound_energy = jnp.mean(unbound_energies)
+
+        eq_constraint = mean_unbound_energy - mean_bound_energy - TARGET_ENERGY
+
+        return avg_loss_fn(fin_states), eq_constraint, 0.0
+
+    # Do the optimization
+    obj_jit = mipopt.ObjectiveWrapper(jit(problem))
+    grad_reverse = mipopt.GradWrapper(jit(jacrev(problem, argnums=0)))
+
+    max_iter = 2
+    options = {
+        'max_iter': max_iter,
+        'disp': 5, 'tol': 1e-6,
+        'print_timing_statistics': 'yes'} #,'acceptable_constr_viol_tol':1e-1,'acceptable_obj_change_tol':1e-3}
+
+    cons = [{'type': 'eq', 'fun': obj_jit.const, 'jac': grad_reverse.const},
+            {'type': 'ineq', 'fun': obj_jit.ineqconst, 'jac': grad_reverse.ineqconst}]
+
+    bounds = None
+    traj_iter = None
+    # Note that params is a dictionary
+    res, trajectory, objective_list, grad_list = mipopt.minimize_ipopt(
+        obj_jit, x0=params,
+        jac=grad_reverse, constraints=cons,
+        bounds=bounds, options=options, traj_iter=traj_iter
+    )
+    pdb.set_trace()
 
 
 
@@ -222,7 +260,6 @@ if __name__ == "__main__":
 
     obj_jit = mipopt.ObjectiveWrapper(jit(problem))
     grad_reverse = mipopt.GradWrapper(jit(jacrev(problem, argnums=0)))
-    # grad_reverse = mipopt.GradWrapper(jit(grad(problem, argnums=0)))
 
     max_iter = 1000
     options = {'max_iter': max_iter,
