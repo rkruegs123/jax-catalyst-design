@@ -2,6 +2,7 @@
 import pdb
 import time
 import numpy as onp
+import argparse
 
 import jax.numpy as jnp
 from jax import random, jit, vmap, jacrev
@@ -11,8 +12,9 @@ config.update('jax_enable_x64', True)
 from common import SHELL_VERTEX_RADIUS, get_init_params, VERTEX_TO_BIND
 import mod_rigid_body as rigid_body
 import modified_ipopt as mipopt
-from simulation import run_dynamics, initialize_system, loss_fn
+from simulation import run_dynamics, initialize_system, loss_fn, shape_species
 import simulation
+import leg
 
 
 MORSE_II_EPS = 10.0
@@ -124,7 +126,7 @@ def train(args):
         new_bound_vertex_pos = bound_state.center[VERTEX_TO_BIND] + z_offset
 
         unbound_state_center = bound_state.center.at[-1].set(new_spider_pos)
-        unbound_state_center = unbound_state_center.at[vertex_to_bind].set(new_bound_vertex_pos)
+        unbound_state_center = unbound_state_center.at[VERTEX_TO_BIND].set(new_bound_vertex_pos)
 
         unbound_state = rigid_body.RigidBody(
             center=unbound_state_center,
@@ -152,7 +154,7 @@ def train(args):
         # (ii) Construct our energy function
         _, tmp_both_shapes, _, _ = initialize_system(
             spider_base_radius, spider_head_height,
-            spider_leg_diameter, initial_separation_coeff=initial_separation_coeff)
+            spider_leg_diameter, initial_separation_coeff=initial_separation_coefficient)
         base_energy_fn = simulation.get_energy_fn(
             SHELL_VERTEX_RADIUS, spider_leg_diameter,
             spider_head_diameter,
@@ -161,7 +163,7 @@ def train(args):
             morse_ii_alpha=MORSE_II_ALPHA, morse_leg_alpha=morse_leg_alpha,
             morse_head_alpha=morse_head_alpha,
             soft_eps=SOFT_EPS, shape=tmp_both_shapes)
-        leg_energy_fn = leg.get_leg_energy_fn(soft_eps, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), shape, shape_species)
+        leg_energy_fn = leg.get_leg_energy_fn(SOFT_EPS, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), tmp_both_shapes, shape_species)
         energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
         energy_fn = jit(energy_fn)
         mapped_energy_fn = vmap(energy_fn)
@@ -176,7 +178,7 @@ def train(args):
         bound_energies = mapped_energy_fn(fin_states)
         mean_bound_energy = jnp.mean(bound_energies)
 
-        unbound_states = mapped_get_unbound_state(fin_states, 10.0)
+        unbound_states = mapped_get_unbound_states(fin_states, 10.0)
         unbound_energies = mapped_energy_fn(unbound_states)
         mean_unbound_energy = jnp.mean(unbound_energies)
 
@@ -206,6 +208,7 @@ def train(args):
         bounds=bounds, options=options, traj_iter=traj_iter
     )
     pdb.set_trace()
+    return res
 
 
 
@@ -215,10 +218,10 @@ def train(args):
 def get_argparse():
     parser = argparse.ArgumentParser(description="Simulation for spider catalyst design")
 
-    parser.add_argument('--batch-size', type=int, default=3, help="Num. batches for each round of gradient descent")
+    parser.add_argument('--batch-size', type=int, default=2, help="Num. batches for each round of gradient descent")
     parser.add_argument('--n-iters', type=int, default=1, help="Num. iterations of gradient descent")
     parser.add_argument('-k', '--key-seed', type=int, default=0, help="Random key")
-    parser.add_argument('--n-steps', type=int, default=5000, help="Num. steps per simulation")
+    parser.add_argument('--n-steps', type=int, default=1000, help="Num. steps per simulation")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
     parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
     parser.add_argument('-d', '--data-dir', type=str,
@@ -244,45 +247,17 @@ if __name__ == "__main__":
 
     print(f"About to constrain our optimization...")
     train(args)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    obj_jit = mipopt.ObjectiveWrapper(jit(problem))
-    grad_reverse = mipopt.GradWrapper(jit(jacrev(problem, argnums=0)))
-
-    max_iter = 1000
-    options = {'max_iter': max_iter,
-               'disp': 5, 'tol': 1e-12,
-               'print_timing_statistics': 'yes'} #,'acceptable_constr_viol_tol':1e-1,'acceptable_obj_change_tol':1e-3}
-
-
-    cons = [{'type': 'eq', 'fun': obj_jit.const, 'jac': grad_reverse.const},
-            {'type': 'ineq', 'fun': obj_jit.ineqconst, 'jac': grad_reverse.ineqconst}]
-
-
-    bounds = [
-        [onp.NINF, onp.inf],
-        [onp.NINF, onp.inf],
-        [onp.NINF, onp.inf],
-    ]
-
-    traj_iter = None
-    # parameters = jnp.array([1.0, 2.0, 7.0])
-    parameters = jnp.array([1.0, 2.0, 3.0])
-    res, trajectory, objective_list, grad_list = mipopt.minimize_ipopt(
-        obj_jit, x0=parameters,
-        jac=grad_reverse, constraints=cons,
-        bounds=bounds, options=options, traj_iter=traj_iter
-    )
     pdb.set_trace()
+
+
+
+
+
+
+
+
+
+
+
+
+
