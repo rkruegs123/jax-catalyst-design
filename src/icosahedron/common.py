@@ -246,10 +246,6 @@ def get_init_params(mode="fixed", key=None):
             'morse_leg_alpha': 1.0,
             # 'morse_head_alpha': 1.0
             'morse_head_alpha': 4.5
-            # 'morse_leg_eps': 0.0,
-            # 'morse_head_eps': 0.0,
-            # 'morse_leg_alpha': 0.0,
-            # 'morse_head_alpha': 0.0
         }
         return init_params
     elif mode == "random":
