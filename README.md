@@ -1,6 +1,18 @@
 # jax-catalyst-design
 
 Code for designing **spider catalysts**
+## Jun 2, 2023
+
+
+- original plan going into the day:
+  - The constrained opt code runs but loss doesn't decrease and the constraint isn't satisfied
+  - Next: rerun original optimization, use output from that optimization as initial params for constrained opt and use the measured binding energy from that as the constraint. confirm tthat the constraint is satisfied and the loss looks similar
+  - Once that works, change the constraint (bindign energy) slightly and rerun opt to see if we can satisfy the new constraint
+  - note: two more pincipled tests of the constrained optimization -- (i) run without any constraints, make sure we get the same results as grad. descent, about. (ii) use output from grad descent (with computed energy difference) and make sure that both loss doesn't really decrease any more, *and* constraint is satisfied. Baby step to number (iii) will be starting from (ii) but subtly changing the target energy difference
+
+- after today, we realized that normal optimization doesn'tw rok on the constrained-opt branch. We obviously need to fix this -- it's representative of a more fundamentla issue. Can dot he following:
+  - rerun optimization on the main branch. If it doesn't work, maybe som eweird thing in the loss function? Or sometihng we changed with th eneural netwwork?
+  - check differences with constrained-opt branch.
 
 ## May 22, 2023
 - we left off working on writing the equality constraint for which we got the energy function. We need to finish writing the equality constraint, keeping tolerances in the back of our mind. We don't think it has to be it's own function.

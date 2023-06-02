@@ -28,14 +28,31 @@ from jax_md import util
 import optax
 
 import common
-from common import SHELL_VERTEX_RADIUS, dtype, get_init_params
+from common import SHELL_VERTEX_RADIUS, dtype, get_init_params, VERTEX_TO_BIND
 import simulation
-from simulation import run_dynamics, initialize_system, loss_fn
+from simulation import run_dynamics, initialize_system, loss_fn, shape_species
+import mod_rigid_body as rigid_body
+import leg
 
 
+
+
+@jit
+def get_unbound_state(bound_state, z_offset=20.0):
+    new_spider_pos = bound_state.center[-1] + z_offset
+    new_bound_vertex_pos = bound_state.center[VERTEX_TO_BIND] + z_offset
+    
+    unbound_state_center = bound_state.center.at[-1].set(new_spider_pos)
+    unbound_state_center = unbound_state_center.at[VERTEX_TO_BIND].set(new_bound_vertex_pos)
+    
+    unbound_state = rigid_body.RigidBody(
+        center=unbound_state_center,
+        orientation=bound_state.orientation)
+
+    return unbound_state
+mapped_get_unbound_states = jit(vmap(get_unbound_state, (0, None)))
 
 # fixme: we're not passing a key here but run_dynamics takes one
-
 def get_eval_params_fn(soft_eps, kT, dt,
                        # num_inner_steps, num_outer_steps,
                        num_steps,
@@ -75,7 +92,40 @@ def get_eval_params_fn(soft_eps, kT, dt,
         )
         # v_loss_fn = vmap(loss_fn, (0, None, None, None))
         # return jnp.mean(v_loss_fn(traj, eta, min_com_dist, max_com_dist))
-        return loss_fn(fin_state, eta, min_com_dist, max_com_dist)
+
+
+
+
+
+
+        # Do the gross thing that we do in the constrained optimization -- i.e. construct an energy function (copying work from run dynamics) and comput ethe diff betwen the bound an dunbound states
+        # Note: the correct thing to do would be to construc tna energy funciton, then pass said energy function to run dynamics
+        unbound_state = get_unbound_state(fin_state)
+
+        _, tmp_both_shapes, _, _ = initialize_system(
+            spider_base_radius, spider_head_height,
+            spider_leg_diameter, initial_separation_coeff=initial_separation_coeff)
+        base_energy_fn = simulation.get_energy_fn(
+            SHELL_VERTEX_RADIUS, spider_leg_diameter,
+            spider_head_diameter,
+            morse_ii_eps=morse_ii_eps,
+            morse_leg_eps=morse_leg_eps, morse_head_eps=morse_head_eps,
+            morse_ii_alpha=morse_ii_alpha, morse_leg_alpha=morse_leg_alpha,
+            morse_head_alpha=morse_head_alpha,
+            soft_eps=soft_eps, shape=tmp_both_shapes)
+        leg_energy_fn = leg.get_leg_energy_fn(soft_eps, (spider_leg_diameter/2 + SHELL_VERTEX_RADIUS), tmp_both_shapes, shape_species)
+        energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
+        energy_fn = jit(energy_fn)
+
+        bound_energy = energy_fn(fin_state) # fin_state is assumed to be bound
+        unbound_energy = energy_fn(unbound_state)
+
+
+
+
+
+
+        return loss_fn(fin_state, eta, min_com_dist, max_com_dist), (bound_energy, unbound_energy)
         # return loss_fn(fin_state, eta=eta)
     return eval_params
 
@@ -119,7 +169,7 @@ def train(args):
         gamma=gamma,
         min_com_dist=min_com_dist, max_com_dist=max_com_dist,
         eta=eta)
-    grad_eval_params_fn = jit(value_and_grad(eval_params_fn))
+    grad_eval_params_fn = jit(value_and_grad(eval_params_fn, has_aux=True))
     batched_grad_fn = jit(vmap(grad_eval_params_fn, in_axes=(None, 0)))
 
 
@@ -156,7 +206,7 @@ def train(args):
         batch_keys = random.split(iter_key, batch_size)
         # val, grads = grad_eval_params_fn(params, iter_key)
         start = time.time()
-        vals, grads = batched_grad_fn(params, batch_keys)
+        (vals, (bound_energy, unbound_energy)), grads = batched_grad_fn(params, batch_keys) # states assumed to be bound
         end = time.time()
 
         avg_grads = {k: jnp.mean(grads[k], axis=0) for k in grads}
@@ -164,6 +214,9 @@ def train(args):
         print(f"Batch losses: {vals}")
         print(f"Avg. loss: {onp.mean(vals)}")
         print(f"Gradient calculation time: {onp.round(end - start, 2)}")
+        print(f"Bound energy: {bound_energy}")
+        print(f"Unbound energy: {unbound_energy}")
+        print(f"Energy difference: {unbound_energy - bound_energy}")
 
         '''
         avg_grads = dict()
