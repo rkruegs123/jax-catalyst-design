@@ -152,12 +152,51 @@ def get_icosahedron(key, displacement_fn, shift_fn, icosahedron_vertex_radius,
                     vertex_mass=1.0, patch_mass=1e-8, obj_dir="obj/"):
 
     obj_dir = Path(obj_dir)
-    icosahedron_rb_path = obj_dir / "icosahedron_rb.pkl"
-    vertex_shape_path = obj_dir / "vertex_shape.pkl"
-    if icosahedron_rb_path.exists() and vertex_shape_path.exists():
+    # icosahedron_rb_path = obj_dir / "icosahedron_rb.pkl"
+    # vertex_shape_path = obj_dir / "vertex_shape.pkl"
+    icosahedron_rb_center_path = obj_dir / "icosahedron_rb_center.npy"
+    icosahedron_rb_orientation_vec_path = obj_dir / "icosahedron_rb_orientation_vec.npy"
+    vertex_shape_points_path = obj_dir / "vertex_shape_points.npy"
+    vertex_shape_masses_path = obj_dir / "vertex_shape_masses.npy"
+    vertex_shape_point_count_path = obj_dir / "vertex_shape_point_count.npy"
+    vertex_shape_point_offset_path = obj_dir / "vertex_shape_point_offset.npy"
+    vertex_shape_point_species_path = obj_dir / "vertex_shape_point_species.npy"
+    vertex_shape_point_radius_path = obj_dir / "vertex_shape_point_radius.npy"
+
+    icosahedron_paths_exist = icosahedron_rb_center_path.exists() and icosahedron_rb_orientation_vec_path.exists()
+    vertex_shape_paths_exist = vertex_shape_points_path.exists() and vertex_shape_masses_path.exists() \
+                               and vertex_shape_point_count_path.exists() and vertex_shape_point_offset_path.exists() \
+                               and vertex_shape_point_species_path.exists() and vertex_shape_point_radius_path.exists()
+
+
+
+    if icosahedron_paths_exist and vertex_shape_paths_exist:
         print(f"Loading minimized icosahedron rigid body and vertex shape from data directory: {obj_dir}")
-        icosahedron_rigid_body = pickle.load(open(icosahedron_rb_path, "rb"))
-        vertex_shape = pickle.load(open(vertex_shape_path, "rb"))
+        # icosahedron_rigid_body = pickle.load(open(icosahedron_rb_path, "rb"))
+
+        icosahedron_rigid_body_center = jnp.load(icosahedron_rb_center_path)
+        icosahedron_rigid_body_orientation_vec = jnp.load(icosahedron_rb_orientation_vec_path)
+        icosahedron_rigid_body = rigid_body.RigidBody(
+            center=icosahedron_rigid_body_center,
+            orientation=rigid_body.Quaternion(vec=icosahedron_rigid_body_orientation_vec))
+
+        # vertex_shape = pickle.load(open(vertex_shape_path, "rb"))
+        vertex_shape_points = jnp.load(vertex_shape_points_path)
+        vertex_shape_masses = jnp.load(vertex_shape_masses_path)
+        vertex_shape_point_count = jnp.load(vertex_shape_point_count_path)
+        vertex_shape_point_offset = jnp.load(vertex_shape_point_offset_path)
+        vertex_shape_point_species = jnp.load(vertex_shape_point_species_path)
+        vertex_shape_point_radius = jnp.load(vertex_shape_point_radius_path)
+
+        vertex_shape = rigid_body.RigidPointUnion(
+            points=vertex_shape_points,
+            masses=vertex_shape_masses,
+            point_count=vertex_shape_point_count,
+            point_offset=vertex_shape_point_offset,
+            point_species=vertex_shape_point_species,
+            point_radius=vertex_shape_point_radius
+        )
+
         return icosahedron_rigid_body, vertex_shape, None
 
     icosahedron_rigid_body_unminimized, vertex_shape = get_unminimized_icosahedron(displacement_fn, icosahedron_vertex_radius,
@@ -168,8 +207,26 @@ def get_icosahedron(key, displacement_fn, shift_fn, icosahedron_vertex_radius,
 
     # Save the stuff
     print(f"Saving minimized icosahedron rigid body and vertex shape to data directory: {obj_dir}")
-    pickle.dump(icosahedron_rigid_body, open(icosahedron_rb_path, "wb"))
-    pickle.dump(vertex_shape, open(vertex_shape_path, "wb"))
+    # pickle.dump(icosahedron_rigid_body, open(icosahedron_rb_path, "wb"))
+    # pickle.dump(vertex_shape, open(vertex_shape_path, "wb"))
+
+    icosahedron_rigid_body_center = icosahedron_rigid_body.center
+    icosahedron_rigid_body_orientation_vec = icosahedron_rigid_body.orientation.vec
+    jnp.save(icosahedron_rb_center_path, icosahedron_rigid_body_center, allow_pickle=False)
+    jnp.save(icosahedron_rb_orientation_vec_path, icosahedron_rigid_body_orientation_vec, allow_pickle=False)
+
+    vertex_shape_points = vertex_shape.points
+    vertex_shape_masses = vertex_shape.masses
+    vertex_shape_point_count = vertex_shape.point_count
+    vertex_shape_point_offset = vertex_shape.point_offset
+    vertex_shape_point_species = vertex_shape.point_species
+    vertex_shape_point_radius = vertex_shape.point_radius
+    jnp.save(vertex_shape_points_path, vertex_shape_points, allow_pickle=False)
+    jnp.save(vertex_shape_masses_path, vertex_shape_masses, allow_pickle=False)
+    jnp.save(vertex_shape_point_count_path, vertex_shape_point_count, allow_pickle=False)
+    jnp.save(vertex_shape_point_offset_path, vertex_shape_point_offset, allow_pickle=False)
+    jnp.save(vertex_shape_point_species_path, vertex_shape_point_species, allow_pickle=False)
+    jnp.save(vertex_shape_point_radius_path, vertex_shape_point_radius, allow_pickle=False)
 
     return icosahedron_rigid_body, vertex_shape, minimization_traj
 
