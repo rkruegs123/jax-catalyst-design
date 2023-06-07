@@ -3,7 +3,6 @@
 Code for designing **spider catalysts**
 ## Jun 2, 2023
 
-
 - original plan going into the day:
   - The constrained opt code runs but loss doesn't decrease and the constraint isn't satisfied
   - Next: rerun original optimization, use output from that optimization as initial params for constrained opt and use the measured binding energy from that as the constraint. confirm tthat the constraint is satisfied and the loss looks similar
