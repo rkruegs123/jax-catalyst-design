@@ -149,7 +149,7 @@ def minimize_icosahedron(displacement_fn, shift_fn, initial_rigid_body, key, ver
 
 
 def get_icosahedron(key, displacement_fn, shift_fn, icosahedron_vertex_radius,
-                    vertex_mass=1.0, patch_mass=1e-8, obj_dir="obj/"):
+                    vertex_mass=1.0, patch_mass=1e-8, obj_dir="obj/", force=False):
 
     obj_dir = Path(obj_dir)
     # icosahedron_rb_path = obj_dir / "icosahedron_rb.pkl"
@@ -170,7 +170,7 @@ def get_icosahedron(key, displacement_fn, shift_fn, icosahedron_vertex_radius,
 
 
 
-    if icosahedron_paths_exist and vertex_shape_paths_exist:
+    if not force and icosahedron_paths_exist and vertex_shape_paths_exist:
         print(f"Loading minimized icosahedron rigid body and vertex shape from data directory: {obj_dir}")
         # icosahedron_rigid_body = pickle.load(open(icosahedron_rb_path, "rb"))
 
