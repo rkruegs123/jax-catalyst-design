@@ -105,7 +105,6 @@ class ComplexInfo:
         soft_sphere_sigma = jnp.where(soft_sphere_sigma == 0.0, 1e-5, soft_sphere_sigma) # avoids nans
 
 
-
         pair_energy_soft = energy.soft_sphere_pair(
             self.displacement_fn,
             # species=self.n_point_species,

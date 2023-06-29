@@ -2,6 +2,10 @@
 
 Code for designing **spider catalysts**
 
+## June 29, 2023
+
+Note for today: we are not adding any leg energy function for now
+
 ## May 16, 2023
 Have the forwrad pass working iwth a simple graph neural network. Next time, we are gonig to optimize over it. The following are some basic notes re. what we'll have to change to optimiez over it:
 - The graph network must be initizlied so that it has the right input shape. We should only do this once. So, unlike the previous neergy function case, we will need some type of "getter"/factory for the run dynamics function that will be responsible for initializing the network with the appropriate shape
