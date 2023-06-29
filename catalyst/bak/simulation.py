@@ -97,7 +97,6 @@ def get_energy_fn(icosahedron_vertex_radius, spider_leg_diameter, spider_head_di
     zero_interaction = jnp.zeros((n_point_species, n_point_species))
 
 
-
     morse_eps = zero_interaction.at[1, 1].set(morse_ii_eps) #icosahedral patches attract eachother
 
     """
@@ -412,7 +411,8 @@ def loss_fn(body, eta, min_com_dist=3.4, max_com_dist=4.25):
 
 if __name__ == "__main__":
 
-    MODE = "neural-network"
+    # MODE = "neural-network"
+    MODE = "not-neural-network"
 
 
     key = random.PRNGKey(0)
