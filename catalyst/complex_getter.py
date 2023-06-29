@@ -166,7 +166,7 @@ class TestComplexInfo(unittest.TestCase):
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn,
             spider_base_radius=5.0, spider_head_height=4.0,
-            spider_base_particle_radius=0.5, spider_head_particle_radius=-.5,
+            spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
         return
@@ -177,7 +177,7 @@ class TestComplexInfo(unittest.TestCase):
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn,
             spider_base_radius=5.0, spider_head_height=4.0,
-            spider_base_particle_radius=0.5, spider_head_particle_radius=-.5,
+            spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
         energy_fn = complex_info.get_energy_fn(
