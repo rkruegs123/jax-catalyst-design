@@ -11,6 +11,7 @@ from jax_md import util
 
 from catalyst.checkpoint import checkpoint_scan
 from catalyst.complex_getter import ComplexInfo
+from catalyst.utils import get_body_frame_positions
 
 from jax.config import config
 config.update('jax_enable_x64', True)
@@ -60,6 +61,25 @@ class TestSimulate(unittest.TestCase):
         fin_state, traj = simulation(
             complex_info, energy_fn, num_steps=100,
             gamma=50.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
+
+        # Write final states to file -- visualize with `java -Xmx4096m -jar injavis.jar <name>.pos`
+
+        ## Shell
+        # fin_shell_rb = fin_state[:12]
+        # shell_lines = complex_info.shell_info.body_to_injavis_lines(fin_shell_rb, box_size=30.0)
+        # with open('shell_state.pos', 'w+') as of:
+        #     of.write('\n'.join(shell_lines))
+
+        ## Spider
+        # fin_spider_rb = fin_state[-1]
+        # spider_lines = complex_info.spider_info.body_to_injavis_lines(fin_spider_rb, box_size=30.0)
+        # with open('spider_state.pos', 'w+') as of:
+        #     of.write('\n'.join(spider_lines))
+
+        ## Complex
+        # complex_lines = complex_info.body_to_injavis_lines(fin_state, box_size=30.0)
+        # with open('complex_state.pos', 'w+') as of:
+        #     of.write('\n'.join(complex_lines))
 
 
 

@@ -10,6 +10,7 @@ from jax_md import rigid_body, energy, space # FIXME: switch to mod_rigid_body a
 
 from catalyst.spider_getter import SpiderInfo
 from catalyst.shell_getter import ShellInfo
+from catalyst import utils
 
 from jax.config import config
 config.update('jax_enable_x64', True)
@@ -37,6 +38,11 @@ class ComplexInfo:
         self.spider_mass_err = spider_mass_err
 
         self.load()
+
+    def split_body(self, body):
+        spider_body = body[-1]
+        shell_body = body[:12]
+        return spider_body, shell_body
 
     def load(self):
         self.shell_info = ShellInfo(self.displacement_fn) # note: won't change
@@ -146,8 +152,7 @@ class ComplexInfo:
             soft_eps, morse_r_onset, morse_r_cutoff
         )
         def complex_energy_fn(body: rigid_body.RigidBody, **kwargs):
-            spider_body = body[-1]
-            shell_body = body[:12]
+            spider_body, shell_body = self.split_body(body)
             return shell_energy_fn(shell_body, **kwargs) \
                 + spider_energy_fn(spider_body, **kwargs) \
                 # + shell_spider_interaction_energy_fn(body, **kwargs) # FIXME: finish this shell_spider_interaction_energy_fn thing
@@ -155,9 +160,22 @@ class ComplexInfo:
 
         return complex_energy_fn
 
-    def get_body_frame_positions(self):
-        body_pos = vmap(rigid_body.transform, (0, None))(self.rigid_body, self.shape)
-        return body_pos
+    def get_body_frame_positions(self, body):
+        return utils.get_body_frame_positions(body, self.shape)
+
+    def body_to_injavis_lines(
+            self, body, box_size,
+            shell_patch_radius=0.5, shell_vertex_color="43a5be", shell_patch_color="4fb06d",
+            spider_head_color="ff0000", spider_base_color="1c1c1c"):
+
+        spider_body, shell_body = self.split_body(body)
+        spider_injavis_lines = self.spider_info.body_to_injavis_lines(
+            spider_body, box_size, spider_head_color, spider_base_color)
+        shell_injavis_lines = self.shell_info.body_to_injavis_lines(
+            shell_body, box_size, shell_patch_radius, shell_vertex_color, shell_patch_color)
+        return spider_injavis_lines + shell_injavis_lines
+
+
 
 class TestComplexInfo(unittest.TestCase):
     def _test_init(self):

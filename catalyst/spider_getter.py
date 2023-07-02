@@ -7,6 +7,7 @@ from jax import vmap, lax
 import jax.numpy as jnp
 from jax_md import rigid_body # FIXME: switch to mod_rigid_body after initial testing
 
+from catalyst import utils
 
 class SpiderInfo:
     def __init__(self, base_radius, head_height,
@@ -51,9 +52,35 @@ class SpiderInfo:
     def get_energy_fn(self):
         return lambda R, **kwargs: 0.0
 
-    def get_body_frame_positions(self):
-        body_pos = vmap(rigid_body.transform, (0, None))(self.rigid_body, self.shape)
-        return body_pos
+    def get_body_frame_positions(self, body):
+        return rigid_body.transform(body, self.shape)
+
+    # note: body is only a single state, not a trajectory
+    def body_to_injavis_lines(
+            self, body, box_size,
+            head_color="ff0000", base_color="1c1c1c"):
+
+        assert(len(body.center.shape) == 1)
+        body_pos = self.get_body_frame_positions(body)
+
+        assert(len(body_pos.shape) == 2)
+        assert(body_pos.shape[0] == 6)
+        assert(body_pos.shape[1] == 3)
+
+        box_def = f"boxMatrix {box_size} 0 0 0 {box_size} 0 0 0 {box_size}"
+        head_def = f"def H \"sphere {self.head_particle_radius*2} {head_color}\""
+        base_def = f"def B \"sphere {self.base_particle_radius*2} {base_color}\""
+
+        head_pos = body_pos[-1]
+        head_line = f"H {head_pos[0]} {head_pos[1]} {head_pos[2]}"
+        all_lines = [box_def, head_def, base_def, head_line]
+
+        for base_idx in range(5):
+            base_pos = body_pos[base_idx]
+            base_line = f"B {base_pos[0]} {base_pos[1]} {base_pos[2]}"
+            all_lines.append(base_line)
+
+        return all_lines
 
 
 class TestSpiderInfo(unittest.TestCase):

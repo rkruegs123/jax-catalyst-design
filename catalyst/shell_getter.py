@@ -9,6 +9,7 @@ from jax_md import rigid_body, energy, space
 from jax.config import config
 config.update('jax_enable_x64', True)
 
+from catalyst import utils
 
 class ShellInfo:
     def __init__(self, displacement_fn, obj_dir="obj/"):
@@ -77,9 +78,8 @@ class ShellInfo:
             self.run_minimization()
 
 
-    def get_body_frame_positions(self):
-        body_pos = vmap(rigid_body.transform, (0, None))(self.rigid_body, self.vertex_shape) # 12x6x3
-        return body_pos
+    def get_body_frame_positions(self, body):
+        return utils.get_body_frame_positions(body, self.vertex_shape).reshape(-1, 3)
 
     def get_energy_fn(self, morse_ii_eps=10.0, morse_ii_alpha=5.0, soft_eps=10000.0,
                       morse_r_onset=10.0, morse_r_cutoff=12.0
@@ -118,13 +118,46 @@ class ShellInfo:
 
         return energy_fn
 
+    # note: body is only a single state, not a trajectory
+    def body_to_injavis_lines(
+            self, body, box_size,
+            patch_radius=0.5,
+            vertex_color="43a5be", patch_color="4fb06d"):
+
+        assert(len(body.center.shape) == 2)
+        body_pos = self.get_body_frame_positions(body)
+
+        assert(len(body_pos.shape) == 2)
+        assert(body_pos.shape[0] == 6 * 12)
+        assert(body_pos.shape[1] == 3)
+
+        box_def = f"boxMatrix {box_size} 0 0 0 {box_size} 0 0 0 {box_size}"
+        vertex_def = f"def V \"sphere {self.vertex_radius*2} {vertex_color}\""
+        patch_def = f"def P \"sphere {patch_radius*2} {patch_color}\""
+
+        position_lines = list()
+        for num_vertex in range(12):
+            vertex_start_idx = num_vertex*6
+
+            # vertex center
+            vertex_center_pos = body_pos[vertex_start_idx]
+            vertex_line = f"V {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
+            position_lines.append(vertex_line)
+
+            for num_patch in range(5):
+                patch_pos = body_pos[vertex_start_idx+num_patch+1]
+                patch_line = f"P {patch_pos[0]} {patch_pos[1]} {patch_pos[2]}"
+                position_lines.append(patch_line)
+
+        all_lines = [box_def, vertex_def, patch_def] + position_lines + ["eof"]
+        return all_lines
 
 
 class TestShellInfo(unittest.TestCase):
     def test_final_configuration(self):
         displacement_fn, _ = space.free()
         shell_info = ShellInfo(displacement_fn)
-        body_pos = shell_info.get_body_frame_positions()
+        body_pos = shell_info.get_body_frame_positions(shell_info.rigid_body)
 
         num_vertices = 12
         self.assertEqual(num_vertices, body_pos.shape[0])
