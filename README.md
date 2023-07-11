@@ -2,6 +2,12 @@
 
 Code for designing **spider catalysts**
 
+## July 11, 2023
+
+We are getting 0 gradients. This is probably because of not using mod rigid body -- we think we vaguely remember something in the shape definition that is discontinuous, and that we specialized for rigid bodies.
+
+Should start next time by doing a diff on mod_rigid_bodey and rigid_body, and then trying to use it where appropriate. Should be careful about this.
+
 ## June 29, 2023
 
 Note for today: we are not adding any leg energy function for now
