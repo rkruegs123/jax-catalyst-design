@@ -3,9 +3,11 @@ from pathlib import Path
 import optax
 from tqdm import tqdm
 import time
+import pdb
 
 from jax import random, grad, jit, vmap, value_and_grad
 import jax.numpy as jnp
+import jax.debug
 
 from jax_md import space
 
@@ -34,26 +36,10 @@ def optimize(args):
         raise RuntimeError(f"No data directory exists at location: {data_dir}")
 
     # FIXME: do something with data_dir
+    run_name = f"optimize_n{n_steps}_i{n_iters}_b{batch_size}_k{key_seed}_lr{lr}_kT{kT}"
 
     key = random.PRNGKey(key_seed)
     keys = random.split(key, n_iters)
-
-    optimizer = optax.adam(lr)
-    # FIXME: assume that we start with a fixed set of parameters for now
-    params = {
-        # catalyst shape
-        'spider_base_radius': 5.0,
-        'spider_head_height': 6.0,
-        'spider_base_particle_radius': 0.5,
-        'spider_head_particle_radius': 0.5,
-
-        # catalyst energy
-        'morse_shell_center_spider_base_eps': 2.5,
-        'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
-        'morse_shell_center_spider_base_alpha': 1.0,
-        'morse_shell_center_spider_head_alpha': 4.5
-    }
-    opt_state = optimizer.init(params)
 
     displacement_fn, shift_fn = space.free()
     complex_loss_fn = get_loss_fn(
@@ -79,6 +65,26 @@ def optimize(args):
     grad_fn = value_and_grad(loss_fn)
     batched_grad_fn = jit(vmap(grad_fn, in_axes=(None, 0)))
 
+
+    optimizer = optax.adam(lr)
+    # FIXME: assume that we start with a fixed set of parameters for now
+    params = {
+        # catalyst shape
+        'spider_base_radius': 5.0,
+        'spider_head_height': 6.0,
+        'spider_base_particle_radius': 0.5,
+        'spider_head_particle_radius': 0.5,
+
+        # catalyst energy
+        'morse_shell_center_spider_base_eps': 2.5,
+        'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
+        'morse_shell_center_spider_base_alpha': 1.0,
+        'morse_shell_center_spider_head_alpha': 4.5
+    }
+    opt_state = optimizer.init(params)
+
+    pdb.set_trace()
+
     for i in tqdm(range(n_iters)):
         print(f"\nIteration: {i}")
         iter_key = keys[i]
@@ -93,6 +99,7 @@ def optimize(args):
 
         avg_loss = jnp.mean(vals)
         print(f"Avg Loss: {avg_loss}")
+        print(f"Gradient: {avg_grads}")
 
     return params
 

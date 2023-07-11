@@ -1,6 +1,7 @@
 import pdb
 import functools
 import unittest
+from tqdm import tqdm
 
 from jax import jit, random, vmap, lax
 
@@ -59,7 +60,7 @@ class TestSimulate(unittest.TestCase):
 
         key = random.PRNGKey(0)
         fin_state, traj = simulation(
-            complex_info, energy_fn, num_steps=100,
+            complex_info, energy_fn, num_steps=10000,
             gamma=50.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
 
         # Write final states to file -- visualize with `java -Xmx4096m -jar injavis.jar <name>.pos`
@@ -77,9 +78,24 @@ class TestSimulate(unittest.TestCase):
         #     of.write('\n'.join(spider_lines))
 
         ## Complex
-        # complex_lines = complex_info.body_to_injavis_lines(fin_state, box_size=30.0)
-        # with open('complex_state.pos', 'w+') as of:
-        #     of.write('\n'.join(complex_lines))
+        """
+        complex_lines, _, _, _ = complex_info.body_to_injavis_lines(fin_state, box_size=30.0)
+        with open('complex_state.pos', 'w+') as of:
+            of.write('\n'.join(complex_lines))
+        """
+
+        # Write trajectory to file
+
+        traj = traj[::1000]
+        trajectory_injavis_lines = list()
+        assert(len(traj.center.shape) == 3)
+        n_states = traj.center.shape[0]
+        for i in tqdm(range(n_states), desc="Generating injavis output"):
+            s = traj[i]
+            trajectory_injavis_lines += complex_info.body_to_injavis_lines(s, box_size=30.0)[0]
+        with open('traj.pos', 'w+') as of:
+            of.write('\n'.join(trajectory_injavis_lines))
+
 
 
 

@@ -80,7 +80,8 @@ class SpiderInfo:
             base_line = f"B {base_pos[0]} {base_pos[1]} {base_pos[2]}"
             all_lines.append(base_line)
 
-        return all_lines
+        # Return: all lines, box info, particle types, positions
+        return all_lines, box_def, [head_def, base_def], all_lines[3:]
 
 
 class TestSpiderInfo(unittest.TestCase):

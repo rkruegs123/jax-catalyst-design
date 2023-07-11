@@ -149,8 +149,9 @@ class ShellInfo:
                 patch_line = f"P {patch_pos[0]} {patch_pos[1]} {patch_pos[2]}"
                 position_lines.append(patch_line)
 
+        # Return: all lines, box info, particle types, positions
         all_lines = [box_def, vertex_def, patch_def] + position_lines + ["eof"]
-        return all_lines
+        return all_lines, box_def, [vertex_def, patch_def], position_lines
 
 
 class TestShellInfo(unittest.TestCase):

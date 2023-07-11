@@ -14,6 +14,9 @@ def get_loss_fn(displacement_fn, vertex_to_bind, use_abduction=True, use_stable_
     if not use_abduction and not use_stable_shell:
         raise RuntimeError(f"At least one term must be included in the loss function")
 
+    if use_stable_shell:
+        raise NotImplementedError(f"FIXME: implement stable shell loss")
+
     d = vmap(displacement_fn, (0, None))
 
     def abduction_loss(body):

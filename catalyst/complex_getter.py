@@ -68,7 +68,7 @@ class ComplexInfo:
         spider_species = spider_info.shape.point_species + max_shell_species + 1
         spider_info.shape = spider_info.shape.set(point_species=spider_species)
         self.spider_info = spider_info
-        self.n_point_species = spider_species[-1] + 1 # assumes monotonicity
+        self.n_point_species = spider_species[-1] + 1 # note: assumes monotonicity
 
         complex_shape = rigid_body.concatenate_shapes(self.shell_info.vertex_shape, spider_info.shape)
         complex_center = jnp.concatenate([self.shell_info.rigid_body.center, spider_rigid_body.center], dtype=jnp.float64)
@@ -91,7 +91,8 @@ class ComplexInfo:
     ):
         spider_radii = jnp.array([self.spider_info.base_particle_radius,
                                   self.spider_info.head_particle_radius])
-        zero_interaction = jnp.zeros((self.n_point_species, self.n_point_species))
+        # zero_interaction = jnp.zeros((self.n_point_species, self.n_point_species))
+        zero_interaction = jnp.zeros((4, 4)) # FIXME: do we have to hardcode?
 
         morse_eps = zero_interaction.at[0, 2:-1].set(morse_shell_center_spider_base_eps)
         morse_eps = morse_eps.at[2:-1, 0].set(morse_shell_center_spider_base_eps) # symmetry
@@ -169,11 +170,17 @@ class ComplexInfo:
             spider_head_color="ff0000", spider_base_color="1c1c1c"):
 
         spider_body, shell_body = self.split_body(body)
-        spider_injavis_lines = self.spider_info.body_to_injavis_lines(
+        _, spider_box_def, spider_type_defs, spider_pos = self.spider_info.body_to_injavis_lines(
             spider_body, box_size, spider_head_color, spider_base_color)
-        shell_injavis_lines = self.shell_info.body_to_injavis_lines(
+        _, shell_box_def, shell_type_defs, shell_pos = self.shell_info.body_to_injavis_lines(
             shell_body, box_size, shell_patch_radius, shell_vertex_color, shell_patch_color)
-        return spider_injavis_lines + shell_injavis_lines
+
+        assert(spider_box_def == shell_box_def)
+        box_def = spider_box_def
+        type_defs = shell_type_defs + spider_type_defs
+        positions = shell_pos + spider_pos
+        all_lines = [box_def] + type_defs + positions + ["eof"]
+        return all_lines, box_def, type_defs, positions
 
 
 
