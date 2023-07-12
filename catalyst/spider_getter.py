@@ -5,8 +5,9 @@ from tqdm import tqdm
 
 from jax import vmap, lax
 import jax.numpy as jnp
-from jax_md import rigid_body # FIXME: switch to mod_rigid_body after initial testing
+# from jax_md import rigid_body # FIXME: switch to mod_rigid_body after initial testing
 
+import catalyst.rigid_body as rigid_body
 from catalyst import utils
 
 class SpiderInfo:

@@ -1,6 +1,7 @@
 from jax import vmap
 
-from jax_md import rigid_body
+# from jax_md import rigid_body
+import catalyst.rigid_body as rigid_body
 
 
 def get_body_frame_positions(rb, shape):

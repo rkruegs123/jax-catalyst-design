@@ -6,10 +6,12 @@ from tqdm import tqdm
 from jax import jit, random, vmap, lax
 
 from jax_md.util import *
-from jax_md import space, smap, energy, minimize, quantity, simulate, partition, rigid_body
+# from jax_md import space, smap, energy, minimize, quantity, simulate, partition, rigid_body
+from jax_md import space, smap, energy, minimize, quantity, simulate, partition
 from jax_md import dataclasses
 from jax_md import util
 
+import catalyst.rigid_body as rigid_body
 from catalyst.checkpoint import checkpoint_scan
 from catalyst.complex_getter import ComplexInfo
 from catalyst.utils import get_body_frame_positions

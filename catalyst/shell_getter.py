@@ -5,11 +5,16 @@ from tqdm import tqdm
 
 from jax import vmap
 import jax.numpy as jnp
-from jax_md import rigid_body, energy, space
+# from jax_md import rigid_body, energy, space
+from jax_md import energy, space
+
+from catalyst import utils
+import catalyst.rigid_body as rigid_body
+
 from jax.config import config
 config.update('jax_enable_x64', True)
 
-from catalyst import utils
+
 
 class ShellInfo:
     def __init__(self, displacement_fn, obj_dir="obj/"):

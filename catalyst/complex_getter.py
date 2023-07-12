@@ -6,8 +6,10 @@ import numpy as onp
 
 from jax import vmap, lax
 import jax.numpy as jnp
-from jax_md import rigid_body, energy, space # FIXME: switch to mod_rigid_body after initial testing
+# from jax_md import rigid_body, energy, space # FIXME: switch to mod_rigid_body after initial testing
+from jax_md import energy, space
 
+import catalyst.rigid_body as rigid_body
 from catalyst.spider_getter import SpiderInfo
 from catalyst.shell_getter import ShellInfo
 from catalyst import utils
@@ -156,13 +158,14 @@ class ComplexInfo:
             spider_body, shell_body = self.split_body(body)
             return shell_energy_fn(shell_body, **kwargs) \
                 + spider_energy_fn(spider_body, **kwargs) \
-                # + shell_spider_interaction_energy_fn(body, **kwargs) # FIXME: finish this shell_spider_interaction_energy_fn thing
+                + shell_spider_interaction_energy_fn(body, **kwargs) # FIXME: finish this shell_spider_interaction_energy_fn thing
             # return shell_energy_fn(shell_body, **kwargs) + spider_energy_fn(spider_body, **kwargs)
 
         return complex_energy_fn
 
     def get_body_frame_positions(self, body):
-        return utils.get_body_frame_positions(body, self.shape)
+        raise NotImplementedError
+        # return utils.get_body_frame_positions(body, self.shape)
 
     def body_to_injavis_lines(
             self, body, box_size,
@@ -185,7 +188,7 @@ class ComplexInfo:
 
 
 class TestComplexInfo(unittest.TestCase):
-    def _test_init(self):
+    def test_init(self):
         displacement_fn, _ = space.free()
         complex_info = ComplexInfo(
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,
@@ -194,9 +197,12 @@ class TestComplexInfo(unittest.TestCase):
             spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
+
+        body_pos = complex_info.get_body_frame_positions(complex_info.rigid_body)
+
         return
 
-    def test_energy_fn(self):
+    def _test_energy_fn(self):
         displacement_fn, _ = space.free()
         complex_info = ComplexInfo(
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,

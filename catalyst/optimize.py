@@ -4,6 +4,7 @@ import optax
 from tqdm import tqdm
 import time
 import pdb
+import numpy as onp
 
 from jax import random, grad, jit, vmap, value_and_grad
 import jax.numpy as jnp
@@ -35,8 +36,17 @@ def optimize(args):
     if not data_dir.exists():
         raise RuntimeError(f"No data directory exists at location: {data_dir}")
 
-    # FIXME: do something with data_dir
     run_name = f"optimize_n{n_steps}_i{n_iters}_b{batch_size}_k{key_seed}_lr{lr}_kT{kT}"
+    run_dir = data_dir / run_name
+    print(f"Making directory: {run_dir}")
+    run_dir.mkdir(parents=False, exist_ok=False)
+
+    params_str = ""
+    for k, v in args.items():
+        params_str += f"{k}: {v}\n"
+
+    with open(run_dir / "params.txt", "w+") as f:
+        f.write(params_str)
 
     key = random.PRNGKey(key_seed)
     keys = random.split(key, n_iters)
@@ -83,7 +93,11 @@ def optimize(args):
     }
     opt_state = optimizer.init(params)
 
-    pdb.set_trace()
+    loss_path = run_dir / "loss.txt"
+    losses_path = run_dir / "losses.txt"
+    std_path = run_dir / "std.txt"
+    grad_path = run_dir / "grads.txt"
+    params_path = run_dir / "params_per_iter.txt"
 
     for i in tqdm(range(n_iters)):
         print(f"\nIteration: {i}")
@@ -97,9 +111,17 @@ def optimize(args):
         updates, opt_state = optimizer.update(avg_grads, opt_state)
         params = optax.apply_updates(params, updates)
 
-        avg_loss = jnp.mean(vals)
-        print(f"Avg Loss: {avg_loss}")
-        print(f"Gradient: {avg_grads}")
+        with open(std_path, "a") as f:
+            f.write(f"{onp.std(vals)}\n")
+        with open(losses_path, "a") as f:
+            f.write(f"{vals}\n")
+        with open(loss_path, "a") as f:
+            f.write(f"{onp.mean(vals)}\n")
+        with open(grad_path, "a") as f:
+            f.write(str(grads) + '\n')
+        with open(params_path, "a") as f:
+            params_to_print = {k: float(v) for k, v in params.items()}
+            f.write(str(params_to_print) + '\n')
 
     return params
 
@@ -110,7 +132,7 @@ def get_argparse():
     parser.add_argument('--batch-size', type=int, default=3, help="Num. batches for each round of gradient descent")
     parser.add_argument('--n-iters', type=int, default=2, help="Num. iterations of gradient descent")
     parser.add_argument('-k', '--key-seed', type=int, default=0, help="Random key")
-    parser.add_argument('--n-steps', type=int, default=50, help="Num. steps per simulation")
+    parser.add_argument('--n-steps', type=int, default=1000, help="Num. steps per simulation")
     parser.add_argument('--vertex-to-bind', type=int, default=5, help="Index of vertex to bind")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
     parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
