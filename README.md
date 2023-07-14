@@ -2,6 +2,35 @@
 
 Code for designing **spider catalysts**
 
+## July 14, 2023
+
+We switched to 64 bit precision, as well as the correct eigen calculation (becauese ew are already using the new rigid body stuff) to get more stability because our loss funcitonw as a bit all ove rthe place. Then, we ran wit ha bunch of differen tparametres, like a lower agmma, higher kt, highe rlearning rate. What ee found is that increasing kT allowed us to retrievee our lod loss/behavior in a stable fashion.
+
+We also visualized the final state, so the last frame in an injavis trajectory will be off by one because we enforce that the number of steps is divisible by th eframe rate
+
+The parameters that seem to work are the following:
+- batch_size: 10
+- n_iters: 100
+- key_seed: 0
+- n_steps: 1000
+- vertex_to_bind: 5
+- lr: 0.01
+- init_separate: 0.0
+- data_dir: data/
+- temperature: 2.0
+- dt: 0.001
+- gamma: 10.0
+- use_abduction_loss: True
+- use_stable_shell_loss: False
+- vis_frame_rate: 100
+
+## July 13, 2023
+
+Part 1:
+- accomplished lots of logging, like the trajectory per iteration (with a sufficiently low number of frames to make injavis conversion onot crazy expensive) and the average gradients. Also better formatting...
+- we need to experiment a bit with forward simulation tot hceck if things are even interacting in our initla parameters and if we can get abduction by hand turning the paremetress i.e. just to fheck that there *is* a solution). Some things to checK: strong head eps, lower head alpha. Right now alpha is 4.5 and 1/4.5 is quite small. Also, we may want to set kT t o1.0 and vary gamma. Maybe we also want to vary the head height
+
+
 ## July 11, 2023
 
 We are getting 0 gradients. This is probably because of not using mod rigid body -- we think we vaguely remember something in the shape definition that is discontinuous, and that we specialized for rigid bodies.

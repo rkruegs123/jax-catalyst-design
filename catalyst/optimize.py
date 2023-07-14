@@ -15,6 +15,11 @@ from jax_md import space
 from catalyst.complex_getter import ComplexInfo
 from catalyst.loss import get_loss_fn
 from catalyst.simulation import simulation
+import catalyst.utils as utils
+
+from jax.config import config
+config.update('jax_enable_x64', True)
+
 
 
 def optimize(args):
@@ -31,15 +36,23 @@ def optimize(args):
     vertex_to_bind_idx = args['vertex_to_bind']
     use_abduction_loss = args['use_abduction_loss']
     use_stable_shell_loss = args['use_stable_shell_loss']
+    vis_frame_rate = args['vis_frame_rate']
+
+    assert(n_steps % vis_frame_rate == 0)
+    num_frames = n_steps // vis_frame_rate
+    if num_frames > 15:
+        raise RuntimeError(f"The number of frames to be saved per trajectory must be less than 15 for computational efficiency")
 
     data_dir = Path(data_dir)
     if not data_dir.exists():
         raise RuntimeError(f"No data directory exists at location: {data_dir}")
 
-    run_name = f"optimize_n{n_steps}_i{n_iters}_b{batch_size}_k{key_seed}_lr{lr}_kT{kT}"
+    run_name = f"optimize_n{n_steps}_i{n_iters}_b{batch_size}_k{key_seed}_lr{lr}_kT{kT}_g{gamma}"
     run_dir = data_dir / run_name
     print(f"Making directory: {run_dir}")
     run_dir.mkdir(parents=False, exist_ok=False)
+    traj_dir = run_dir / "trajs"
+    traj_dir.mkdir(parents=False, exist_ok=False)
 
     params_str = ""
     for k, v in args.items():
@@ -71,8 +84,8 @@ def optimize(args):
             morse_shell_center_spider_head_alpha=params['morse_shell_center_spider_head_alpha']
         )
         fin_state, traj = simulation(complex_info, complex_energy_fn, n_steps, gamma, kT, shift_fn, dt, key)
-        return complex_loss_fn(fin_state)
-    grad_fn = value_and_grad(loss_fn)
+        return complex_loss_fn(fin_state), traj
+    grad_fn = value_and_grad(loss_fn, has_aux=True)
     batched_grad_fn = jit(vmap(grad_fn, in_axes=(None, 0)))
 
 
@@ -81,7 +94,7 @@ def optimize(args):
     params = {
         # catalyst shape
         'spider_base_radius': 5.0,
-        'spider_head_height': 6.0,
+        'spider_head_height': 5.0,
         'spider_base_particle_radius': 0.5,
         'spider_head_particle_radius': 0.5,
 
@@ -89,7 +102,7 @@ def optimize(args):
         'morse_shell_center_spider_base_eps': 2.5,
         'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
         'morse_shell_center_spider_base_alpha': 1.0,
-        'morse_shell_center_spider_head_alpha': 4.5
+        'morse_shell_center_spider_head_alpha': 1.5
     }
     opt_state = optimizer.init(params)
 
@@ -97,6 +110,7 @@ def optimize(args):
     losses_path = run_dir / "losses.txt"
     std_path = run_dir / "std.txt"
     grad_path = run_dir / "grads.txt"
+    avg_grad_path = run_dir / "avg_grads.txt"
     params_path = run_dir / "params_per_iter.txt"
 
     for i in tqdm(range(n_iters)):
@@ -104,13 +118,12 @@ def optimize(args):
         iter_key = keys[i]
         batch_keys = random.split(iter_key, batch_size)
         start = time.time()
-        vals, grads = batched_grad_fn(params, batch_keys)
+        (vals, trajs), grads = batched_grad_fn(params, batch_keys)
         end = time.time()
 
         avg_grads = {k: jnp.mean(grads[k], axis=0) for k in grads}
         updates, opt_state = optimizer.update(avg_grads, opt_state)
-        params = optax.apply_updates(params, updates)
-
+        
         with open(std_path, "a") as f:
             f.write(f"{onp.std(vals)}\n")
         with open(losses_path, "a") as f:
@@ -119,9 +132,36 @@ def optimize(args):
             f.write(f"{onp.mean(vals)}\n")
         with open(grad_path, "a") as f:
             f.write(str(grads) + '\n')
+            
+        avg_grads_str = f"\nIteration {i}:\n"
+        for param_name, param_avg_grad in avg_grads.items():
+            avg_grads_str += f"- {param_name}: {param_avg_grad}\n"
+        with open(avg_grad_path, "a") as f:
+            f.write(avg_grads_str)
+            
+        iter_params_str = f"\nIteration {i}:\n"
+        for param_name, param_val in params.items():
+            iter_params_str += f"- {param_name}: {float(param_val)}\n"
         with open(params_path, "a") as f:
-            params_to_print = {k: float(v) for k, v in params.items()}
-            f.write(str(params_to_print) + '\n')
+            f.write(iter_params_str + '\n')
+
+        # Save a representative trajectory to an injavis-compatible .pos file
+        ## note: last index will be 1 higher than the true last index, so it will retrieve the final state (with an interval from the previous frame less than 1)
+        rep_traj_idxs = jnp.arange(0, n_steps+1, vis_frame_rate) 
+        # rep_traj  = trajs[0][::vis_frame_rate]
+        rep_traj  = trajs[0][rep_traj_idxs]
+        rep_complex_info = ComplexInfo(
+            initial_separation_coefficient, vertex_to_bind_idx, displacement_fn,
+            params['spider_base_radius'], params['spider_head_height'],
+            params['spider_base_particle_radius'], params['spider_head_particle_radius'],
+            spider_point_mass=1.0, spider_mass_err=1e-6,
+            verbose=False
+        )
+        rep_traj_fname = traj_dir / f"traj_b0_i{i}.pos"
+        utils.traj_to_pos_file(rep_traj, rep_complex_info, rep_traj_fname, box_size=30.0)
+
+        # Update the parameters once we are done logging everyting
+        params = optax.apply_updates(params, updates)
 
     return params
 
@@ -145,6 +185,8 @@ def get_argparse():
     parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
     parser.add_argument('--use-abduction-loss', action='store_true')
     parser.add_argument('--use-stable-shell-loss', action='store_true')
+    parser.add_argument('--vis-frame-rate', type=int, default=100,
+                        help="The sample rate for saving a representative trajectory from each optimization iteration")
 
     return parser
 

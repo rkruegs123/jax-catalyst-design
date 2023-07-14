@@ -17,11 +17,13 @@ config.update('jax_enable_x64', True)
 
 
 class ShellInfo:
-    def __init__(self, displacement_fn, obj_dir="obj/"):
+    def __init__(self, displacement_fn, obj_dir="obj/", verbose=True):
         self.displacement_fn = displacement_fn
         self.obj_dir = Path(obj_dir)
         self.set_path_names()
         self.vertex_radius = 2.0
+
+        self.verbose = verbose
 
         self.load() # populate self.rigid_body and self.vertex_shape
 
@@ -39,7 +41,8 @@ class ShellInfo:
         self.vertex_shape_point_radius_path = self.obj_dir / "vertex_shape_point_radius.npy"
 
     def load_from_file(self):
-        print(f"Loading minimized icosahedron rigid body and vertex shape from data directory: {self.obj_dir}")
+        if self.verbose:
+            print(f"Loading minimized icosahedron rigid body and vertex shape from data directory: {self.obj_dir}")
         icosahedron_rigid_body_center = jnp.load(self.icosahedron_rb_center_path)
         icosahedron_rigid_body_orientation_vec = jnp.load(self.icosahedron_rb_orientation_vec_path)
         icosahedron_rigid_body = rigid_body.RigidBody(

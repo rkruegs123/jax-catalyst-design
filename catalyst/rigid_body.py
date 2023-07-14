@@ -67,6 +67,9 @@ from jax.tree_util import tree_map, tree_reduce
 
 import operator
 
+from jax.config import config
+config.update('jax_enable_x64', True)
+
 
 DType = Any
 Array = util.Array
@@ -76,6 +79,67 @@ f32 = util.f32
 KeyArray = random.KeyArray
 NeighborListFns = partition.NeighborListFns
 ShiftFn = space.ShiftFn
+
+
+
+def eig_real(arr):
+    out1, out2 = jnp.linalg.eig(arr)
+    return out1.astype(jnp.float64), out2.astype(jnp.float64)
+
+
+
+@partial(jax.custom_vjp, nondiff_argnums=(1, 2))
+def eig(x, type_complex=jnp.float64, perturbation=1E-10):
+
+    _eig = jax.jit(eig_real, device=jax.devices('cpu')[0])
+
+    eigenvalues_shape = jax.ShapeDtypeStruct(x.shape[:-1], type_complex)
+    eigenvectors_shape = jax.ShapeDtypeStruct(x.shape, type_complex)
+
+    result_shape_dtype = (eigenvalues_shape, eigenvectors_shape)
+
+    return jax.pure_callback(_eig, result_shape_dtype, x)
+
+
+def eig_fwd(x, type_complex, perturbation):
+    # out1, out2 = eig(x, type_complex, perturbation)
+    # ret_val = out1.astype(jnp.complex64), out2.astype(jnp.complex64)
+    # return ret_val, ret_val
+    return eig(x, type_complex, perturbation), eig(x, type_complex, perturbation)
+
+
+def eig_bwd(type_complex, perturbation, res, g):
+    """
+    Gradient of a general square (complex valued) matrix
+    Reference: https://github.com/kch3782/torcwa and https://github.com/weiliangjinca/grcwa
+    """
+    eigval, eigvec = res
+
+    grad_eigval, grad_eigvec = g
+
+    grad_eigval = jnp.diag(grad_eigval)
+
+    s = eigval.reshape((1, -1)) - eigval.reshape((-1, 1))
+
+    F = jnp.conj(s) / (jnp.abs(s) ** 2 + perturbation)
+    F = F.at[jnp.diag_indices_from(s)].set(0)
+
+    XH = jnp.conj(eigvec).T
+    tmp = jnp.conj(F) * (XH @ grad_eigvec)
+
+    XH_i = jnp.linalg.inv(XH)
+
+    grad = (XH_i @ (grad_eigval + tmp)) @ XH
+
+    # if not jnp.iscomplexobj(eigval):
+        # grad = grad.real
+    # grad = grad.real.astype(jnp.float64)
+
+    return grad,
+
+
+eig.defvjp(eig_fwd, eig_bwd)
+
 
 
 """Quaternion Utilities.
@@ -815,7 +879,14 @@ def _transform_to_diagonal_frame(shape: RigidPointUnion) -> RigidPointUnion:
     total_mass = jnp.sum(shape.masses)
     I, = shape.moment_of_inertia()
 
-    I_diag, U = jnp.linalg.eigh(I)
+    # Option 1: JAX-MD eigh
+    # I_diag, U = jnp.linalg.eigh(I)
+
+    # Option 2: non-symmetry-assunming eigenvector calculation
+    I_diag, U = eig(I)
+    ## Note: assumes that imaginary component is 0. Casting required if using eig instead of eigh
+    U = U.astype(jnp.float64)
+    I_diag = I_diag.astype(jnp.float64)
 
     points = jnp.einsum('ni,ij->nj', shape.points, U)
     return RigidPointUnion(points,

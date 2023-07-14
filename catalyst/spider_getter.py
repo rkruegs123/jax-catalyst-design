@@ -10,6 +10,10 @@ import jax.numpy as jnp
 import catalyst.rigid_body as rigid_body
 from catalyst import utils
 
+from jax.config import config
+config.update('jax_enable_x64', True)
+
+
 class SpiderInfo:
     def __init__(self, base_radius, head_height,
                  base_particle_radius, head_particle_radius,

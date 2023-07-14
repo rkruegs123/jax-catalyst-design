@@ -8,6 +8,9 @@ from jax_md import space
 
 from catalyst.complex_getter import ComplexInfo
 
+from jax.config import config
+config.update('jax_enable_x64', True)
+
 
 def get_loss_fn(displacement_fn, vertex_to_bind, use_abduction=True, use_stable_shell=False):
 

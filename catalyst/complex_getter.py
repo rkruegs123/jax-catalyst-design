@@ -26,7 +26,10 @@ class ComplexInfo:
                  # spider-specific arguments arguments
                  spider_base_radius, spider_head_height,
                  spider_base_particle_radius, spider_head_particle_radius,
-                 spider_point_mass, spider_mass_err=1e-6
+                 spider_point_mass, spider_mass_err=1e-6,
+
+                 # misc.
+                 verbose=True
     ):
         self.initial_separation_coeff = initial_separation_coeff
         self.vertex_to_bind_idx = vertex_to_bind_idx
@@ -39,6 +42,8 @@ class ComplexInfo:
         self.spider_point_mass = spider_point_mass
         self.spider_mass_err = spider_mass_err
 
+        self.verbose = verbose
+
         self.load()
 
     def split_body(self, body):
@@ -47,7 +52,7 @@ class ComplexInfo:
         return spider_body, shell_body
 
     def load(self):
-        self.shell_info = ShellInfo(self.displacement_fn) # note: won't change
+        self.shell_info = ShellInfo(self.displacement_fn, verbose=self.verbose) # note: won't change
         spider_info = SpiderInfo(
             self.spider_base_radius, self.spider_head_height,
             self.spider_base_particle_radius, self.spider_head_particle_radius,
@@ -131,6 +136,36 @@ class ComplexInfo:
         return energy_fn
         # return lambda R, **kwargs: 0.0
 
+
+    def get_energy_components_fn(self,
+            # Shell-spider interaction energy parameters
+            morse_shell_center_spider_base_eps, morse_shell_center_spider_base_alpha,
+            morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+
+            # Shell-shell interaction energy parameters
+            morse_ii_eps=10.0, morse_ii_alpha=5.0,
+
+            # Misc. parameters
+            soft_eps=10000.0, morse_r_onset=10.0, morse_r_cutoff=12.0):
+
+        shell_energy_fn = self.shell_info.get_energy_fn(
+            morse_ii_eps, morse_ii_alpha, soft_eps,
+            morse_r_onset, morse_r_cutoff)
+        spider_energy_fn = self.spider_info.get_energy_fn()
+        shell_spider_interaction_energy_fn = self.get_interaction_energy_fn(
+            morse_shell_center_spider_base_eps, morse_shell_center_spider_base_alpha,
+            morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+            soft_eps, morse_r_onset, morse_r_cutoff
+        )
+
+        def energy_components_fn(body: rigid_body.RigidBody, **kwargs):
+            spider_body, shell_body = self.split_body(body)
+            shell_energy = shell_energy_fn(shell_body, **kwargs)
+            spider_energy = spider_energy_fn(spider_body, **kwargs)
+            interaction_energy = shell_spider_interaction_energy_fn(body, **kwargs)
+            return shell_energy, spider_energy, interaction_energy
+        return energy_components_fn
+        
     def get_energy_fn(
             self,
 
@@ -145,21 +180,15 @@ class ComplexInfo:
             soft_eps=10000.0, morse_r_onset=10.0, morse_r_cutoff=12.0
 
     ):
-        shell_energy_fn = self.shell_info.get_energy_fn(
-            morse_ii_eps, morse_ii_alpha, soft_eps,
-            morse_r_onset, morse_r_cutoff)
-        spider_energy_fn = self.spider_info.get_energy_fn()
-        shell_spider_interaction_energy_fn = self.get_interaction_energy_fn(
+        energy_components_fn = self.get_energy_components_fn(
             morse_shell_center_spider_base_eps, morse_shell_center_spider_base_alpha,
             morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
-            soft_eps, morse_r_onset, morse_r_cutoff
-        )
+            morse_ii_eps, morse_ii_alpha,
+            soft_eps, morse_r_onset, morse_r_cutoff)
+
         def complex_energy_fn(body: rigid_body.RigidBody, **kwargs):
-            spider_body, shell_body = self.split_body(body)
-            return shell_energy_fn(shell_body, **kwargs) \
-                + spider_energy_fn(spider_body, **kwargs) \
-                + shell_spider_interaction_energy_fn(body, **kwargs) # FIXME: finish this shell_spider_interaction_energy_fn thing
-            # return shell_energy_fn(shell_body, **kwargs) + spider_energy_fn(spider_body, **kwargs)
+            shell_energy, spider_energy, interaction_energy = energy_components_fn(body, **kwargs)
+            return shell_energy + spider_energy + interaction_energy
 
         return complex_energy_fn
 
@@ -188,7 +217,7 @@ class ComplexInfo:
 
 
 class TestComplexInfo(unittest.TestCase):
-    def test_init(self):
+    def _test_init(self):
         displacement_fn, _ = space.free()
         complex_info = ComplexInfo(
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,
@@ -202,22 +231,31 @@ class TestComplexInfo(unittest.TestCase):
 
         return
 
-    def _test_energy_fn(self):
+    def test_energy_fn(self):
         displacement_fn, _ = space.free()
         complex_info = ComplexInfo(
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn,
-            spider_base_radius=5.0, spider_head_height=4.0,
+            spider_base_radius=5.0, spider_head_height=5.0,
             spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
         energy_fn = complex_info.get_energy_fn(
-            morse_shell_center_spider_base_eps=2.0, morse_shell_center_spider_base_alpha=2.0,
-            morse_shell_center_spider_head_eps=200.0, morse_shell_center_spider_head_alpha=5.0,
+            morse_shell_center_spider_base_eps=2.5, morse_shell_center_spider_base_alpha=1.0,
+            morse_shell_center_spider_head_eps=jnp.exp(9.21), morse_shell_center_spider_head_alpha=1.5,
         )
         init_energy = energy_fn(complex_info.rigid_body)
         print(f"Initial energy: {init_energy}")
 
+        energy_components_fn = complex_info.get_energy_components_fn(
+            morse_shell_center_spider_base_eps=2.5, morse_shell_center_spider_base_alpha=1.0,
+            morse_shell_center_spider_head_eps=jnp.exp(9.21), morse_shell_center_spider_head_alpha=1.5,
+        )
+        shell_energy, spider_energy, interaction_energy = energy_components_fn(complex_info.rigid_body)
+        print(f"Initial shell energy: {shell_energy}")
+        print(f"Initial spider energy: {spider_energy}")
+        print(f"Initial interaction energy: {interaction_energy}")
+        
 
 if __name__ == "__main__":
     unittest.main()

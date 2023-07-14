@@ -14,7 +14,7 @@ from jax_md import util
 import catalyst.rigid_body as rigid_body
 from catalyst.checkpoint import checkpoint_scan
 from catalyst.complex_getter import ComplexInfo
-from catalyst.utils import get_body_frame_positions
+from catalyst.utils import get_body_frame_positions, traj_to_pos_file
 
 from jax.config import config
 config.update('jax_enable_x64', True)
@@ -51,19 +51,19 @@ class TestSimulate(unittest.TestCase):
         complex_info = ComplexInfo(
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn,
-            spider_base_radius=5.0, spider_head_height=4.0,
+            spider_base_radius=5.0, spider_head_height=5.0,
             spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
         energy_fn = complex_info.get_energy_fn(
-            morse_shell_center_spider_base_eps=2.0, morse_shell_center_spider_base_alpha=2.0,
-            morse_shell_center_spider_head_eps=200.0, morse_shell_center_spider_head_alpha=5.0,
+            morse_shell_center_spider_base_eps=2.5, morse_shell_center_spider_base_alpha=1.0,
+            morse_shell_center_spider_head_eps=jnp.exp(9.21), morse_shell_center_spider_head_alpha=1.5,
         )
 
         key = random.PRNGKey(0)
         fin_state, traj = simulation(
             complex_info, energy_fn, num_steps=10000,
-            gamma=50.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
+            gamma=10.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
 
         # Write final states to file -- visualize with `java -Xmx4096m -jar injavis.jar <name>.pos`
 
@@ -89,15 +89,8 @@ class TestSimulate(unittest.TestCase):
         # Write trajectory to file
 
         traj = traj[::1000]
-        trajectory_injavis_lines = list()
-        assert(len(traj.center.shape) == 3)
-        n_states = traj.center.shape[0]
-        for i in tqdm(range(n_states), desc="Generating injavis output"):
-            s = traj[i]
-            trajectory_injavis_lines += complex_info.body_to_injavis_lines(s, box_size=30.0)[0]
-        with open('traj.pos', 'w+') as of:
-            of.write('\n'.join(trajectory_injavis_lines))
 
+        traj_to_pos_file(traj, complex_info, "traj.pos", box_size=30.0)
 
 
 
