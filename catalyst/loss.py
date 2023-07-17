@@ -12,13 +12,12 @@ from jax.config import config
 config.update('jax_enable_x64', True)
 
 
-def get_loss_fn(displacement_fn, vertex_to_bind, use_abduction=True, use_stable_shell=False):
+def get_loss_fn(
+        displacement_fn, vertex_to_bind, use_abduction=True,
+        use_stable_shell=False, min_com_dist=3.4, max_com_dist=4.25, stable_shell_k=20.0):
 
     if not use_abduction and not use_stable_shell:
         raise RuntimeError(f"At least one term must be included in the loss function")
-
-    if use_stable_shell:
-        raise NotImplementedError(f"FIXME: implement stable shell loss")
 
     d = vmap(displacement_fn, (0, None))
 
@@ -29,9 +28,21 @@ def get_loss_fn(displacement_fn, vertex_to_bind, use_abduction=True, use_stable_
         vertex_far_from_icos = -jnp.sum(dists)
         return vertex_far_from_icos
 
-    # FIXME: implement
+    spring_potential = lambda dr, r0, k: k*(dr-r0)**2
+    wide_spring = lambda dr: jnp.where(dr < min_com_dist,
+                                       spring_potential(dr, min_com_dist, stable_shell_k),
+                                       jnp.where(dr > max_com_dist,
+                                                 spring_potential(dr, max_com_dist, stable_shell_k),
+                                                 0.0))
+    mapped_displacement = vmap(displacement_fn, (0, None))
     def stable_shell_loss(body):
-        return 0.0
+        shell_body = body[:-1]
+        remaining_vertices = jnp.concatenate(
+            [shell_body.center[:vertex_to_bind], shell_body.center[vertex_to_bind+1:]],
+            axis=0)
+        remaining_com = jnp.mean(remaining_vertices, axis=0)
+        com_dists = space.distance(mapped_displacement(remaining_vertices, remaining_com))
+        return wide_spring(com_dists).sum()
 
     use_abduction_bit = int(use_abduction)
     use_stable_shell_bit = int(use_stable_shell)

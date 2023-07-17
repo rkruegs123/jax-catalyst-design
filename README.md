@@ -2,6 +2,16 @@
 
 Code for designing **spider catalysts**
 
+## July 17, 2023
+
+We coul doptimize for things including this wide spring potential, but it blows up for longer trajectories. This made us look at the interaction energy, because we thought that maybe we could betterrestrict the range of the pairwise morse potential (note that morse_pair uses multiplicaitve isotropic cutofF)
+
+We have a couple of takewaay notes from this:
+- we should really be using the papropriate sigma for the morse potential, and not rely on soft sphere as the repuslve component. Currently, we have a frustraed system (with sigma=0 for the morse potential) and perhaps this could affect gradient stability
+- one potential way to mitigate "explosion" for timescales longer than those of the optimization is to optimize for 2k steps, with the loss requiring abduction at 1k steps and non-explosion the whole way thorugh
+  - but, to get a sense of this, we should really be able to track the value of the explosion term/wide spring term throughout the simulation, up to 2k steps
+
+
 ## July 14, 2023
 
 We switched to 64 bit precision, as well as the correct eigen calculation (becauese ew are already using the new rigid body stuff) to get more stability because our loss funcitonw as a bit all ove rthe place. Then, we ran wit ha bunch of differen tparametres, like a lower agmma, higher kt, highe rlearning rate. What ee found is that increasing kT allowed us to retrievee our lod loss/behavior in a stable fashion.
@@ -23,6 +33,11 @@ The parameters that seem to work are the following:
 - use_abduction_loss: True
 - use_stable_shell_loss: False
 - vis_frame_rate: 100
+
+## July 14, 2023
+
+We set up legls but it doesn't look like it's working bsaed on simulations. As a first test, we are going to add it as a fourth term in the energy components function and check the value of that term. If that doesn't work, we'll probably have to do the calculation manually on some final state -- we'll do the postiion transformation, etc.
+
 
 ## July 13, 2023
 

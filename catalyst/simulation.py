@@ -13,7 +13,7 @@ from jax_md import util
 
 import catalyst.rigid_body as rigid_body
 from catalyst.checkpoint import checkpoint_scan
-from catalyst.complex_getter import ComplexInfo
+from catalyst.complex_getter import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS
 from catalyst.utils import get_body_frame_positions, traj_to_pos_file
 
 from jax.config import config
@@ -47,23 +47,41 @@ def simulation(complex_info, complex_energy_fn, num_steps, gamma, kT, shift_fn, 
 class TestSimulate(unittest.TestCase):
 
     def test_energy_fn(self):
+
+        # both-stable-shell-loss-stiffness50 Iteration 99
+        sim_params = {
+            "log_morse_shell_center_spider_head_eps": 9.467912900697836,
+            "morse_shell_center_spider_base_alpha": 0.6737332274246398,
+            "morse_shell_center_spider_base_eps": 2.7779152349129705,
+            "morse_shell_center_spider_head_alpha": 1.2654897136989913,
+            "spider_base_particle_radius": 0.5328196552783585,
+            "spider_base_radius": 4.965124458025015,
+            "spider_head_height": 4.764709630665588,
+            "spider_head_particle_radius": 0.1828697409842395,
+        }
+        spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
+        
         displacement_fn, shift_fn = space.free()
         complex_info = ComplexInfo(
-            initial_separation_coeff=0.1, vertex_to_bind_idx=5,
+            initial_separation_coeff=0.0, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn,
-            spider_base_radius=5.0, spider_head_height=5.0,
-            spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
-            spider_point_mass=1.0, spider_mass_err=1e-6
+            spider_base_radius=sim_params["spider_base_radius"],
+            spider_head_height=sim_params["spider_head_height"],
+            spider_base_particle_radius=sim_params["spider_base_particle_radius"],
+            spider_head_particle_radius=sim_params["spider_head_particle_radius"],
+            spider_point_mass=1.0, spider_mass_err=1e-6, spider_bond_idxs=spider_bond_idxs
         )
         energy_fn = complex_info.get_energy_fn(
-            morse_shell_center_spider_base_eps=2.5, morse_shell_center_spider_base_alpha=1.0,
-            morse_shell_center_spider_head_eps=jnp.exp(9.21), morse_shell_center_spider_head_alpha=1.5,
+            morse_shell_center_spider_base_eps=sim_params["morse_shell_center_spider_base_eps"],
+            morse_shell_center_spider_base_alpha=sim_params["morse_shell_center_spider_base_alpha"],
+            morse_shell_center_spider_head_eps=jnp.exp(sim_params["log_morse_shell_center_spider_head_eps"]),
+            morse_shell_center_spider_head_alpha=sim_params["morse_shell_center_spider_head_alpha"]
         )
 
         key = random.PRNGKey(0)
         fin_state, traj = simulation(
-            complex_info, energy_fn, num_steps=10000,
-            gamma=10.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
+            complex_info, energy_fn, num_steps=5000,
+            gamma=10.0, kT=2.0, shift_fn=shift_fn, dt=1e-3, key=key)
 
         # Write final states to file -- visualize with `java -Xmx4096m -jar injavis.jar <name>.pos`
 
@@ -88,7 +106,8 @@ class TestSimulate(unittest.TestCase):
 
         # Write trajectory to file
 
-        traj = traj[::1000]
+        vis_traj_idxs = jnp.arange(0, 5000+1, 100) 
+        traj = traj[vis_traj_idxs]
 
         traj_to_pos_file(traj, complex_info, "traj.pos", box_size=30.0)
 

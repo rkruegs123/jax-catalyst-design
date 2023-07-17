@@ -18,6 +18,23 @@ from jax.config import config
 config.update('jax_enable_x64', True)
 
 
+# Define options for leg pairs. Note that indices are w.r.t. the spider body pos
+# NO_LEGS = jnp.array([], dtype=jnp.int32)
+PENTAPOD_LEGS = jnp.array([
+    [0, 5],
+    [1, 5],
+    [2, 5],
+    [3, 5],
+    [4, 5]
+], dtype=jnp.int32)
+BASE_LEGS = jnp.array([
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 0]
+], dtype=jnp.int32)
+
 class ComplexInfo:
     def __init__(self,
                  # complex-specific arguments
@@ -29,7 +46,11 @@ class ComplexInfo:
                  spider_point_mass, spider_mass_err=1e-6,
 
                  # misc.
-                 verbose=True
+                 verbose=True,
+
+                 # legs
+                 spider_bond_idxs=None, spider_leg_radius=0.5
+                 
     ):
         self.initial_separation_coeff = initial_separation_coeff
         self.vertex_to_bind_idx = vertex_to_bind_idx
@@ -43,6 +64,9 @@ class ComplexInfo:
         self.spider_mass_err = spider_mass_err
 
         self.verbose = verbose
+
+        self.spider_bond_idxs = spider_bond_idxs
+        self.spider_leg_radius = spider_leg_radius
 
         self.load()
 
@@ -90,11 +114,36 @@ class ComplexInfo:
         self.shape_species = onp.array(list(onp.zeros(12)) + [1], dtype=onp.int32).flatten()
 
 
+    def get_leg_energy_fn(self, soft_eps, bond_diameter, leg_alpha):
+
+        def leg_energy_fn(body):
+            spider_body, shell_body = self.split_body(body)
+            spider_body_pos = self.spider_info.get_body_frame_positions(spider_body)
+            shell_body_pos = self.shell_info.get_body_frame_positions(shell_body)
+
+            shell_vertex_centers = shell_body_pos[::6]
+            spider_bond_positions = spider_body_pos[self.spider_bond_idxs]
+
+
+            all_dists = utils.mapped_dist_point_to_line(
+                spider_bond_positions, shell_vertex_centers,
+                self.displacement_fn)
+
+            bond_energy_sm = jnp.sum(
+                energy.soft_sphere(all_dists,
+                                   epsilon=soft_eps,
+                                   sigma=bond_diameter,
+                                   alpha=jnp.array(leg_alpha)))
+
+            return bond_energy_sm
+        
+        return leg_energy_fn
+            
     def get_interaction_energy_fn(
             self, morse_shell_center_spider_base_eps, morse_shell_center_spider_base_alpha,
             morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
-            soft_eps, morse_r_onset, morse_r_cutoff
-
+            soft_eps, morse_r_onset, morse_r_cutoff,
+            ss_shell_center_spider_leg_alpha
     ):
         spider_radii = jnp.array([self.spider_info.base_particle_radius,
                                   self.spider_info.head_particle_radius])
@@ -132,12 +181,22 @@ class ComplexInfo:
             r_onset=morse_r_onset, r_cutoff=morse_r_cutoff
         )
         pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
-        energy_fn = rigid_body.point_energy(pair_energy_fn, self.shape, self.shape_species)
-        return energy_fn
-        # return lambda R, **kwargs: 0.0
+        base_energy_fn = rigid_body.point_energy(pair_energy_fn, self.shape, self.shape_species)
+
+        # Construct the leg energy function
+        if self.spider_bond_idxs is not None:
+            leg_energy_fn = self.get_leg_energy_fn(
+                soft_eps, 2 * self.spider_leg_radius, ss_shell_center_spider_leg_alpha)
+
+            energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
+        
+            return energy_fn
+        return base_energy_fn
 
 
-    def get_energy_components_fn(self,
+    def get_energy_components_fn(
+            self,
+            
             # Shell-spider interaction energy parameters
             morse_shell_center_spider_base_eps, morse_shell_center_spider_base_alpha,
             morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
@@ -146,7 +205,11 @@ class ComplexInfo:
             morse_ii_eps=10.0, morse_ii_alpha=5.0,
 
             # Misc. parameters
-            soft_eps=10000.0, morse_r_onset=10.0, morse_r_cutoff=12.0):
+            soft_eps=10000.0, morse_r_onset=10.0, morse_r_cutoff=12.0,
+
+            # Leg parameters
+            ss_shell_center_spider_leg_alpha=2.0
+    ):
 
         shell_energy_fn = self.shell_info.get_energy_fn(
             morse_ii_eps, morse_ii_alpha, soft_eps,
@@ -155,7 +218,8 @@ class ComplexInfo:
         shell_spider_interaction_energy_fn = self.get_interaction_energy_fn(
             morse_shell_center_spider_base_eps, morse_shell_center_spider_base_alpha,
             morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
-            soft_eps, morse_r_onset, morse_r_cutoff
+            soft_eps, morse_r_onset, morse_r_cutoff,
+            ss_shell_center_spider_leg_alpha
         )
 
         def energy_components_fn(body: rigid_body.RigidBody, **kwargs):
@@ -177,14 +241,18 @@ class ComplexInfo:
             morse_ii_eps=10.0, morse_ii_alpha=5.0,
 
             # Misc. parameters
-            soft_eps=10000.0, morse_r_onset=10.0, morse_r_cutoff=12.0
+            soft_eps=10000.0, morse_r_onset=10.0, morse_r_cutoff=12.0,
+
+            # Leg parameters
+            ss_shell_center_spider_leg_alpha=2.0
 
     ):
         energy_components_fn = self.get_energy_components_fn(
             morse_shell_center_spider_base_eps, morse_shell_center_spider_base_alpha,
             morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
             morse_ii_eps, morse_ii_alpha,
-            soft_eps, morse_r_onset, morse_r_cutoff)
+            soft_eps, morse_r_onset, morse_r_cutoff,
+            ss_shell_center_spider_leg_alpha)
 
         def complex_energy_fn(body: rigid_body.RigidBody, **kwargs):
             shell_energy, spider_energy, interaction_energy = energy_components_fn(body, **kwargs)
