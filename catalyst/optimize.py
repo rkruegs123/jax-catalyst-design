@@ -169,10 +169,11 @@ def optimize(args):
         ## note: last index will be 1 higher than the true last index, so it will retrieve the final state (with an interval from the previous frame less than 1)
 
         min_loss_sample_idx = onp.argmin(vals)
-
+        max_loss_sample_idx = onp.argmax(vals)
         rep_traj_idxs = jnp.arange(0, n_steps+1, vis_frame_rate)
         # rep_traj  = trajs[0][::vis_frame_rate]
         rep_traj  = trajs[min_loss_sample_idx][rep_traj_idxs]
+        rep_traj_bad  = trajs[max_loss_sample_idx][rep_traj_idxs]
         rep_complex_info = ComplexInfo(
             initial_separation_coefficient, vertex_to_bind_idx, displacement_fn,
             params['spider_base_radius'], params['spider_head_height'],
@@ -181,7 +182,9 @@ def optimize(args):
             verbose=False
         )
         rep_traj_fname = traj_dir / f"traj_i{i}_b{min_loss_sample_idx}.pos"
+        rep_traj_fname_bad = traj_dir / f"traj_i{i}_maxloss_b{max_loss_sample_idx}.pos"
         utils.traj_to_pos_file(rep_traj, rep_complex_info, rep_traj_fname, box_size=30.0)
+        utils.traj_to_pos_file(rep_traj_bad, rep_complex_info, rep_traj_fname_bad, box_size=30.0)
 
         # Update the parameters once we are done logging everyting
         params = optax.apply_updates(params, updates)
