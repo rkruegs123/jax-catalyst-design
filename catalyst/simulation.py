@@ -49,18 +49,29 @@ class TestSimulate(unittest.TestCase):
     def test_energy_fn(self):
 
         # both-stable-shell-loss-stiffness50 Iteration 99
+        """
         sim_params = {
-            "log_morse_shell_center_spider_head_eps": 9.467912900697836,
-            "morse_shell_center_spider_base_alpha": 0.6737332274246398,
-            "morse_shell_center_spider_base_eps": 2.7779152349129705,
+            "log_morse_shell_center_spider_head_eps": 5.467912900697836,
             "morse_shell_center_spider_head_alpha": 1.2654897136989913,
             "spider_base_particle_radius": 0.5328196552783585,
             "spider_base_radius": 4.965124458025015,
             "spider_head_height": 4.764709630665588,
             "spider_head_particle_radius": 0.1828697409842395,
         }
+        """
+        sim_params = {
+            # catalyst shape
+            'spider_base_radius': 5.0,
+            'spider_head_height': 5.0,
+            'spider_base_particle_radius': 0.5,
+            'spider_head_particle_radius': 0.5,
+
+            # catalyst energy
+            'log_morse_shell_center_spider_head_eps': 5.21, # ln(10000.0)
+            'morse_shell_center_spider_head_alpha': 1.5
+        }
         spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
-        
+
         displacement_fn, shift_fn = space.free()
         complex_info = ComplexInfo(
             initial_separation_coeff=0.0, vertex_to_bind_idx=5,
@@ -69,11 +80,10 @@ class TestSimulate(unittest.TestCase):
             spider_head_height=sim_params["spider_head_height"],
             spider_base_particle_radius=sim_params["spider_base_particle_radius"],
             spider_head_particle_radius=sim_params["spider_head_particle_radius"],
-            spider_point_mass=1.0, spider_mass_err=1e-6, spider_bond_idxs=spider_bond_idxs
+            spider_point_mass=1.0, spider_mass_err=1e-6,
+            spider_bond_idxs=spider_bond_idxs, spider_leg_radius=1.0
         )
         energy_fn = complex_info.get_energy_fn(
-            morse_shell_center_spider_base_eps=sim_params["morse_shell_center_spider_base_eps"],
-            morse_shell_center_spider_base_alpha=sim_params["morse_shell_center_spider_base_alpha"],
             morse_shell_center_spider_head_eps=jnp.exp(sim_params["log_morse_shell_center_spider_head_eps"]),
             morse_shell_center_spider_head_alpha=sim_params["morse_shell_center_spider_head_alpha"]
         )
@@ -106,7 +116,7 @@ class TestSimulate(unittest.TestCase):
 
         # Write trajectory to file
 
-        vis_traj_idxs = jnp.arange(0, 5000+1, 100) 
+        vis_traj_idxs = jnp.arange(0, 5000+1, 100)
         traj = traj[vis_traj_idxs]
 
         traj_to_pos_file(traj, complex_info, "traj.pos", box_size=30.0)

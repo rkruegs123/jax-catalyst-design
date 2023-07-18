@@ -96,8 +96,6 @@ def optimize(args):
         )
 
         complex_energy_fn = complex_info.get_energy_fn(
-            morse_shell_center_spider_base_eps=params['morse_shell_center_spider_base_eps'],
-            morse_shell_center_spider_base_alpha=params['morse_shell_center_spider_base_alpha'],
             morse_shell_center_spider_head_eps=jnp.exp(params['log_morse_shell_center_spider_head_eps']),
             morse_shell_center_spider_head_alpha=params['morse_shell_center_spider_head_alpha']
         )
@@ -117,9 +115,7 @@ def optimize(args):
         'spider_head_particle_radius': 0.5,
 
         # catalyst energy
-        'morse_shell_center_spider_base_eps': 2.5,
         'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
-        'morse_shell_center_spider_base_alpha': 1.0,
         'morse_shell_center_spider_head_alpha': 1.5
     }
     opt_state = optimizer.init(params)
@@ -133,7 +129,7 @@ def optimize(args):
 
     all_avg_losses = list()
     all_params = list()
-    
+
     for i in tqdm(range(n_iters)):
         print(f"\nIteration: {i}")
         iter_key = keys[i]
@@ -144,7 +140,7 @@ def optimize(args):
 
         avg_grads = {k: jnp.mean(grads[k], axis=0) for k in grads}
         updates, opt_state = optimizer.update(avg_grads, opt_state)
-        
+
         with open(std_path, "a") as f:
             f.write(f"{onp.std(vals)}\n")
         with open(losses_path, "a") as f:
@@ -155,13 +151,13 @@ def optimize(args):
             f.write(f"{avg_loss}\n")
         with open(grad_path, "a") as f:
             f.write(str(grads) + '\n')
-            
+
         avg_grads_str = f"\nIteration {i}:\n"
         for param_name, param_avg_grad in avg_grads.items():
             avg_grads_str += f"- {param_name}: {param_avg_grad}\n"
         with open(avg_grad_path, "a") as f:
             f.write(avg_grads_str)
-            
+
         iter_params_str = f"\nIteration {i}:\n"
         all_params.append(params)
         for param_name, param_val in params.items():
@@ -173,8 +169,8 @@ def optimize(args):
         ## note: last index will be 1 higher than the true last index, so it will retrieve the final state (with an interval from the previous frame less than 1)
 
         min_loss_sample_idx = onp.argmin(vals)
-        
-        rep_traj_idxs = jnp.arange(0, n_steps+1, vis_frame_rate) 
+
+        rep_traj_idxs = jnp.arange(0, n_steps+1, vis_frame_rate)
         # rep_traj  = trajs[0][::vis_frame_rate]
         rep_traj  = trajs[min_loss_sample_idx][rep_traj_idxs]
         rep_complex_info = ComplexInfo(
@@ -198,8 +194,8 @@ def optimize(args):
         f.write(f"Best iteration index: {best_iter_idx}\n")
         f.write(f"Best iteration loss: {best_iter_loss}\n")
         f.write(f"Best iteration params: {best_iter_params}\n")
-    
-        
+
+
     return params
 
 
