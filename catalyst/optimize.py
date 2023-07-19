@@ -36,9 +36,11 @@ def optimize(args):
     vertex_to_bind_idx = args['vertex_to_bind']
     use_abduction_loss = args['use_abduction_loss']
     use_stable_shell_loss = args['use_stable_shell_loss']
+    use_remaining_shell_vertices_loss = args['use_remaining_shell_vertices_loss']
     vis_frame_rate = args['vis_frame_rate']
     leg_mode = args['leg_mode']
     stable_shell_k = args['stable_shell_k']
+    remaining_shell_vertices_loss_coeff = args['remaining_shell_vertices_loss_coeff']
 
     if leg_mode == "none":
         spider_bond_idxs = None
@@ -82,10 +84,21 @@ def optimize(args):
     keys = random.split(key, n_iters)
 
     displacement_fn, shift_fn = space.free()
-    complex_loss_fn = get_loss_fn(
+
+    init_state_loss_fn, init_state_loss_terms_fn = get_loss_fn(
+        displacement_fn, vertex_to_bind_idx,
+        use_abduction=False,
+        use_stable_shell=False,
+        use_remaining_shell_vertices_loss=use_remaining_shell_vertices_loss,
+        remaining_shell_vertices_loss_coeff=remaining_shell_vertices_loss_coeff
+    )
+
+    fin_state_loss_fn, fin_state_loss_terms_fn = get_loss_fn(
         displacement_fn, vertex_to_bind_idx,
         use_abduction=use_abduction_loss,
-        use_stable_shell=use_stable_shell_loss, stable_shell_k=stable_shell_k)
+        use_stable_shell=use_stable_shell_loss, stable_shell_k=stable_shell_k,
+        use_remaining_shell_vertices_loss=False
+    )
 
     def loss_fn(params, key):
         complex_info = ComplexInfo(
@@ -101,7 +114,13 @@ def optimize(args):
             morse_r_onset=params['morse_r_onset'], morse_r_cutoff=params['morse_r_cutoff']
         )
         fin_state, traj = simulation(complex_info, complex_energy_fn, n_steps, gamma, kT, shift_fn, dt, key)
-        return complex_loss_fn(fin_state, params, complex_info), traj
+        init_state = traj[0]
+
+        _, _, remaining_energy_loss = init_state_loss_terms_fn(init_state, params, complex_info)
+        abduction_loss, stable_shell_loss, _ = fin_state_loss_terms_fn(fin_state, params, complex_info)
+        loss = abduction_loss + stable_shell_loss + remaining_energy_loss
+
+        return loss, (traj, abduction_loss, stable_shell_loss, remaining_energy_loss)
     grad_fn = value_and_grad(loss_fn, has_aux=True)
     batched_grad_fn = jit(vmap(grad_fn, in_axes=(None, 0)))
 
@@ -125,6 +144,7 @@ def optimize(args):
     opt_state = optimizer.init(params)
 
     loss_path = run_dir / "loss.txt"
+    loss_terms_path = run_dir / "loss_terms.txt"
     losses_path = run_dir / "losses.txt"
     std_path = run_dir / "std.txt"
     grad_path = run_dir / "grads.txt"
@@ -139,7 +159,7 @@ def optimize(args):
         iter_key = keys[i]
         batch_keys = random.split(iter_key, batch_size)
         start = time.time()
-        (vals, trajs), grads = batched_grad_fn(params, batch_keys)
+        (vals, (trajs, abduction_losses, stable_shell_losses, remaining_energy_losses)), grads = batched_grad_fn(params, batch_keys)
         end = time.time()
 
         avg_grads = {k: jnp.mean(grads[k], axis=0) for k in grads}
@@ -190,6 +210,14 @@ def optimize(args):
         utils.traj_to_pos_file(rep_traj, rep_complex_info, rep_traj_fname, box_size=30.0)
         utils.traj_to_pos_file(rep_traj_bad, rep_complex_info, rep_traj_fname_bad, box_size=30.0)
 
+        loss_terms_str = f"\nIteration {i}:\n"
+        loss_terms_str += f"- Best:\n\t- Abduction: {abduction_losses[min_loss_sample_idx]}\n\t- Stable Shell: {stable_shell_losses[min_loss_sample_idx]}\n\tRemaining Energy: {remaining_energy_losses[min_loss_sample_idx]}\n"
+        loss_terms_str += f"- Worst:\n\t- Abduction: {abduction_losses[max_loss_sample_idx]}\n\t- Stable Shell: {stable_shell_losses[max_loss_sample_idx]}\n\tRemaining Energy: {remaining_energy_losses[max_loss_sample_idx]}"
+        loss_terms_str += f"- Average:\n\t- Abduction: {onp.mean(abduction_losses)}\n\t- Stable Shell: {onp.mean(stable_shell_losses)}\n\tRemaining Energy: {onp.mean(remaining_energy_losses)}"
+        with open(loss_terms_path, "a") as f:
+            f.write(loss_terms_str + '\n')
+
+
         # Update the parameters once we are done logging everyting
         params = optax.apply_updates(params, updates)
 
@@ -225,6 +253,7 @@ def get_argparse():
     parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
     parser.add_argument('--use-abduction-loss', action='store_true')
     parser.add_argument('--use-stable-shell-loss', action='store_true')
+    parser.add_argument('-use-remaining-shell-vertices-loss', action='store_true')
     parser.add_argument('--vis-frame-rate', type=int, default=100,
                         help="The sample rate for saving a representative trajectory from each optimization iteration")
     parser.add_argument('--leg-mode', type=str,
@@ -234,6 +263,8 @@ def get_argparse():
                         help='Name of run directory')
     parser.add_argument('--stable-shell-k', type=float, default=20.0,
                         help="Spring constant for the wide spring for computing the loss term to keep the shell together")
+    parser.add_argument('--remaining-shell-vertices-loss-coeff', type=float, default=10.0,
+                        help="Multiplicative scalar for the remaining energy loss term")
 
     return parser
 

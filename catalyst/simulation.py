@@ -118,7 +118,7 @@ class TestSimulate(unittest.TestCase):
         """
 
         # Compute the loss of the final state
-        complex_loss_fn = get_loss_fn(
+        complex_loss_fn, _ = get_loss_fn(
             displacement_fn, complex_info.vertex_to_bind_idx,
             use_abduction=False,
             use_stable_shell=False, stable_shell_k=20.0,

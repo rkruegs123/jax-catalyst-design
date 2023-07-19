@@ -19,7 +19,9 @@ def get_loss_fn(
 ):
 
     if not use_abduction and not use_stable_shell and not use_remaining_shell_vertices_loss:
-        raise RuntimeError(f"At least one term must be included in the loss function")
+        loss_fn = lambda body, params, complex_info: 0.0
+        loss_terms_fn = lambda body, params, complex_info: 0.0, 0.0, 0.0
+        return loss_fn, loss_terms_fn
 
     d = vmap(displacement_fn, (0, None))
 
@@ -58,14 +60,19 @@ def get_loss_fn(
     use_stable_shell_bit = int(use_stable_shell)
     use_remaining_shell_vertices_bit = int(use_remaining_shell_vertices_loss)
 
-    def loss_fn(body, params, complex_info):
-        unnormalized_loss = abduction_loss(body)*use_abduction_bit \
-                            + stable_shell_loss(body)*use_stable_shell_bit \
-                            + remaining_shell_vertices_loss(body, params, complex_info)*use_remaining_shell_vertices_bit
-        norm = body[:-1].center.shape[0] - 1
-        return unnormalized_loss / norm
 
-    return loss_fn
+    def loss_terms_fn(body, params, complex_info):
+        abduction_term = abduction_loss(body)*use_abduction_bit
+        stable_shell_term = stable_shell_loss(body)*use_stable_shell_bit
+        remaining_energy_term = remaining_shell_vertices_loss(body, params, complex_info)*use_remaining_shell_vertices_bit
+        norm = body[:-1].center.shape[0] - 1
+        return abduction_term / norm, stable_shell_term / norm, remaining_energy_term / norm
+
+    def loss_fn(body, params, complex_info):
+        t1, t2, t3 = loss_terms_fn(body, params, complex_info)
+        return t1 + t2 + t3
+
+    return loss_fn, loss_terms_fn
 
 
 class TestLoss(unittest.TestCase):

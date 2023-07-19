@@ -343,9 +343,8 @@ class ComplexInfo:
 
 
 class TestComplexInfo(unittest.TestCase):
-    def _test_init(self):
-        displacement_fn, _ = space.free()
-        complex_info = ComplexInfo(
+    displacement_fn, _ = space.free()
+    complex_info = ComplexInfo(
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn,
             spider_base_radius=5.0, spider_head_height=4.0,
@@ -353,29 +352,21 @@ class TestComplexInfo(unittest.TestCase):
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
 
-        body_pos = complex_info.get_body_frame_positions(complex_info.rigid_body)
-
+    def _test_init(self):
+        body_pos = self.complex_info.get_body_frame_positions(self.complex_info.rigid_body)
         return
 
     def test_energy_fn(self):
-        displacement_fn, _ = space.free()
-        complex_info = ComplexInfo(
-            initial_separation_coeff=0.1, vertex_to_bind_idx=5,
-            displacement_fn=displacement_fn,
-            spider_base_radius=5.0, spider_head_height=5.0,
-            spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
-            spider_point_mass=1.0, spider_mass_err=1e-6
-        )
-        energy_fn = complex_info.get_energy_fn(
+        energy_fn = self.complex_info.get_energy_fn(
             morse_shell_center_spider_head_eps=jnp.exp(9.21), morse_shell_center_spider_head_alpha=1.5,
         )
-        init_energy = energy_fn(complex_info.rigid_body)
+        init_energy = energy_fn(self.complex_info.rigid_body)
         print(f"Initial energy: {init_energy}")
 
-        energy_components_fn = complex_info.get_energy_components_fn(
+        energy_components_fn = self.complex_info.get_energy_components_fn(
             morse_shell_center_spider_head_eps=jnp.exp(9.21), morse_shell_center_spider_head_alpha=1.5,
         )
-        shell_energy, spider_energy, interaction_energy = energy_components_fn(complex_info.rigid_body)
+        shell_energy, spider_energy, interaction_energy = energy_components_fn(self.complex_info.rigid_body)
         print(f"Initial shell energy: {shell_energy}")
         print(f"Initial spider energy: {spider_energy}")
         print(f"Initial interaction energy: {interaction_energy}")
