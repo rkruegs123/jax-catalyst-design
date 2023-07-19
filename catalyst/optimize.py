@@ -115,7 +115,8 @@ def optimize(args):
         'spider_head_particle_radius': 0.5,
 
         # catalyst energy
-        'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
+        # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
+        'log_morse_shell_center_spider_head_eps': 5.21,
         'morse_shell_center_spider_head_alpha': 1.5
     }
     opt_state = optimizer.init(params)
