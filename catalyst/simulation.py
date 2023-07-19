@@ -15,6 +15,7 @@ import catalyst.rigid_body as rigid_body
 from catalyst.checkpoint import checkpoint_scan
 from catalyst.complex_getter import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS
 from catalyst.utils import get_body_frame_positions, traj_to_pos_file
+from catalyst.loss import get_loss_fn
 
 from jax.config import config
 config.update('jax_enable_x64', True)
@@ -113,6 +114,17 @@ class TestSimulate(unittest.TestCase):
         with open('complex_state.pos', 'w+') as of:
             of.write('\n'.join(complex_lines))
         """
+
+        # Compute the loss of the final state
+        complex_loss_fn = get_loss_fn(
+            displacement_fn, vertex_to_bind_idx,
+            use_abduction=use_abduction_loss,
+            use_stable_shell=use_stable_shell_loss, stable_shell_k=stable_shell_k,
+            use_remaining_shell_vertices_loss=True, remaining_shell_vertices_loss_coeff=1.0
+        )
+        fin_state_loss = complex_loss_fn(fin_state, sim_params, complex_info)
+        print(f"Loss: {fin_state_loss}")
+
 
         # Write trajectory to file
 

@@ -119,8 +119,8 @@ def optimize(args):
         # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
         'log_morse_shell_center_spider_head_eps': 5.21,
         'morse_shell_center_spider_head_alpha': 1.5,
-        'morse_r_onset' = 10.0,
-        'morse_r_cutoff' = 12.0
+        'morse_r_onset': 10.0,
+        'morse_r_cutoff': 12.0
     }
     opt_state = optimizer.init(params)
 
