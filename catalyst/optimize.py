@@ -97,10 +97,11 @@ def optimize(args):
 
         complex_energy_fn = complex_info.get_energy_fn(
             morse_shell_center_spider_head_eps=jnp.exp(params['log_morse_shell_center_spider_head_eps']),
-            morse_shell_center_spider_head_alpha=params['morse_shell_center_spider_head_alpha']
+            morse_shell_center_spider_head_alpha=params['morse_shell_center_spider_head_alpha'],
+            morse_r_onset=params['morse_r_onset'], morse_r_cutoff=params['morse_r_cutoff']
         )
         fin_state, traj = simulation(complex_info, complex_energy_fn, n_steps, gamma, kT, shift_fn, dt, key)
-        return complex_loss_fn(fin_state), traj
+        return complex_loss_fn(fin_state, params, complex_info), traj
     grad_fn = value_and_grad(loss_fn, has_aux=True)
     batched_grad_fn = jit(vmap(grad_fn, in_axes=(None, 0)))
 
@@ -117,7 +118,9 @@ def optimize(args):
         # catalyst energy
         # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
         'log_morse_shell_center_spider_head_eps': 5.21,
-        'morse_shell_center_spider_head_alpha': 1.5
+        'morse_shell_center_spider_head_alpha': 1.5,
+        'morse_r_onset' = 10.0,
+        'morse_r_cutoff' = 12.0
     }
     opt_state = optimizer.init(params)
 

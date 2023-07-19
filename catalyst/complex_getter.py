@@ -99,6 +99,8 @@ class ComplexInfo:
         spider_species = spider_info.shape.point_species + max_shell_species + 1
         spider_info.shape = spider_info.shape.set(point_species=spider_species)
         self.spider_info = spider_info
+        self.spider_radii = jnp.array([self.spider_info.base_particle_radius,
+                                       self.spider_info.head_particle_radius])
         self.n_point_species = spider_species[-1] + 1 # note: assumes monotonicity
 
         complex_shape = rigid_body.concatenate_shapes(self.shell_info.vertex_shape, spider_info.shape)
@@ -139,14 +141,26 @@ class ComplexInfo:
 
         return leg_energy_fn
 
-    def get_interaction_energy_fn(
+
+    def get_head_vertex_to_bind_energy_fn(
             self, morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
-            soft_eps, morse_r_onset, morse_r_cutoff,
-            ss_shell_center_spider_leg_alpha
-    ):
-        spider_radii = jnp.array([self.spider_info.base_particle_radius,
-                                  self.spider_info.head_particle_radius])
-        # zero_interaction = jnp.zeros((self.n_point_species, self.n_point_species))
+            morse_r_onset, morse_r_cutoff):
+
+        sigma = self.shell_info.vertex_radius + self.spider_info.head_particle_radius
+        morse_fn = energy.multiplicative_isotropic_cutoff(
+            energy.morse,
+            r_onset=morse_r_onset, r_cutoff=morse_r_cutoff)
+
+        def energy_fn(head_position, vertex_position):
+            dr = space.distance(self.displacement_fn(head_position, vertex_position))
+            return morse_fn(dr, sigma=sigma, epsilon=morse_shell_center_spider_head_eps, alpha=morse_shell_center_spider_head_alpha)
+
+        return energy_fn
+
+    def get_head_shell_energy_fn(
+            self, morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+            morse_r_onset, morse_r_cutoff):
+
         zero_interaction = jnp.zeros((4, 4)) # FIXME: do we have to hardcode?
 
         morse_eps = zero_interaction.at[0, -1].set(morse_shell_center_spider_head_eps)
@@ -155,15 +169,56 @@ class ComplexInfo:
         morse_alpha = zero_interaction.at[0, -1].set(morse_shell_center_spider_head_alpha)
         morse_alpha = morse_alpha.at[-1, 0].set(morse_shell_center_spider_head_alpha)
 
-        morse_sigma = zero_interaction.at[0, -1].set(self.shell_info.vertex_radius + spider_radii[-1])
-        morse_sigma = morse_sigma.at[-1, 0].set(self.shell_info.vertex_radius + spider_radii[-1])
+        morse_sigma = zero_interaction.at[0, -1].set(self.shell_info.vertex_radius + self.spider_radii[-1])
+        morse_sigma = morse_sigma.at[-1, 0].set(self.shell_info.vertex_radius + self.spider_radii[-1])
 
+        pair_energy_morse = energy.morse_pair(
+            self.displacement_fn,
+            # species=self.n_point_species,
+            species=4,
+            sigma=morse_sigma, epsilon=morse_eps, alpha=morse_alpha,
+            r_onset=morse_r_onset, r_cutoff=morse_r_cutoff
+        )
+
+        return rigid_body.point_energy(pair_energy_morse, self.shape, self.shape_species)
+
+    def get_head_remaining_shell_energy_fn(
+            self, morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+            morse_r_onset, morse_r_cutoff):
+
+        head_shell_energy_fn = self.get_head_shell_energy_fn(
+            morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+            morse_r_onset, morse_r_cutoff)
+
+        head_vertex_to_bind_energy_fn = self.get_head_vertex_to_bind_energy_fn(
+            morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+            morse_r_onset, morse_r_cutoff)
+
+        def head_remaining_shell_energy_fn(body, **kwargs):
+            head_shell_energy = head_shell_energy_fn(body, **kwargs)
+
+            head_pos = body[-1]
+            vertex_to_bind_pos = body[self.vertex_to_bind_idx]
+            head_vtx_to_bind_energy = head_vertex_to_bind_energy_fn(head_pos, vertex_to_bind_pos)
+            return head_shell_energy - head_vtx_to_bind_energy
+
+        return head_remaining_shell_energy_fn
+
+
+    def get_interaction_energy_fn(
+            self, morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+            morse_r_onset, morse_r_cutoff,
+            soft_eps,
+            ss_shell_center_spider_leg_alpha
+    ):
+        # zero_interaction = jnp.zeros((self.n_point_species, self.n_point_species))
+        zero_interaction = jnp.zeros((4, 4)) # FIXME: do we have to hardcode?
 
         soft_sphere_eps = zero_interaction.at[0, 2].set(soft_eps) # icosahedral centers repel catalyst centers
         soft_sphere_eps = soft_sphere_eps.at[2, 0].set(soft_eps) # symmetry
 
-        soft_sphere_sigma = zero_interaction.at[0, 2].set(self.shell_info.vertex_radius + spider_radii[0]) # icosahedral centers repel catalyst centers
-        soft_sphere_sigma = soft_sphere_sigma.at[2, 0].set(self.shell_info.vertex_radius + spider_radii[0])
+        soft_sphere_sigma = zero_interaction.at[0, 2].set(self.shell_info.vertex_radius + self.spider_radii[0]) # icosahedral centers repel catalyst centers
+        soft_sphere_sigma = soft_sphere_sigma.at[2, 0].set(self.shell_info.vertex_radius + self.spider_radii[0])
         soft_sphere_sigma = jnp.where(soft_sphere_sigma == 0.0, 1e-5, soft_sphere_sigma) # avoids nans
 
 
@@ -172,15 +227,12 @@ class ComplexInfo:
             # species=self.n_point_species,
             species=4,
             sigma=soft_sphere_sigma, epsilon=soft_sphere_eps)
-        pair_energy_morse = energy.morse_pair(
-            self.displacement_fn,
-            # species=self.n_point_species,
-            species=4,
-            sigma=morse_sigma, epsilon=morse_eps, alpha=morse_alpha,
-            r_onset=morse_r_onset, r_cutoff=morse_r_cutoff
-        )
-        pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
-        base_energy_fn = rigid_body.point_energy(pair_energy_fn, self.shape, self.shape_species)
+
+        soft_energy_fn = rigid_body.point_energy(pair_energy_soft, self.shape, self.shape_species)
+        morse_energy_fn = self.get_head_shell_energy_fn(
+            morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+            morse_r_onset, morse_r_cutoff)
+        base_energy_fn = lambda body, **kwargs: soft_energy_fn(body, **kwargs) + morse_energy_fn(body, **kwargs)
 
         # Construct the leg energy function
         if self.spider_bond_idxs is not None:
@@ -198,24 +250,25 @@ class ComplexInfo:
 
             # Shell-spider interaction energy parameters
             morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+            morse_r_onset=10.0, morse_r_cutoff=12.0,
 
             # Shell-shell interaction energy parameters
             morse_ii_eps=10.0, morse_ii_alpha=5.0,
 
             # Misc. parameters
-            soft_eps=10000.0, morse_r_onset=10.0, morse_r_cutoff=12.0,
+            soft_eps=10000.0,
 
             # Leg parameters
             ss_shell_center_spider_leg_alpha=2.0
     ):
 
         shell_energy_fn = self.shell_info.get_energy_fn(
-            morse_ii_eps, morse_ii_alpha, soft_eps,
-            morse_r_onset, morse_r_cutoff)
+            morse_ii_eps, morse_ii_alpha, soft_eps)
         spider_energy_fn = self.spider_info.get_energy_fn()
         shell_spider_interaction_energy_fn = self.get_interaction_energy_fn(
             morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
-            soft_eps, morse_r_onset, morse_r_cutoff,
+            morse_r_onset, morse_r_cutoff,
+            soft_eps,
             ss_shell_center_spider_leg_alpha
         )
 
@@ -232,12 +285,13 @@ class ComplexInfo:
 
             # Shell-spider interaction energy parameters
             morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+            morse_r_onset=10.0, morse_r_cutoff=12.0,
 
             # Shell-shell interaction energy parameters
             morse_ii_eps=10.0, morse_ii_alpha=5.0,
 
             # Misc. parameters
-            soft_eps=10000.0, morse_r_onset=10.0, morse_r_cutoff=12.0,
+            soft_eps=10000.0,
 
             # Leg parameters
             ss_shell_center_spider_leg_alpha=2.0
@@ -245,8 +299,9 @@ class ComplexInfo:
     ):
         energy_components_fn = self.get_energy_components_fn(
             morse_shell_center_spider_head_eps, morse_shell_center_spider_head_alpha,
+            morse_r_onset, morse_r_cutoff,
             morse_ii_eps, morse_ii_alpha,
-            soft_eps, morse_r_onset, morse_r_cutoff,
+            soft_eps,
             ss_shell_center_spider_leg_alpha)
 
         def complex_energy_fn(body: rigid_body.RigidBody, **kwargs):
