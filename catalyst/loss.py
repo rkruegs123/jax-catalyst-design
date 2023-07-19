@@ -18,7 +18,7 @@ def get_loss_fn(
         use_remaining_shell_vertices_loss=False, remaining_shell_vertices_loss_coeff=1.0
 ):
 
-    if not use_abduction and not use_stable_shell:
+    if not use_abduction and not use_stable_shell and not use_remaining_shell_vertices_loss:
         raise RuntimeError(f"At least one term must be included in the loss function")
 
     d = vmap(displacement_fn, (0, None))

@@ -197,9 +197,17 @@ class ComplexInfo:
         def head_remaining_shell_energy_fn(body, **kwargs):
             head_shell_energy = head_shell_energy_fn(body, **kwargs)
 
-            head_pos = body[-1]
-            vertex_to_bind_pos = body[self.vertex_to_bind_idx]
-            head_vtx_to_bind_energy = head_vertex_to_bind_energy_fn(head_pos, vertex_to_bind_pos)
+            spider_body = body[-1]
+            spider_body_pos = self.spider_info.get_body_frame_positions(spider_body)
+            head_pos = spider_body_pos[-1]
+
+
+            vertex_body = body[self.vertex_to_bind_idx]
+            vertex_body_pos = rigid_body.transform(vertex_body, self.shell_info.vertex_shape)
+            vertex_to_bind_center_pos = vertex_body_pos[0]
+
+            head_vtx_to_bind_energy = head_vertex_to_bind_energy_fn(
+                head_pos, vertex_to_bind_center_pos)
             return head_shell_energy - head_vtx_to_bind_energy
 
         return head_remaining_shell_energy_fn

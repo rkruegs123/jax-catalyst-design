@@ -69,7 +69,9 @@ class TestSimulate(unittest.TestCase):
 
             # catalyst energy
             'log_morse_shell_center_spider_head_eps': 5.21, # ln(10000.0)
-            'morse_shell_center_spider_head_alpha': 1.5
+            'morse_shell_center_spider_head_alpha': 1.5,
+            'morse_r_onset': 10.0,
+            'morse_r_cutoff': 12.0
         }
         spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
 
@@ -91,7 +93,7 @@ class TestSimulate(unittest.TestCase):
 
         key = random.PRNGKey(0)
         fin_state, traj = simulation(
-            complex_info, energy_fn, num_steps=5000,
+            complex_info, energy_fn, num_steps=1000,
             gamma=10.0, kT=2.0, shift_fn=shift_fn, dt=1e-3, key=key)
 
         # Write final states to file -- visualize with `java -Xmx4096m -jar injavis.jar <name>.pos`
@@ -117,9 +119,9 @@ class TestSimulate(unittest.TestCase):
 
         # Compute the loss of the final state
         complex_loss_fn = get_loss_fn(
-            displacement_fn, vertex_to_bind_idx,
-            use_abduction=use_abduction_loss,
-            use_stable_shell=use_stable_shell_loss, stable_shell_k=stable_shell_k,
+            displacement_fn, complex_info.vertex_to_bind_idx,
+            use_abduction=False,
+            use_stable_shell=False, stable_shell_k=20.0,
             use_remaining_shell_vertices_loss=True, remaining_shell_vertices_loss_coeff=1.0
         )
         fin_state_loss = complex_loss_fn(fin_state, sim_params, complex_info)
@@ -128,7 +130,7 @@ class TestSimulate(unittest.TestCase):
 
         # Write trajectory to file
 
-        vis_traj_idxs = jnp.arange(0, 5000+1, 100)
+        vis_traj_idxs = jnp.arange(0, 1000+1, 100)
         traj = traj[vis_traj_idxs]
 
         traj_to_pos_file(traj, complex_info, "traj.pos", box_size=30.0)
