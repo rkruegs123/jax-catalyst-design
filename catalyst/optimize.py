@@ -136,7 +136,8 @@ def optimize(args):
 
         # catalyst energy
         # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
-        'log_morse_shell_center_spider_head_eps': 5.21,
+        # 'log_morse_shell_center_spider_head_eps': 5.21,
+        'log_morse_shell_center_spider_head_eps': 9.21,
         'morse_shell_center_spider_head_alpha': 1.5,
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0
@@ -253,7 +254,7 @@ def get_argparse():
     parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
     parser.add_argument('--use-abduction-loss', action='store_true')
     parser.add_argument('--use-stable-shell-loss', action='store_true')
-    parser.add_argument('-use-remaining-shell-vertices-loss', action='store_true')
+    parser.add_argument('--use-remaining-shell-vertices-loss', action='store_true')
     parser.add_argument('--vis-frame-rate', type=int, default=100,
                         help="The sample rate for saving a representative trajectory from each optimization iteration")
     parser.add_argument('--leg-mode', type=str,

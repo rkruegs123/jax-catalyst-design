@@ -20,7 +20,7 @@ def get_loss_fn(
 
     if not use_abduction and not use_stable_shell and not use_remaining_shell_vertices_loss:
         loss_fn = lambda body, params, complex_info: 0.0
-        loss_terms_fn = lambda body, params, complex_info: 0.0, 0.0, 0.0
+        loss_terms_fn = lambda body, params, complex_info: (0.0, 0.0, 0.0)
         return loss_fn, loss_terms_fn
 
     d = vmap(displacement_fn, (0, None))
