@@ -137,7 +137,12 @@ class ShellInfo:
         body_pos = self.get_body_frame_positions(body)
 
         assert(len(body_pos.shape) == 2)
-        assert(body_pos.shape[0] == 6 * 12)
+        assert(body_pos.shape[0] % 6 == 0)
+        n_vertices = body_pos.shape[0] // 6
+        if n_vertices != 12:
+            print(f"WARNING: writing shell body with only {n_vertices} vertices")
+
+        # assert(body_pos.shape[0] == 6 * 12)
         assert(body_pos.shape[1] == 3)
 
         box_def = f"boxMatrix {box_size} 0 0 0 {box_size} 0 0 0 {box_size}"
@@ -145,7 +150,7 @@ class ShellInfo:
         patch_def = f"def P \"sphere {patch_radius*2} {patch_color}\""
 
         position_lines = list()
-        for num_vertex in range(12):
+        for num_vertex in range(n_vertices):
             vertex_start_idx = num_vertex*6
 
             # vertex center

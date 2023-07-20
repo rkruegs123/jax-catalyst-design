@@ -67,13 +67,13 @@ class TestSimulate(unittest.TestCase):
         'spider_head_particle_radius': 0.404,
 
         # catalyst energy
-        'log_morse_shell_center_spider_head_eps': 9.108, # ln(10000.0)
+        'log_morse_shell_center_spider_head_eps': 6.9, # ln(10000.0)
         'morse_shell_center_spider_head_alpha': 1.637,
         'morse_r_onset': 9.987,
         'morse_r_cutoff': 11.93
     }
 
-    def _test_energy_fn(self):
+    def test_energy_fn(self):
 
         displacement_fn, shift_fn = space.free()
 
@@ -95,12 +95,12 @@ class TestSimulate(unittest.TestCase):
             morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
         )
 
-        n_steps = 5000
+        n_steps = 1000
         assert(n_steps % 100 == 0)
         key = random.PRNGKey(0)
         fin_state, traj = simulation(
             complex_info, energy_fn, num_steps=n_steps,
-            gamma=10.0, kT=2.0, shift_fn=shift_fn, dt=1e-3, key=key)
+            gamma=10.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
 
         # Write final states to file -- visualize with `java -Xmx4096m -jar injavis.jar <name>.pos`
 
@@ -138,12 +138,12 @@ class TestSimulate(unittest.TestCase):
 
         # Write trajectory to file
 
-        vis_traj_idxs = jnp.arange(0, 5000+1, 100)
+        vis_traj_idxs = jnp.arange(0, n_steps+1, 100)
         traj = traj[vis_traj_idxs]
 
         traj_to_pos_file(traj, complex_info, "traj.pos", box_size=30.0)
 
-    def test_simulate_shell(self):
+    def _test_simulate_shell(self):
 
         displacement_fn, shift_fn = space.free()
 
@@ -158,45 +158,33 @@ class TestSimulate(unittest.TestCase):
             shell_info, shell_energy_fn, num_steps=n_steps,
             gamma=10.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
 
-        """
-        gamma = 10.0
-        kT = 2.0
-        dt = 1e-3
 
-        gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
-        init_fn, step_fn = simulate.nvt_langevin(shell_energy_fn, shift_fn, dt, kT, gamma=gamma_rb)
-        step_fn = jit(step_fn)
-
-        mass = shell_info.shape.mass()
-        state = init_fn(key, shell_info.rigid_body, mass=mass)
-
-        do_step = lambda state, t: (step_fn(state), state.position)
-        do_step = jit(do_step)
-
-        state, traj = scan(do_step, state, jnp.arange(n_steps))
-        fin_state = state.position
-        """
-
-
-        # Write final states to file -- visualize with `java -Xmx4096m -jar injavis.jar <name>.pos`
-
-        ## Shell
+        # Write trajectory to file
         vis_traj_idxs = jnp.arange(0, n_steps+1, 100)
         vis_traj = traj[vis_traj_idxs]
         traj_to_pos_file(vis_traj, shell_info, "traj_shell.pos", box_size=30.0)
 
-        """
-        shell_lines = shell_info.body_to_injavis_lines(fin_shell_rb, box_size=30.0)
-        with open('shell_state.pos', 'w+') as of:
-            of.write('\n'.join(shell_lines))
-        """
+    def _test_simulate_shell_remainder(self):
+
+        displacement_fn, shift_fn = space.free()
+
+        shell_info = ShellInfo(displacement_fn=displacement_fn)
+        shell_info.rigid_body = shell_info.rigid_body[:-1]
+        shell_energy_fn = shell_info.get_energy_fn()
+
+        n_steps = 5000
+        assert(n_steps % 100 == 0)
+        key = random.PRNGKey(0)
+
+        fin_state, traj = simulation(
+            shell_info, shell_energy_fn, num_steps=n_steps,
+            gamma=10.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
 
 
         # Write trajectory to file
-
-
-        # traj = traj[vis_traj_idxs]
-
+        vis_traj_idxs = jnp.arange(0, n_steps+1, 100)
+        vis_traj = traj[vis_traj_idxs]
+        traj_to_pos_file(vis_traj, shell_info, "traj_shell.pos", box_size=30.0)
 
 
 

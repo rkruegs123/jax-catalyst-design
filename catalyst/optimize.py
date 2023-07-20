@@ -136,8 +136,7 @@ def optimize(args):
 
         # catalyst energy
         # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
-        # 'log_morse_shell_center_spider_head_eps': 5.21,
-        'log_morse_shell_center_spider_head_eps': 9.21,
+        'log_morse_shell_center_spider_head_eps': 6.9,
         'morse_shell_center_spider_head_alpha': 1.5,
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0
@@ -249,7 +248,7 @@ def get_argparse():
     parser.add_argument('-d', '--data-dir', type=str,
                         default="data/",
                         help='Path to base data directory')
-    parser.add_argument('-kT', '--temperature', type=float, default=2.0, help="Temperature in kT")
+    parser.add_argument('-kT', '--temperature', type=float, default=1.0, help="Temperature in kT")
     parser.add_argument('--dt', type=float, default=1e-3, help="Time step")
     parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
     parser.add_argument('--use-abduction-loss', action='store_true')
