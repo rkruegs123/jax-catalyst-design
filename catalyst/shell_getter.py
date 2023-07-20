@@ -43,8 +43,8 @@ class ShellInfo:
     def load_from_file(self):
         if self.verbose:
             print(f"Loading minimized icosahedron rigid body and vertex shape from data directory: {self.obj_dir}")
-        icosahedron_rigid_body_center = jnp.load(self.icosahedron_rb_center_path)
-        icosahedron_rigid_body_orientation_vec = jnp.load(self.icosahedron_rb_orientation_vec_path)
+        icosahedron_rigid_body_center = jnp.load(self.icosahedron_rb_center_path).astype(jnp.float64)
+        icosahedron_rigid_body_orientation_vec = jnp.load(self.icosahedron_rb_orientation_vec_path).astype(jnp.float64)
         icosahedron_rigid_body = rigid_body.RigidBody(
             center=icosahedron_rigid_body_center,
             orientation=rigid_body.Quaternion(vec=icosahedron_rigid_body_orientation_vec))
@@ -66,7 +66,8 @@ class ShellInfo:
         )
 
         self.rigid_body = icosahedron_rigid_body
-        self.vertex_shape = vertex_shape
+        self.shape = vertex_shape
+        self.shape_species = None
         return
 
     def load(self):
@@ -87,7 +88,7 @@ class ShellInfo:
 
 
     def get_body_frame_positions(self, body):
-        return utils.get_body_frame_positions(body, self.vertex_shape).reshape(-1, 3)
+        return utils.get_body_frame_positions(body, self.shape).reshape(-1, 3)
 
     def get_energy_fn(self, morse_ii_eps=10.0, morse_ii_alpha=5.0, soft_eps=10000.0,
                       morse_r_onset=10.0, morse_r_cutoff=12.0
@@ -120,7 +121,7 @@ class ShellInfo:
         # and body.orientation.vec has dimensions (12, 4)
         energy_fn = rigid_body.point_energy(
             pair_energy_fn,
-            self.vertex_shape,
+            self.shape,
             # jnp.zeros(12) # FIXME: check if we need this
         )
 
@@ -163,9 +164,10 @@ class ShellInfo:
 
 
 class TestShellInfo(unittest.TestCase):
+    displacement_fn, shift_fn = space.free()
+
     def test_final_configuration(self):
-        displacement_fn, _ = space.free()
-        shell_info = ShellInfo(displacement_fn)
+        shell_info = ShellInfo(self.displacement_fn)
         body_pos = shell_info.get_body_frame_positions(shell_info.rigid_body)
 
         num_vertices = 12
@@ -188,11 +190,12 @@ class TestShellInfo(unittest.TestCase):
                 self.assertEqual(within_tol.sum(), 1)
 
     def test_energy_fn_no_errors(self):
-        displacement_fn, _ = space.free()
-        shell_info = ShellInfo(displacement_fn)
+        shell_info = ShellInfo(self.displacement_fn)
         energy_fn = shell_info.get_energy_fn()
         init_energy = energy_fn(shell_info.rigid_body)
         print(f"Initial energy: {init_energy}")
+
+
 
 
 if __name__ == "__main__":

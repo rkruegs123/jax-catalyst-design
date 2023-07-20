@@ -95,7 +95,7 @@ class ComplexInfo:
             center=jnp.array([spider_center]),
             orientation=rigid_body.Quaternion(jnp.array([vertex_to_bind.orientation.vec])))
         spider_info.rigid_body = spider_rigid_body
-        max_shell_species = self.shell_info.vertex_shape.point_species[-1] # assumes monotonicity
+        max_shell_species = self.shell_info.shape.point_species[-1] # assumes monotonicity
         spider_species = spider_info.shape.point_species + max_shell_species + 1
         spider_info.shape = spider_info.shape.set(point_species=spider_species)
         self.spider_info = spider_info
@@ -103,7 +103,7 @@ class ComplexInfo:
                                        self.spider_info.head_particle_radius])
         self.n_point_species = spider_species[-1] + 1 # note: assumes monotonicity
 
-        complex_shape = rigid_body.concatenate_shapes(self.shell_info.vertex_shape, spider_info.shape)
+        complex_shape = rigid_body.concatenate_shapes(self.shell_info.shape, spider_info.shape)
         complex_center = jnp.concatenate([self.shell_info.rigid_body.center, spider_rigid_body.center], dtype=jnp.float64)
         complex_orientation = rigid_body.Quaternion(
             jnp.concatenate([self.shell_info.rigid_body.orientation.vec,
@@ -203,7 +203,7 @@ class ComplexInfo:
 
 
             vertex_body = body[self.vertex_to_bind_idx]
-            vertex_body_pos = rigid_body.transform(vertex_body, self.shell_info.vertex_shape)
+            vertex_body_pos = rigid_body.transform(vertex_body, self.shell_info.shape)
             vertex_to_bind_center_pos = vertex_body_pos[0]
 
             head_vtx_to_bind_energy = head_vertex_to_bind_energy_fn(
