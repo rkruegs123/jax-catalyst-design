@@ -2,6 +2,79 @@
 
 Code for designing **spider catalysts**
 
+# August 2, 2023
+
+Reconvening on icosahedron stuff before we move onto Zorana dimer stuff:
+
+Before we left off, we learned many things. The first was that at kT of 2.0, the shell falls apart by itself for simulations > 1000 timesteps. So, we set kT to  1.0 and confirmed that the icosahedron was stable at this temperature.
+
+Once ew fixed kT at 1.0, we sought to optimize such that the thing fell off. We tried to achieve byis by adding a loss term that minimized the remianing energy bewteen the spider/catalyst and the *remianing* 11 vertices (i.e. those that you aren't trying to pull off).
+
+However, for any optimizion to work, we learned something (obvious) -- that you need a signal to start. This means that you can't start with the catalyst not interacting *at all* with the icosahedron. For all optimizations, we started with the following set of parameters:
+```
+params = {
+    # catalyst shape
+    'spider_base_radius': 5.0,
+    'spider_head_height': 5.0,
+    'spider_base_particle_radius': 0.5,
+    'spider_head_particle_radius': 0.5,
+
+    # catalyst energy
+    'log_morse_shell_center_spider_head_eps': FIXME,
+    'morse_shell_center_spider_head_alpha': 1.5,
+    'morse_r_onset': 10.0,
+    'morse_r_cutoff': 12.0
+}
+```
+Note the ``FIXME'' for `log_morse_shell_center_spider_head_eps`. This is the one parameter that we varied across runs. We found that, for there to be any gradient signal (i.e. any interaction between the icosahedron and the catalyst), we needed a log head eps of at least 5.5-6.0 ish. Note that at this lower end, there is no vertex abduction to begin with. So, falling off (i.e. the catalyst diffusin gaway) is "easy", but there is no abduction.
+
+The opposite scenario is to start with *too strong* of an interaction between the catalyst and the icosahedron. Empirically, this will manifest as the shell blowing paart/being attracted to the catalyst (either within 1000 steps or for longer trajectories). This is th eopposite end of the spectrum, where abduction/pulling off is easy, but falling off is hard.
+
+So, we sought to do two kinds of optimizations -- one where we begin with falling off/diffusion and try to balance that with abduction, and another where abduction is easy and we try to balance that with falling off/diffusion/not interacting too strongly with the rest of the shell. These are characterized by a low and high starting log head eps, respectively.
+
+Note that in the following, we record the parameters from the last iteration, even toiugh for each optimization run we produce a summary file that logs th ebest iteration.
+
+Limit 1: low starting head eps, start with falling off due to diffusion, need to get abduciton. (i.e. abduction starts hard).
+- Starting with a starting log head eps of 5.5
+- Ran the following command: `python3 -m catalyst.optimize --use-abduction-loss --batch-size 10 --n-iters 250 --n-steps 1000 -g 10 -kT 1.0 --vis-frame-rate 100 --lr 0.01 -k 0 --leg-mode both --use-stable-shell-loss --stable-shell-k 20.0 --use-remaining-shell-vertices-loss --remaining-shell-vertices-loss-coeff 1.0 --run-name first-try-kt1-coeff1-eps55`
+- Parameters of final iteration:
+```
+Iteration 249:
+- log_morse_shell_center_spider_head_eps: 6.564301325813623
+- morse_r_cutoff: 10.588998628881034
+- morse_r_onset: 8.948694316574155
+- morse_shell_center_spider_head_alpha: 1.87168885282763
+- spider_base_particle_radius: 0.600637705989551
+- spider_base_radius: 4.840478096384897
+- spider_head_height: 4.6262113602045805
+- spider_head_particle_radius: 0.7778571364301861
+```
+- We checked this with a 20k step simulation using `python3 -m catalyst.simulation`. Note that you have to set the parameters of the simulation by hand.
+- Note that we named the directory "first-try-kt1-coeff1-eps55". We have created a directory called `good-icos-optimizations` and have copied this run as `good-icos-optimizations/init-diffusive-limit`
+  - We have copied the sanity check simulation using the parameters from the final iteratoin and 20k steps in this directory as `iter249_20k_traj.pos`
+
+
+Limit 2: high starting head eps, start with abduction, need to get falling off due to diffusion (and no shell explosion). (i.e. falling off/diffusion/not exploding starts hard).
+- Starting with a starting log head eps of 9.2
+- Ran the following command: `python3 -m catalyst.optimize --use-abduction-loss --batch-size 10 --n-iters 250 --n-steps 1000 -g 10 -kT 1.0 --vis-frame-rate 100 --lr 0.01 -k 0 --leg-mode both --use-stable-shell-loss --stable-shell-k 20.0 --use-remaining-shell-vertices-loss --remaining-shell-vertices-loss-coeff 1.0 --run-name first-try-kt1-coeff1-eps92`
+- Parameters of final iteration:
+```
+Iteration 249:
+- log_morse_shell_center_spider_head_eps: 8.933010009519583
+- morse_r_cutoff: 11.742239951761889
+- morse_r_onset: 9.803544376687315
+- morse_shell_center_spider_head_alpha: 1.7910141878127712
+- spider_base_particle_radius: 0.6394784533750115
+- spider_base_radius: 4.787588005279043
+- spider_head_height: 5.331054263095673
+- spider_head_particle_radius: 0.17076660748048453
+```
+- We checked this with a 20k step simulation using `python3 -m catalyst.simulation`. Note that you have to set the parameters of the simulation by hand.
+- Note that we named the directory "first-try-kt1-coeff1-eps92". We have copied this run as `good-icos-optimizations/init-abduction-limit`
+  - We have copied the sanity check simulation using the parameters from the final iteratoin and 20k steps in this directory as `iter249_20k_traj.pos`
+
+
+
 ## July 17, 2023
 
 We coul doptimize for things including this wide spring potential, but it blows up for longer trajectories. This made us look at the interaction energy, because we thought that maybe we could betterrestrict the range of the pairwise morse potential (note that morse_pair uses multiplicaitve isotropic cutofF)

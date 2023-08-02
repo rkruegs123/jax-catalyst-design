@@ -136,7 +136,7 @@ def optimize(args):
 
         # catalyst energy
         # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
-        'log_morse_shell_center_spider_head_eps': 6.9,
+        'log_morse_shell_center_spider_head_eps': 5.5,
         'morse_shell_center_spider_head_alpha': 1.5,
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0
@@ -211,9 +211,9 @@ def optimize(args):
         utils.traj_to_pos_file(rep_traj_bad, rep_complex_info, rep_traj_fname_bad, box_size=30.0)
 
         loss_terms_str = f"\nIteration {i}:\n"
-        loss_terms_str += f"- Best:\n\t- Abduction: {abduction_losses[min_loss_sample_idx]}\n\t- Stable Shell: {stable_shell_losses[min_loss_sample_idx]}\n\tRemaining Energy: {remaining_energy_losses[min_loss_sample_idx]}\n"
-        loss_terms_str += f"- Worst:\n\t- Abduction: {abduction_losses[max_loss_sample_idx]}\n\t- Stable Shell: {stable_shell_losses[max_loss_sample_idx]}\n\tRemaining Energy: {remaining_energy_losses[max_loss_sample_idx]}"
-        loss_terms_str += f"- Average:\n\t- Abduction: {onp.mean(abduction_losses)}\n\t- Stable Shell: {onp.mean(stable_shell_losses)}\n\tRemaining Energy: {onp.mean(remaining_energy_losses)}"
+        loss_terms_str += f"- Best:\n\t- Abduction: {abduction_losses[min_loss_sample_idx]}\n\t- Stable Shell: {stable_shell_losses[min_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[min_loss_sample_idx]}\n"
+        loss_terms_str += f"- Worst:\n\t- Abduction: {abduction_losses[max_loss_sample_idx]}\n\t- Stable Shell: {stable_shell_losses[max_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[max_loss_sample_idx]}\n"
+        loss_terms_str += f"- Average:\n\t- Abduction: {onp.mean(abduction_losses)}\n\t- Stable Shell: {onp.mean(stable_shell_losses)}\n\t- Remaining Energy: {onp.mean(remaining_energy_losses)}"
         with open(loss_terms_path, "a") as f:
             f.write(loss_terms_str + '\n')
 
