@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 from jax_md import space
 
-from catalyst.complex_getter import ComplexInfo
+from catalyst.icosahedron.complex_getter import ComplexInfo
 
 from jax.config import config
 config.update('jax_enable_x64', True)

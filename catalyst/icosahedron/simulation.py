@@ -12,11 +12,11 @@ from jax_md import dataclasses
 from jax_md import util
 
 import catalyst.rigid_body as rigid_body
-from catalyst.checkpoint import checkpoint_scan
-from catalyst.complex_getter import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS
-from catalyst.shell_getter import ShellInfo
-from catalyst.utils import get_body_frame_positions, traj_to_pos_file
-from catalyst.loss import get_loss_fn
+from catalyst.icosahedron.checkpoint import checkpoint_scan
+from catalyst.icosahedron.complex_getter import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS
+from catalyst.icosahedron.shell_getter import ShellInfo
+from catalyst.icosahedron.utils import get_body_frame_positions, traj_to_pos_file
+from catalyst.icosahedron.loss import get_loss_fn
 
 from jax.config import config
 config.update('jax_enable_x64', True)

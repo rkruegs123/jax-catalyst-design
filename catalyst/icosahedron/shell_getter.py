@@ -8,7 +8,7 @@ import jax.numpy as jnp
 # from jax_md import rigid_body, energy, space
 from jax_md import energy, space
 
-from catalyst import utils
+from catalyst.icosahedron import utils
 import catalyst.rigid_body as rigid_body
 
 from jax.config import config

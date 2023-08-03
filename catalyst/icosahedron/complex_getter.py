@@ -10,9 +10,9 @@ import jax.numpy as jnp
 from jax_md import energy, space
 
 import catalyst.rigid_body as rigid_body
-from catalyst.spider_getter import SpiderInfo
-from catalyst.shell_getter import ShellInfo
-from catalyst import utils
+from catalyst.icosahedron.spider_getter import SpiderInfo
+from catalyst.icosahedron.shell_getter import ShellInfo
+from catalyst.icosahedron import utils
 
 from jax.config import config
 config.update('jax_enable_x64', True)

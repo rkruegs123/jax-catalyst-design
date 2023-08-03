@@ -12,10 +12,10 @@ import jax.debug
 
 from jax_md import space
 
-from catalyst.complex_getter import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS
-from catalyst.loss import get_loss_fn
-from catalyst.simulation import simulation
-import catalyst.utils as utils
+from catalyst.icosahedron.complex_getter import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS
+from catalyst.icosahedron.loss import get_loss_fn
+from catalyst.icosahedron.simulation import simulation
+import catalyst.icosahedron.utils as utils
 
 from jax.config import config
 config.update('jax_enable_x64', True)

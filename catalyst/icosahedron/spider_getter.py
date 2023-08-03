@@ -8,7 +8,7 @@ import jax.numpy as jnp
 # from jax_md import rigid_body # FIXME: switch to mod_rigid_body after initial testing
 
 import catalyst.rigid_body as rigid_body
-from catalyst import utils
+from catalyst.icosahedron import utils
 
 from jax.config import config
 config.update('jax_enable_x64', True)
