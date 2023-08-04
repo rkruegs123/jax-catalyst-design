@@ -57,13 +57,14 @@ def simulate_dimers(eps, sigma, rc):
 
 
 
-    n_steps = int(1e5)
-    save_every = 1000
+    n_steps = int(1e4)
+    save_every = 100
 
     trajectory = [state.position]
     energies = [energy_fn(state.position)]
     distances = [space.distance(displacement_fn(state.position[0], state.position[1]))]
     start = time.time()
+    
     for t in tqdm(range(n_steps)):
         state, pos_t = do_step(state, t)
         if t % save_every == 0:
@@ -147,6 +148,67 @@ def plot_daan_frenkel_not_lj(eps, sigma, rc, k):
     """
     Note: they only have the harmonic thing for valence reasons. We can't do this as they did (note: this is probalby one of the reasons why they wrote a custom integrate). We can mimic this by having four distinct species
     """
+def get_first_dissociation_time(key, eps, sigma, rc, n_steps=int(1e5)):
+
+    alpha = 2 * (rc / sigma)**2 * (3 / (2 * ((rc/sigma)**2 - 1)))**3
+    rmin = rc * (3 / (1 + 2 * (rc/sigma)**2))**(1/2)
+
+    init_dimer_dist = rmin # start bonded
+    box_size = 15.0
+
+    """
+    monomer1_rb = rigid_body.RigidBody(
+        center=jnp.array([0.0, 0.0]),
+        orientation=jnp.array([0.0]))
+    monomer1_rb = rigid_body.RigidBody(
+        center=jnp.array([0.0, init_dimer_dist]),
+        orientation=jnp.array([0.0]))
+    monomers_rb = rigid_body.RigidBody(
+        center=jnp.array([monomer1_rb.center, monomer2_rb]),
+        orientation=jnp.array([monomer1_rb.orientation, monomer2_rb.orientation]))
+    """
+
+    monomers = jnp.array([[box_size / 2, box_size / 2],
+                          [box_size / 2, box_size / 2 + init_dimer_dist]])
+
+    displacement_fn, shift_fn = space.periodic(box_size)
+
+    @jit
+    def energy_fn(positions):
+        m1 = positions[0]
+        m2 = positions[1]
+        dr = displacement_fn(m1, m2)
+        r = space.distance(dr)
+
+        val = eps * alpha * ((sigma/r)**2 - 1) * ((rc/r)**2 - 1)**2
+        return jnp.where(r <= rc, val, 0.0)
+
+    init_fn, apply_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt=1e-4, kT=1.0, gamma=12.5)
+
+    state = init_fn(key, monomers, mass=1.0)
+
+    do_step = lambda state, t: (apply_fn(state), state.position)
+    do_step = jit(do_step)
+
+        
+    for t in tqdm(range(n_steps)):
+        state, pos_t = do_step(state, t)
+        dist = space.distance(displacement_fn(pos_t[0], pos_t[1]))
+        if dist > rc:
+            return t
+    return -1
+
+def get_dissociation_distribution(key, batch_size, eps, sigma, rc, n_steps=int(1e5)):
+    diss_times = []
+    dt = 1e-4
+    for b in tqdm(range(batch_size)):
+        key, split = random.split(key)
+        t = get_first_dissociation_time(split, eps, sigma, rc, n_steps)
+        if t != -1:
+            diss_times += [t*dt]
+        else:
+            print('Warning: no dissociation')
+    return diss_times
 
 
 
@@ -155,5 +217,15 @@ if __name__ == "__main__":
 
     sigma = 1.0
     rc = 1.1
+    eps = 5.0
+    batch_size=10
+    key = random.PRNGKey(0)
     assert(rc / sigma == 1.1)
-    simulate_dimers(eps=1.0, sigma=sigma, rc=rc)
+    #simulate_dimers(eps=1.0, sigma=sigma, rc=rc)
+    diss_times = get_dissociation_distribution(key, batch_size, eps, sigma, rc, n_steps=int(1e6))
+    onp.save('diss_times.npy', diss_times, allow_pickle=False)
+    expected_avg_diss_time = -0.91 * eps + 2.2
+    ln_k_measured = jnp.log( 1 / jnp.mean(jnp.array(diss_times)))
+    print('expected average ln k: ',  expected_avg_diss_time)
+    print('measured average ln k: ', ln_k_measured)
+    pdb.set_trace()
