@@ -267,7 +267,6 @@ def substrate_rb(key, eps_ss, sigma, rc, n_steps=10000, write_every=100):
         state, pos_t = do_step(state, t)
         trajectory.append(pos_t)
 
-
     states_to_write = trajectory[::write_every]
 
     # Write to INJAVSI
@@ -375,9 +374,8 @@ def catalyst_and_substrate(key, eps_cs, eps_ss, sigma, rc, n_steps):
     for pos in trajectory:
         all_lines += [box_def, mon_def, cat_def]
 
-        body_pos = vmap(rigid_body.transform, (0, None))(pos, system_shape)
-        pdb.set_trace()
-        assert(body_pos.shape == (4, 3))
+        body_pos, point_species = rigid_body.union_to_points(pos, system_shape, shape_species)
+        assert(body_pos.shape == (4, 2))
 
         m1_pos = body_pos[0]
         m1_line = f"M {m1_pos[0] - box_size / 2} {m1_pos[1] - box_size / 2} 0.0"

@@ -2,6 +2,13 @@
 
 Code for designing **spider catalysts**
 
+# August 8, 2023
+
+We finally are simulating a catalyst and some monomers. Next, need tro continue validating them in the forward case with each other (e.g. setting the right epsilons and measuring rates, also measuring bulk properties)
+
+Then, before we do any optimization, we need to make a rigid body for the dimer that uses the right counts (i.e. not 6 and 6). Note that this versio nof rigid body will only be valid for transfomriong/simulating the complex (i.e. monomers + catalyst). We will also have to be careful with species for monomers and catalyst.
+
+
 # August 2, 2023
 
 Reconvening on icosahedron stuff before we move onto Zorana dimer stuff:
