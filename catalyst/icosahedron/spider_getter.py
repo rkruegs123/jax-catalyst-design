@@ -7,7 +7,7 @@ from jax import vmap, lax
 import jax.numpy as jnp
 # from jax_md import rigid_body # FIXME: switch to mod_rigid_body after initial testing
 
-import catalyst.rigid_body as rigid_body
+import catalyst.icosahedron.rigid_body as rigid_body
 from catalyst.icosahedron import utils
 
 from jax.config import config

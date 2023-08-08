@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from jax_md import space
 # from jax_md import rigid_body
 
-import catalyst.rigid_body as rigid_body
+import catalyst.icosahedron.rigid_body as rigid_body
 
 from jax.config import config
 config.update('jax_enable_x64', True)
@@ -26,7 +26,7 @@ def traj_to_pos_file(traj, complex_info, traj_path, box_size=30.0):
         traj_injavis_lines += complex_info.body_to_injavis_lines(s, box_size=box_size)[0]
     with open(traj_path, 'w+') as of:
         of.write('\n'.join(traj_injavis_lines))
-    
+
 
 # https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
 def dist_point_to_line_segment(line_points, point, displacement_fn):

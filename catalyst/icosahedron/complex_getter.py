@@ -9,7 +9,7 @@ import jax.numpy as jnp
 # from jax_md import rigid_body, energy, space # FIXME: switch to mod_rigid_body after initial testing
 from jax_md import energy, space
 
-import catalyst.rigid_body as rigid_body
+import catalyst.icosahedron.rigid_body as rigid_body
 from catalyst.icosahedron.spider_getter import SpiderInfo
 from catalyst.icosahedron.shell_getter import ShellInfo
 from catalyst.icosahedron import utils

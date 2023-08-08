@@ -11,7 +11,7 @@ from jax_md import space, smap, energy, minimize, quantity, simulate, partition
 from jax_md import dataclasses
 from jax_md import util
 
-import catalyst.rigid_body as rigid_body
+import catalyst.icosahedron.rigid_body as rigid_body
 from catalyst.icosahedron.checkpoint import checkpoint_scan
 from catalyst.icosahedron.complex_getter import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS
 from catalyst.icosahedron.shell_getter import ShellInfo

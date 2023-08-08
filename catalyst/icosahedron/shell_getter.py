@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jax_md import energy, space
 
 from catalyst.icosahedron import utils
-import catalyst.rigid_body as rigid_body
+import catalyst.icosahedron.rigid_body as rigid_body
 
 from jax.config import config
 config.update('jax_enable_x64', True)
