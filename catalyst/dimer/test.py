@@ -294,7 +294,7 @@ def substrate_rb(key, eps_ss, sigma, rc, n_steps=10000, write_every=100):
 
 
 
-def catalyst_and_substrate(key, eps_cs, eps_ss, sigma, rc, n_steps):
+def catalyst_and_substrate(key, eps_cs, eps_ss, sigma, rc, n_steps, save_every):
 
     box_size = 25.0
     displacement_fn, shift_fn = space.periodic(box_size)
@@ -371,7 +371,8 @@ def catalyst_and_substrate(key, eps_cs, eps_ss, sigma, rc, n_steps):
     cat_def = f"def C \"sphere {radius*2} {catalyst_color}\""
 
     all_lines = list()
-    for pos in trajectory:
+    states_to_vis = trajectory[::save_every]
+    for pos in states_to_vis:
         all_lines += [box_def, mon_def, cat_def]
 
         body_pos, point_species = rigid_body.union_to_points(pos, system_shape, shape_species)
@@ -393,6 +394,43 @@ def catalyst_and_substrate(key, eps_cs, eps_ss, sigma, rc, n_steps):
         of.write('\n'.join(all_lines))
 
     print("done")
+
+
+
+def compute_first_passage_time(traj, rc, dt, system_shape, shape_species, displacement_fn):
+    for t, pos in enumerate(traj):
+        body_pos, point_species = rigid_body.union_to_points(pos, system_shape, shape_species)
+        m1_pos = body_pos[0]
+        m2_pos = body_pos[1]
+
+        dist = space.distance(displacement_fn(m1_pos, m2_pos))
+        if dist > rc:
+            return t * dt
+    return -1
+
+def loss_fn(body, rc, system_shape, shape_species, displacement_fn):
+    # Option 1: Actually transform the rigid body
+    body_pos, _ = rigid_body.union_to_points(pos, system_shape, shape_species)
+    m1_pos = body_pos[0]
+    m2_pos = body_pos[1]
+
+    # Option 2: Just grab the centers of masses
+    """
+    m1_pos = body.center[0]
+    m2_pos = body.center[1]
+    """
+
+    dist = space.distance(displacement_fn(m1_pos, m2_pos))
+
+    # note: we could just maximize the distance, but we do two modifications for clarity:
+
+    # Modification 1: we subtract by rc
+    dist -= rc
+
+    # Modification 2: we divide by rc to make it unitless
+    dist /= rc
+
+    return dist
 
 
 
@@ -434,8 +472,9 @@ if __name__ == "__main__":
     rc = 1.1
     # eps_cs = 10.0
     # eps_ss = 5.0
-    eps_cs = 1.0
-    eps_ss = 10.0
-    n_steps = 100
+    eps_cs = 10.0
+    eps_ss = 5.0
+    n_steps = 10000
+    save_every = 100
     key = random.PRNGKey(0)
-    catalyst_and_substrate(key, eps_cs, eps_ss, sigma, rc, n_steps)
+    catalyst_and_substrate(key, eps_cs, eps_ss, sigma, rc, n_steps, save_every)

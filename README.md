@@ -8,6 +8,12 @@ We finally are simulating a catalyst and some monomers. Next, need tro continue 
 
 Then, before we do any optimization, we need to make a rigid body for the dimer that uses the right counts (i.e. not 6 and 6). Note that this versio nof rigid body will only be valid for transfomriong/simulating the complex (i.e. monomers + catalyst). We will also have to be careful with species for monomers and catalyst.
 
+(Notes Part 2):
+
+Nose-Hoover takes forever to run. We want to validate the catalyst + substrate simulations, but we are just going to wait until Langevin is put in.
+
+In the meantime, ew wrote the componets for the loss. While we could directly optimize for the monomers falling off, we are going to target the energies instead. That term will just be porportional to epsilon. the other term will just be the distances betwen the monomers.
+
 
 # August 2, 2023
 
