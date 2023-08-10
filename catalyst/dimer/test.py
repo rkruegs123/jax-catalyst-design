@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import time
 
-from jax import random, jit, vmap
+from jax import random, jit, vmap, lax
 import jax.numpy as jnp
 from jax_md import space, simulate, energy, smap, rigid_body
 
@@ -307,63 +307,98 @@ def catalyst_and_substrate(key, eps_cs, eps_ss, sigma, rc, n_steps, save_every):
     monomer1_rb = rigid_body.RigidBody(
         center=jnp.array([[box_size / 2, box_size / 2]]),
         orientation=jnp.array([0.0]))
+    monomer1_shape = rigid_body.monomer.set(point_species=jnp.array([0]))
     monomer2_rb = rigid_body.RigidBody(
         center=jnp.array([[box_size / 2, box_size / 2 + init_dimer_dist]]),
         orientation=jnp.array([0.0]))
-    monomer_shape = rigid_body.monomer.set(point_species=jnp.array([0]))
+    monomer2_shape = rigid_body.monomer.set(point_species=jnp.array([1]))
 
-    catalyst_dist = 3 * rmin + 0.1
+
+    catalyst_dist = 3 * rmin + 0.02
     catalyst_rb = rigid_body.RigidBody(
         center=jnp.array([[box_size / 2, box_size / 2 + init_dimer_dist / 2]]),
-        # center=jnp.array([[box_size / 2 + 5.0, box_size / 2 + init_dimer_dist / 2]]),
         orientation=jnp.array([0.0])
     )
     catalyst_body_frame_pos = jnp.array([[0.0, 0.0], [0.0, catalyst_dist]])
     catalyst_shape = rigid_body.point_union_shape(
-        catalyst_body_frame_pos, jnp.ones(2)).set(point_species=jnp.array([1, 1]))
+        catalyst_body_frame_pos, jnp.ones(2)).set(point_species=jnp.array([2, 3]))
 
-    system_shape = rigid_body.concatenate_shapes(monomer_shape, catalyst_shape)
+    system_shape = rigid_body.concatenate_shapes(monomer1_shape, monomer2_shape, catalyst_shape)
     system_center = jnp.concatenate([monomer1_rb.center, monomer2_rb.center, catalyst_rb.center])
     system_orientation = jnp.concatenate([monomer1_rb.orientation, monomer2_rb.orientation, catalyst_rb.orientation])
     system_rb = rigid_body.RigidBody(system_center, system_orientation)
-    shape_species = onp.array([0, 0, 1])
+    # shape_species = onp.array([0, 0, 1])
+    shape_species = onp.array([0, 1, 2])
 
     @jit
     def not_lj(dr, eps):
         r = space.distance(dr)
         val = jnp.nan_to_num(eps * alpha * ((sigma/r)**2 - 1) * ((rc/r)**2 - 1)**2)
         return jnp.where(r <= rc, val, 0.0)
-    eps = jnp.array([[eps_ss, eps_cs], [eps_cs, 0.0]])
+    # eps = jnp.array([[eps_ss, eps_cs], [eps_cs, 0.0]])
+    eps = onp.zeros((4, 4))
+    eps[0, 1] = eps_ss
+    eps[1, 0] = eps_ss
+    eps[0, 2] = eps_cs
+    eps[2, 0] = eps_cs
+    eps[1, 3] = eps_cs
+    eps[3, 1] = eps_cs
+    eps = jnp.array(eps)
     not_lj_pair = smap.pair(not_lj, displacement_fn,
-                            species=2, # note: ignoring for now
+                            species=4, # note: ignoring for now
                             eps=eps)
 
-    energy_fn = rigid_body.point_energy(not_lj_pair, system_shape, shape_species)
-    # energy_fn = rigid_body.point_energy(energy.morse_pair, system_shape, shape_species)
-    ha = energy_fn(system_rb)
+
+    const_soft_sphere_eps = 1000.0
+    soft_sphere_eps = onp.zeros((4, 4))
+    soft_sphere_eps[0, 3] = const_soft_sphere_eps
+    soft_sphere_eps[3, 0] = const_soft_sphere_eps
+    soft_sphere_eps[1, 2] = const_soft_sphere_eps
+    soft_sphere_eps[2, 1] = const_soft_sphere_eps
+    soft_sphere_eps = jnp.array(soft_sphere_eps)
+    soft_sphere_pair = energy.soft_sphere_pair(displacement_fn, epsilon=soft_sphere_eps, sigma=rmin)
+
+
+    pair_energy_fn = lambda dr, **kwargs: not_lj_pair(dr, **kwargs) + soft_sphere_pair(dr, **kwargs)
+
+    # energy_fn = rigid_body.point_energy(not_lj_pair, system_shape, shape_species)
+    energy_fn = rigid_body.point_energy(pair_energy_fn, system_shape, shape_species)
 
     gamma = rigid_body.RigidBody(center=jnp.array([12.5]), orientation=jnp.array([12.5 * 3]))
     mass = system_shape.mass(shape_species)
-    init_fn, apply_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt=1e-4, kT=1.0)
+    # init_fn, apply_fn = simulate.nvt_nose_hoover(energy_fn, shift_fn, dt=1e-4, kT=1.0)
+    init_fn, apply_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt=1e-4, kT=1.0, gamma=gamma)
     state = init_fn(key, system_rb, mass=mass)
 
     do_step = lambda state, t: (apply_fn(state), state.position)
     do_step = jit(do_step)
 
+    """
     trajectory = list()
     energies = list()
+    start = time.time()
     for t in tqdm(range(n_steps)):
         state, pos_t = do_step(state, t)
         trajectory.append(pos_t)
         energies.append(energy_fn(pos_t))
+    end = time.time()
+    print(f"Time: {end - start} seconds")
+    """
 
-    plt.plot(energies)
-    plt.show()
+
+    start = time.time()
+    fin_state, trajectory = lax.scan(do_step, state, jnp.arange(n_steps))
+    end = time.time()
+    print(f"Time: {end - start} seconds")
+
+
+    # plt.plot(energies)
+    # plt.show()
 
     # Write to injavis
 
     mon_color = "4fb06d"
-    catalyst_color = "7cb16f"
+    catalyst_color = "43a5be"
 
     radius = rmin / 2 # note: rmin is a terrible name
     box_def = f"boxMatrix {box_size} 0 0 0 {box_size} 0 0 0 0"
@@ -372,7 +407,10 @@ def catalyst_and_substrate(key, eps_cs, eps_ss, sigma, rc, n_steps, save_every):
 
     all_lines = list()
     states_to_vis = trajectory[::save_every]
-    for pos in states_to_vis:
+    n_states_to_vis = states_to_vis.center.shape[0]
+    for i in tqdm(range(n_states_to_vis), desc="Writing to injavis", colour="green"):
+        pos = states_to_vis[i]
+
         all_lines += [box_def, mon_def, cat_def]
 
         body_pos, point_species = rigid_body.union_to_points(pos, system_shape, shape_species)
@@ -438,22 +476,21 @@ if __name__ == "__main__":
     # plot_daan_frenkel_not_lj(eps=1.0, sigma=1.0, rc=10.0, k=2.0)
 
     # For getting dissociation distributions
-    """
     sigma = 1.0
     rc = 1.1
     eps = 5.0
-    batch_size=10
+    batch_size = 10
     key = random.PRNGKey(0)
     assert(rc / sigma == 1.1)
     #simulate_dimers(eps=1.0, sigma=sigma, rc=rc)
     diss_times = get_dissociation_distribution(key, batch_size, eps, sigma, rc, n_steps=int(1e6))
-    onp.save('diss_times.npy', diss_times, allow_pickle=False)
+    # onp.save('diss_times.npy', diss_times, allow_pickle=False)
     expected_avg_diss_time = -0.91 * eps + 2.2
     ln_k_measured = jnp.log( 1 / jnp.mean(jnp.array(diss_times)))
     print('expected average ln k: ',  expected_avg_diss_time)
     print('measured average ln k: ', ln_k_measured)
     pdb.set_trace()
-    """
+
 
     # Also for getting dissociation distributions, but this time with the substrates as a rigid body
     # FIXME, we can't do the above because Sam asn't pushed 2D RB Langevin, so we can't specify the papropriate gamma. So, in the emantime, we just visualize
@@ -467,14 +504,15 @@ if __name__ == "__main__":
 
 
     # Catalyst and substrate
-
+    """
     sigma = 1.0
     rc = 1.1
-    # eps_cs = 10.0
-    # eps_ss = 5.0
-    eps_cs = 10.0
-    eps_ss = 5.0
-    n_steps = 10000
-    save_every = 100
+    # eps_cs = 8.0
+    eps_cs = 0.0
+    eps_ss = 15.0
+    n_steps = int(1e6)
+    save_every = int(1e3)
     key = random.PRNGKey(0)
+    expected_avg_diss_time_no_catalyst = -0.91 * eps_ss + 2.2
     catalyst_and_substrate(key, eps_cs, eps_ss, sigma, rc, n_steps, save_every)
+    """

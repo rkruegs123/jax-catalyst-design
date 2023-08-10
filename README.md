@@ -2,6 +2,18 @@
 
 Code for designing **spider catalysts**
 
+# August 10, 2023
+
+Gameplan:
+
+Need to scan the dissociation times thing to do higher throughoupt. Then, confir mwith larger batch sizes for eps 4, and 5. Could also try 15
+
+Then, do the same for the monomers as rigid bodies, confirm that we get same results.
+
+Then do with catalyst. Have to be careful with valence considerations...
+
+Also should probably read the paper...
+
 # August 8, 2023
 
 We finally are simulating a catalyst and some monomers. Next, need tro continue validating them in the forward case with each other (e.g. setting the right epsilons and measuring rates, also measuring bulk properties)
