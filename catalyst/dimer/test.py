@@ -151,7 +151,7 @@ def plot_daan_frenkel_not_lj(eps, sigma, rc, k):
     """
     Note: they only have the harmonic thing for valence reasons. We can't do this as they did (note: this is probalby one of the reasons why they wrote a custom integrate). We can mimic this by having four distinct species
     """
-def get_first_dissociation_time(key, eps, sigma, rc, n_steps=int(1e5)):
+def get_first_dissociation_time(key, eps, sigma, rc, max_steps=int(1e5)):
 
     alpha = 2 * (rc / sigma)**2 * (3 / (2 * ((rc/sigma)**2 - 1)))**3
     rmin = rc * (3 / (1 + 2 * (rc/sigma)**2))**(1/2)
@@ -191,23 +191,29 @@ def get_first_dissociation_time(key, eps, sigma, rc, n_steps=int(1e5)):
 
     state = init_fn(key, monomers, mass=1.0)
 
-    do_step = lambda state, t: (apply_fn(state), state.position)
+    # do_step = lambda state, t: (apply_fn(state), state.position)
+    do_step = lambda state, t: (apply_fn(state), space.distance(displacement_fn(state.position[0], state.position[1])))
     do_step = jit(do_step)
 
 
-    for t in tqdm(range(n_steps)):
-        state, pos_t = do_step(state, t)
-        dist = space.distance(displacement_fn(pos_t[0], pos_t[1]))
-        if dist > rc:
-            return t
-    return -1
+    fin_state, dists = lax.scan(do_step, state, jnp.arange(max_steps))
+    check_dists = (dists > rc).astype(jnp.int32)
+    if jnp.sum(check_dists) == 0:
+        return -1
+    return jnp.nonzero(check_dists)[0][0]
 
-def get_dissociation_distribution(key, batch_size, eps, sigma, rc, n_steps=int(1e5)):
+
+def get_dissociation_distribution(key, batch_size, eps, sigma, rc, max_steps=int(1e5)):
     diss_times = []
     dt = 1e-4
+
+    run_sample = lambda k: get_first_dissociation_time(k, eps, sigma, rc, max_steps)
+    run_sample = jit(run_sample)
+
     for b in tqdm(range(batch_size)):
         key, split = random.split(key)
-        t = get_first_dissociation_time(split, eps, sigma, rc, n_steps)
+        # t = get_first_dissociation_time(split, eps, sigma, rc, max_steps)
+        t = run_sample(split)
         if t != -1:
             diss_times += [t*dt]
         else:
@@ -478,17 +484,31 @@ if __name__ == "__main__":
     # For getting dissociation distributions
     sigma = 1.0
     rc = 1.1
-    eps = 5.0
+    eps = 15.0
     batch_size = 10
     key = random.PRNGKey(0)
     assert(rc / sigma == 1.1)
     #simulate_dimers(eps=1.0, sigma=sigma, rc=rc)
-    diss_times = get_dissociation_distribution(key, batch_size, eps, sigma, rc, n_steps=int(1e6))
+    diss_times = get_dissociation_distribution(key, batch_size, eps, sigma, rc, max_steps=int(1e8))
     # onp.save('diss_times.npy', diss_times, allow_pickle=False)
     expected_avg_diss_time = -0.91 * eps + 2.2
     ln_k_measured = jnp.log( 1 / jnp.mean(jnp.array(diss_times)))
     print('expected average ln k: ',  expected_avg_diss_time)
     print('measured average ln k: ', ln_k_measured)
+    pdb.set_trace()
+
+    ## Plot a running average
+    all_means = list()
+    all_is = list()
+    for i in range(1, len(diss_times)):
+        i_mean = jnp.mean(jnp.array(diss_times[:i]))
+        i_ln_k_measured = jnp.log(1 / i_mean)
+
+        all_means.append(i_ln_k_measured)
+        all_is.append(i)
+    plt.plot(all_is, all_means)
+    plt.show()
+
     pdb.set_trace()
 
 
