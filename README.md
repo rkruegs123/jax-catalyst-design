@@ -2,6 +2,14 @@
 
 Code for designing **spider catalysts**
 
+# August 14, 2023
+
+Goal for today:
+- set up eval for non-RB vs RB for different epsilons for dissociation time
+- reread paper
+- email zorana and first author with questions
+  - e.g. whether or not their simulations were in bulk, simulation times, why they did such a large epsilon for the substrate
+
 # August 10, 2023
 
 Gameplan:

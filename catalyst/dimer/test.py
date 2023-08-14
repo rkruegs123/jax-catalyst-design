@@ -159,18 +159,6 @@ def get_first_dissociation_time(key, eps, sigma, rc, max_steps=int(1e5)):
     init_dimer_dist = rmin # start bonded
     box_size = 15.0
 
-    """
-    monomer1_rb = rigid_body.RigidBody(
-        center=jnp.array([0.0, 0.0]),
-        orientation=jnp.array([0.0]))
-    monomer1_rb = rigid_body.RigidBody(
-        center=jnp.array([0.0, init_dimer_dist]),
-        orientation=jnp.array([0.0]))
-    monomers_rb = rigid_body.RigidBody(
-        center=jnp.array([monomer1_rb.center, monomer2_rb]),
-        orientation=jnp.array([monomer1_rb.orientation, monomer2_rb.orientation]))
-    """
-
     monomers = jnp.array([[box_size / 2, box_size / 2],
                           [box_size / 2, box_size / 2 + init_dimer_dist]])
 
@@ -199,21 +187,18 @@ def get_first_dissociation_time(key, eps, sigma, rc, max_steps=int(1e5)):
     fin_state, dists = lax.scan(do_step, state, jnp.arange(max_steps))
     check_dists = (dists > rc).astype(jnp.int32)
     if jnp.sum(check_dists) == 0:
+        print("Did not find dissociation time")
         return -1
     return jnp.nonzero(check_dists)[0][0]
+    # return jnp.where(jnp.sum(check_dists) == 0, -1, jnp.argmax(check_dists))
 
 
-def get_dissociation_distribution(key, batch_size, eps, sigma, rc, max_steps=int(1e5)):
+def get_dissociation_distribution(key, batch_size, eps, sigma, rc, max_steps=int(1e5), dt=1e-4):
     diss_times = []
-    dt = 1e-4
-
-    run_sample = lambda k: get_first_dissociation_time(k, eps, sigma, rc, max_steps)
-    run_sample = jit(run_sample)
 
     for b in tqdm(range(batch_size)):
         key, split = random.split(key)
-        # t = get_first_dissociation_time(split, eps, sigma, rc, max_steps)
-        t = run_sample(split)
+        t = get_first_dissociation_time(split, eps, sigma, rc, max_steps)
         if t != -1:
             diss_times += [t*dt]
         else:
@@ -484,16 +469,24 @@ if __name__ == "__main__":
     # For getting dissociation distributions
     sigma = 1.0
     rc = 1.1
-    eps = 15.0
+    eps = 4.0
+    dt = 1e-4
     batch_size = 10
     key = random.PRNGKey(0)
+    max_steps = int(1e6)
     assert(rc / sigma == 1.1)
-    #simulate_dimers(eps=1.0, sigma=sigma, rc=rc)
-    diss_times = get_dissociation_distribution(key, batch_size, eps, sigma, rc, max_steps=int(1e8))
-    # onp.save('diss_times.npy', diss_times, allow_pickle=False)
+
     expected_avg_diss_time = -0.91 * eps + 2.2
-    ln_k_measured = jnp.log( 1 / jnp.mean(jnp.array(diss_times)))
+    expected_avg_num_steps = 1 / jnp.exp(expected_avg_diss_time) / dt
     print('expected average ln k: ',  expected_avg_diss_time)
+    print(f"expected avg. number of steps: {expected_avg_num_steps}")
+    print(f"note: max_steps={max_steps}")
+    
+    # simulate_dimers(eps=1.0, sigma=sigma, rc=rc)
+    diss_times = get_dissociation_distribution(key, batch_size, eps, sigma, rc, max_steps=max_steps)
+    # onp.save('diss_times.npy', diss_times, allow_pickle=False)
+    
+    ln_k_measured = jnp.log( 1 / jnp.mean(jnp.array(diss_times)))
     print('measured average ln k: ', ln_k_measured)
     pdb.set_trace()
 
