@@ -72,7 +72,7 @@ def get_first_dissociation_time(key, eps, sigma, rc, max_steps=int(1e5)):
     # return jnp.where(jnp.sum(check_dists) == 0, -1, jnp.argmax(check_dists))
 
 
-def get_dissociation_distribution(key, batch_size, eps, sigma, rc, max_steps=int(1e5), dt=1e-4):
+def get_dissociation_distribution(key, batch_size, eps, sigma, rc, output_path, max_steps=int(1e5), dt=1e-4):
     diss_times = []
 
     for b in tqdm(range(batch_size)):
@@ -81,7 +81,9 @@ def get_dissociation_distribution(key, batch_size, eps, sigma, rc, max_steps=int
         if t != -1:
             diss_times += [t*dt]
         else:
-            print('Warning: no dissociation')
+            with open(output_path, "a") as f:
+                f.write(f"warning: no dissociation at batch {b}\n")
+            
     return diss_times
 
 
@@ -144,7 +146,7 @@ if __name__ == "__main__":
 
     start = time.time()
     diss_times = get_dissociation_distribution(
-        key, batch_size, eps, sigma, rc, max_steps=max_steps, dt=dt)
+        key, batch_size, eps, sigma, rc, output_path, max_steps=max_steps, dt=dt)
     end = time.time()
     onp.save(run_dir / "diss_times.npy", diss_times, allow_pickle=False)
     
