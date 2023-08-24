@@ -2,6 +2,34 @@
 
 Code for designing **spider catalysts**
 
+# August 24, 2023
+
+We have been evaluating the Zorana dimer thing. They only found the effect they cared about at high epsilon, so things take really long timescales, eg 1e9, 1e10 (note: we don't know if they did ensembles or not, and we also don't know why the efefect can't be observed at lower enerygy scales). This raised some question marks for us in terms of how to do the optimzation.
+
+As a first way to address these question marks, we just wanted to see if we could take stable gradients through long simulations with their gamma and dt. We did this for 1e6, 1e7, and 1e8 (note that 1e8 is sitll running). We did see stable (i.e. non-exploding gradients). With rigid bodies, 1e6 took like 220 seconds per gradient update and 1e7 took 10x that, so compiling didn't relaly get a speedup. Note that we are using a foriloop and just computing a runing average (of sorts) so that we don't have to store all the distances. It runs out of memory for 1e9 -- we could probably address this by doing a scan with some rematting, but is it really worth it...? For 1e9 steps, we expect a single gradient update (without any rematting) to take ~220*1e3 seconds, which is way too much.
+
+So, looking forward, we see Zorana's caes as a great test bed for optimizing w.r.t. enhanced sampling but we don't want to do that right now.
+
+We'd rather just prove that we can do the icosahedron thing for other shells, close that loop, then try to deal with enhanced sampling for different reaction types (i.e. substitution, addition, elimination).
+
+So, we are going to go forth and try to do what we did for the icosahedron for the octahedron.
+
+
+
+# August 18, 2023
+
+We agree that we will follow one of two courses:
+- (i) get optimization over long simulations to work either by enhanced sampling (e.g. metadynamics of DNEB) or some other method
+  - to give us confidence that we need this, we are running some gradient checks over long simulatoins. We set this up without rigid bodies, and we want to add rigid bodies later to see how gradient stability is affected
+- (ii) Somethign else -- e.g. relax the problem definition
+
+Note that we also still want to email Zoarana at some point, something including the following three points:
+- why didn't lower epsilons work?
+- did you simulate things in ensembles?
+- why did you use such a small time step?
+
+Another tihng we want to do: run dimer dissociation tests at higher dt and see if we can rpeproduce the same expected rates
+
 # August 14, 2023
 
 Goal for today:
