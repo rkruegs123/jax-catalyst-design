@@ -17,9 +17,10 @@ config.update('jax_enable_x64', True)
 
 
 class ShellInfo:
-    def __init__(self, displacement_fn, obj_dir="obj/", verbose=True):
+    def __init__(self, displacement_fn, obj_basedir="obj/", verbose=True):
         self.displacement_fn = displacement_fn
-        self.obj_dir = Path(obj_dir)
+        self.obj_dir = Path(obj_basedir) / "icosahedron"
+        assert(obj_dir.exists())
         self.set_path_names()
         self.vertex_radius = 2.0
 
