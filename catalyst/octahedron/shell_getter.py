@@ -3,20 +3,22 @@ from pathlib import Path
 import unittest
 from tqdm import tqdm
 
-from jax import vmap
+from jax import vmap, random, jit, lax
 import jax.numpy as jnp
-from jax_md import energy, space
+from jax_md import energy, space, simulate
 
-from catalyst.icosahedron import utils
-import catalyst.icosahedron.rigid_body as rigid_body
+# import catalyst.octahedron.rigid_body as rigid_body
+from jax_md import rigid_body
+from catalyst.octahedron import utils
 
 from jax.config import config
 config.update('jax_enable_x64', True)
 
 
 class ShellInfo:
-    def __init__(self, displacement_fn, obj_basedir="obj/", verbose=True):
+    def __init__(self, displacement_fn, shift_fn, obj_basedir="obj/", verbose=True):
         self.displacement_fn = displacement_fn
+        self.shift_fn = shift_fn
         self.obj_dir = Path(obj_basedir) / "octahedron"
         assert(self.obj_dir.exists())
         self.set_path_names()
@@ -39,7 +41,7 @@ class ShellInfo:
 
     def load(self):
         rb_paths_exist = self.rb_center_path.exists() \
-                                  and self.rb_orientation_vec_path.exists()
+                         and self.rb_orientation_vec_path.exists()
         vertex_shape_paths_exist = self.vertex_shape_points_path.exists() \
                                    and self.vertex_shape_masses_path.exists() \
                                    and self.vertex_shape_point_count_path.exists() \
@@ -53,7 +55,25 @@ class ShellInfo:
         else:
             self.run_minimization()
 
-        # raise NotImplementedError
+            # write to file
+
+            rb_center = self.rigid_body.center
+            rb_orientation_vec = self.rigid_body.orientation.vec
+            jnp.save(self.rb_center_path, rb_center, allow_pickle=False)
+            jnp.save(self.rb_orientation_vec_path, rb_orientation_vec, allow_pickle=False)
+
+            vertex_shape_points = self.shape.points
+            vertex_shape_masses = self.shape.masses
+            vertex_shape_point_count = self.shape.point_count
+            vertex_shape_point_offset = self.shape.point_offset
+            vertex_shape_point_species = self.shape.point_species
+            vertex_shape_point_radius = self.shape.point_radius
+            jnp.save(self.vertex_shape_points_path, vertex_shape_points, allow_pickle=False)
+            jnp.save(self.vertex_shape_masses_path, vertex_shape_masses, allow_pickle=False)
+            jnp.save(self.vertex_shape_point_count_path, vertex_shape_point_count, allow_pickle=False)
+            jnp.save(self.vertex_shape_point_offset_path, vertex_shape_point_offset, allow_pickle=False)
+            jnp.save(self.vertex_shape_point_species_path, vertex_shape_point_species, allow_pickle=False)
+            jnp.save(self.vertex_shape_point_radius_path, vertex_shape_point_radius, allow_pickle=False)
 
     def get_vertex_shape(self, vertex_coords):
         # Get the vertex shape (i.e. the coordinates of a vertex for defining a rigid body)
@@ -98,6 +118,10 @@ class ShellInfo:
                                      [0.0, 0.0, 1.0],
                                      [0.0, 0.0, -1.0]])
 
+        # note: we rotate by a random quaternion to avoid numerical issues
+        rand_quat = rigid_body.random_quaternion(random.PRNGKey(0), jnp.float64)
+        vertex_coords = rigid_body.quaternion_rotate(rand_quat, vertex_coords)
+
         # Compute the vertex shape positions
         # note: first position is vertex, rest are patches
         vertex_rb_positions = self.get_vertex_shape(vertex_coords)
@@ -117,6 +141,7 @@ class ShellInfo:
         vertex_shape = rigid_body.point_union_shape(vertex_rb_positions, mass).set(
             point_species=species)
         self.shape = vertex_shape
+        self.shape_species = None
 
 
         """
@@ -150,13 +175,61 @@ class ShellInfo:
         norm = jnp.linalg.norm(orientation, axis=1).reshape(-1, 1)
         orientation /= norm
         orientation = rigid_body.Quaternion(orientation)
-        return rigid_body.RigidBody(vertex_coords, orientation)
+
+        octahedron_rb = rigid_body.RigidBody(vertex_coords, orientation)
+
+        return octahedron_rb
 
 
-    def run_minimization(self, vertex_mass=1.0, patch_mass=1e-8):
-        unmimized_rb = self.get_unminimized_shell(vertex_mass=1.0, patch_mass=1e-8) # FIXME
-        return
-        # raise NotImplementedError
+    def run_minimization(self,
+                         # Rigid body parameters
+                         vertex_mass=1.0, patch_mass=1e-8,
+
+                         # Minimization parameters
+                         num_steps=40000, morse_eps=10.0, morse_alpha=4.0,
+                         soft_sphere_eps=10000.0, kT_high=1.0, kT_low=0.1, dt=1e-4):
+        unminimized_rb = self.get_unminimized_shell(vertex_mass=vertex_mass, patch_mass=patch_mass) # FIXME
+
+        N_2 = num_steps // 2
+        kTs = jnp.array([kT_high for i in range(0, N_2)] + [kT_low for i in range(N_2, num_steps)], dtype=jnp.float32).flatten()
+
+        morse_eps_mat = morse_eps * jnp.array([[0.0, 0.0],
+                                               [0.0, 1.0]]) # only patches attract
+        soft_sphere_eps_mat = soft_sphere_eps * jnp.array([[1.0, 0.0],
+                                                           [0.0, 0.0]]) # only centers repel
+        pair_energy_soft = energy.soft_sphere_pair(self.displacement_fn, species=2,
+                                                   sigma=self.vertex_radius*2,
+                                                   epsilon=soft_sphere_eps_mat)
+        pair_energy_morse = energy.morse_pair(self.displacement_fn, species=2, sigma=0.0,
+                                              epsilon=morse_eps_mat, alpha=morse_alpha)
+        pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) \
+                         + pair_energy_morse(R, **kwargs)
+        energy_fn = rigid_body.point_energy(pair_energy_fn, self.shape)
+
+        init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, self.shift_fn, dt, kTs[0])
+        step_fn = jit(step_fn)
+        key = random.PRNGKey(0)
+        state = init_fn(key, unminimized_rb, mass=self.shape.mass())
+
+        do_step = lambda state, t: (step_fn(state, kT=kTs[t]), state.position)
+        do_step = jit(do_step)
+
+        state, traj = lax.scan(do_step, state, jnp.arange(num_steps))
+
+        # Write trajectory to file
+        all_lines = list()
+        vis_every = 1000
+        assert(num_steps % vis_every == 0)
+        for n_body in tqdm(range(0, num_steps+1, vis_every)):
+            body = traj[n_body]
+            body_lines, _, _, _ = self.body_to_injavis_lines(body, box_size=15.0)
+            all_lines += body_lines
+        with open('minimization.pos', 'w+') as of:
+            of.write('\n'.join(all_lines))
+
+        self.rigid_body = state.position
+
+
 
     def load_from_file(self):
         if self.verbose:
@@ -212,6 +285,8 @@ class ShellInfo:
 
         box_def = f"boxMatrix {box_size} 0 0 0 {box_size} 0 0 0 {box_size}"
         vertex_def = f"def V \"sphere {self.vertex_radius*2} {vertex_color}\""
+        anchor_def = f"def A \"sphere {self.vertex_radius*2} {'ffffff'}\""
+        anchor_oppo_def = f"def O \"sphere {self.vertex_radius*2} {'000000'}\""
         patch_def = f"def P \"sphere {patch_radius*2} {patch_color}\""
 
         position_lines = list()
@@ -220,7 +295,12 @@ class ShellInfo:
 
             # vertex center
             vertex_center_pos = body_pos[vertex_start_idx]
-            vertex_line = f"V {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
+            if num_vertex == 0:
+                vertex_line = f"A {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
+            elif num_vertex == 1:
+                vertex_line = f"O {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
+            else:
+                vertex_line = f"V {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
             position_lines.append(vertex_line)
 
             for num_patch in range(5):
@@ -229,20 +309,21 @@ class ShellInfo:
                 position_lines.append(patch_line)
 
         # Return: all lines, box info, particle types, positions
-        all_lines = [box_def, vertex_def, patch_def] + position_lines + ["eof"]
-        return all_lines, box_def, [vertex_def, patch_def], position_lines
+        all_lines = [box_def, vertex_def, anchor_def, anchor_oppo_def, patch_def] + position_lines + ["eof"]
+        return all_lines, box_def, [vertex_def, anchor_def, anchor_oppo_def, patch_def], position_lines
 
 class TestShellInfo(unittest.TestCase):
 
+    @unittest.skip
     def test_load(self):
         displacement_fn, shift_fn = space.free()
-        shell_info = ShellInfo(displacement_fn)
+        shell_info = ShellInfo(displacement_fn, shift_fn)
 
     def test_write_unminimized_injavis(self):
         displacement_fn, shift_fn = space.free()
-        shell_info = ShellInfo(displacement_fn)
-        unminimized_shell_rb = shell_info.get_unminimized_shell(vertex_mass=1.0, patch_mass=1e-8)
-        injavis_lines, _, _, _ = shell_info.body_to_injavis_lines(unminimized_shell_rb, box_size=15.0)
+        shell_info = ShellInfo(displacement_fn, shift_fn)
+        shell_rb = shell_info.rigid_body
+        injavis_lines, _, _, _ = shell_info.body_to_injavis_lines(shell_rb, box_size=15.0)
         with open('unminimized_octahedron.pos', 'w+') as of:
             of.write('\n'.join(injavis_lines))
 
