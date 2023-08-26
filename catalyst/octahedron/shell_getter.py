@@ -7,8 +7,8 @@ from jax import vmap, random, jit, lax
 import jax.numpy as jnp
 from jax_md import energy, space, simulate
 
-# import catalyst.octahedron.rigid_body as rigid_body
-from jax_md import rigid_body
+import catalyst.octahedron.rigid_body as rigid_body
+# from jax_md import rigid_body
 from catalyst.octahedron import utils
 
 from jax.config import config
@@ -285,8 +285,7 @@ class ShellInfo:
 
         box_def = f"boxMatrix {box_size} 0 0 0 {box_size} 0 0 0 {box_size}"
         vertex_def = f"def V \"sphere {self.vertex_radius*2} {vertex_color}\""
-        anchor_def = f"def A \"sphere {self.vertex_radius*2} {'ffffff'}\""
-        anchor_oppo_def = f"def O \"sphere {self.vertex_radius*2} {'000000'}\""
+        to_bind_def = f"def T \"sphere {self.vertex_radius*2} {'ffffff'}\""
         patch_def = f"def P \"sphere {patch_radius*2} {patch_color}\""
 
         position_lines = list()
@@ -295,10 +294,8 @@ class ShellInfo:
 
             # vertex center
             vertex_center_pos = body_pos[vertex_start_idx]
-            if num_vertex == 0:
-                vertex_line = f"A {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
-            elif num_vertex == 1:
-                vertex_line = f"O {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
+            if num_vertex == utils.vertex_to_bind_idx:
+                vertex_line = f"T {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
             else:
                 vertex_line = f"V {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
             position_lines.append(vertex_line)
@@ -309,8 +306,8 @@ class ShellInfo:
                 position_lines.append(patch_line)
 
         # Return: all lines, box info, particle types, positions
-        all_lines = [box_def, vertex_def, anchor_def, anchor_oppo_def, patch_def] + position_lines + ["eof"]
-        return all_lines, box_def, [vertex_def, anchor_def, anchor_oppo_def, patch_def], position_lines
+        all_lines = [box_def, vertex_def, to_bind_def, patch_def] + position_lines + ["eof"]
+        return all_lines, box_def, [vertex_def, to_bind_def, patch_def], position_lines
 
 class TestShellInfo(unittest.TestCase):
 
@@ -319,12 +316,12 @@ class TestShellInfo(unittest.TestCase):
         displacement_fn, shift_fn = space.free()
         shell_info = ShellInfo(displacement_fn, shift_fn)
 
-    def test_write_unminimized_injavis(self):
+    def test_write_injavis(self):
         displacement_fn, shift_fn = space.free()
         shell_info = ShellInfo(displacement_fn, shift_fn)
         shell_rb = shell_info.rigid_body
         injavis_lines, _, _, _ = shell_info.body_to_injavis_lines(shell_rb, box_size=15.0)
-        with open('unminimized_octahedron.pos', 'w+') as of:
+        with open('octahedron.pos', 'w+') as of:
             of.write('\n'.join(injavis_lines))
 
 
