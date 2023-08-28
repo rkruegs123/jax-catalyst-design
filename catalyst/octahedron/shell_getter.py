@@ -188,7 +188,7 @@ class ShellInfo:
                          # Minimization parameters
                          num_steps=40000, morse_eps=10.0, morse_alpha=4.0,
                          soft_sphere_eps=10000.0, kT_high=1.0, kT_low=0.1, dt=1e-4):
-        unminimized_rb = self.get_unminimized_shell(vertex_mass=vertex_mass, patch_mass=patch_mass) # FIXME
+        unminimized_rb = self.get_unminimized_shell(vertex_mass=vertex_mass, patch_mass=patch_mass)
 
         N_2 = num_steps // 2
         kTs = jnp.array([kT_high for i in range(0, N_2)] + [kT_low for i in range(N_2, num_steps)], dtype=jnp.float32).flatten()

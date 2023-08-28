@@ -56,6 +56,7 @@ class ComplexInfo:
         self.initial_separation_coeff = initial_separation_coeff
         self.vertex_to_bind_idx = vertex_to_bind_idx
         self.displacement_fn = displacement_fn
+        self.shift_fn = shift_fn
 
         self.spider_base_radius = spider_base_radius
         self.spider_head_height = spider_head_height
@@ -345,20 +346,46 @@ class ComplexInfo:
 
 
 class TestComplexInfo(unittest.TestCase):
-    displacement_fn, shift_fn = space.free()
-    complex_info = ComplexInfo(
-            initial_separation_coeff=0.1, vertex_to_bind_idx=5,
-            displacement_fn=displacement_fn, shift_fn=shift_fn,
-            spider_base_radius=5.0, spider_head_height=4.0,
-            spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
-            spider_point_mass=1.0, spider_mass_err=1e-6
-        )
 
     def _test_init(self):
-        body_pos = self.complex_info.get_body_frame_positions(self.complex_info.rigid_body)
+        displacement_fn, shift_fn = space.free()
+        complex_info = ComplexInfo(
+                initial_separation_coeff=0.1, vertex_to_bind_idx=5,
+                displacement_fn=displacement_fn, shift_fn=shift_fn,
+                spider_base_radius=5.0, spider_head_height=4.0,
+                spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
+                spider_point_mass=1.0, spider_mass_err=1e-6
+        )
+
+        body_pos = complex_info.get_body_frame_positions(complex_info.rigid_body)
         return
 
+    def test_injavis(self):
+        displacement_fn, shift_fn = space.free()
+        complex_info = ComplexInfo(
+                initial_separation_coeff=0.1, vertex_to_bind_idx=5,
+                displacement_fn=displacement_fn, shift_fn=shift_fn,
+                spider_base_radius=5.0, spider_head_height=4.0,
+                spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
+                spider_point_mass=1.0, spider_mass_err=1e-6
+        )
+
+        body = complex_info.rigid_body
+        complex_lines, _, _, _ = complex_info.body_to_injavis_lines(body, box_size=30.0)
+        with open('complex_state.pos', 'w+') as of:
+            of.write('\n'.join(complex_lines))
+
     def test_energy_fn(self):
+
+        displacement_fn, shift_fn = space.free()
+        complex_info = ComplexInfo(
+                initial_separation_coeff=0.1, vertex_to_bind_idx=5,
+                displacement_fn=displacement_fn, shift_fn=shift_fn,
+                spider_base_radius=5.0, spider_head_height=4.0,
+                spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
+                spider_point_mass=1.0, spider_mass_err=1e-6
+        )
+
         energy_fn = self.complex_info.get_energy_fn(
             morse_shell_center_spider_head_eps=jnp.exp(9.21), morse_shell_center_spider_head_alpha=1.5,
         )
