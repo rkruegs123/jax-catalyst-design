@@ -38,7 +38,8 @@ BASE_LEGS = jnp.array([
 class ComplexInfo:
     def __init__(self,
                  # complex-specific arguments
-                 initial_separation_coeff, vertex_to_bind_idx, displacement_fn,
+                 initial_separation_coeff, vertex_to_bind_idx,
+                 displacement_fn, shift_fn,
 
                  # spider-specific arguments arguments
                  spider_base_radius, spider_head_height,
@@ -76,7 +77,8 @@ class ComplexInfo:
         return spider_body, shell_body
 
     def load(self):
-        self.shell_info = ShellInfo(self.displacement_fn, verbose=self.verbose) # note: won't change
+        self.shell_info = ShellInfo(self.displacement_fn, self.shift_fn,
+                                    verbose=self.verbose) # note: won't change
         spider_info = SpiderInfo(
             self.spider_base_radius, self.spider_head_height,
             self.spider_base_particle_radius, self.spider_head_particle_radius,
@@ -343,10 +345,10 @@ class ComplexInfo:
 
 
 class TestComplexInfo(unittest.TestCase):
-    displacement_fn, _ = space.free()
+    displacement_fn, shift_fn = space.free()
     complex_info = ComplexInfo(
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,
-            displacement_fn=displacement_fn,
+            displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=5.0, spider_head_height=4.0,
             spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
             spider_point_mass=1.0, spider_mass_err=1e-6

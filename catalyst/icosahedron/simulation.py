@@ -82,7 +82,7 @@ class TestSimulate(unittest.TestCase):
 
         complex_info = ComplexInfo(
             initial_separation_coeff=0.0, vertex_to_bind_idx=5,
-            displacement_fn=displacement_fn,
+            displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=self.sim_params["spider_base_radius"],
             spider_head_height=self.sim_params["spider_head_height"],
             spider_base_particle_radius=self.sim_params["spider_base_particle_radius"],
@@ -147,7 +147,7 @@ class TestSimulate(unittest.TestCase):
 
         displacement_fn, shift_fn = space.free()
 
-        shell_info = ShellInfo(displacement_fn=displacement_fn)
+        shell_info = ShellInfo(displacement_fn=displacement_fn, shift_fn=shift_fn)
         shell_energy_fn = shell_info.get_energy_fn()
 
         n_steps = 5000
@@ -168,7 +168,7 @@ class TestSimulate(unittest.TestCase):
 
         displacement_fn, shift_fn = space.free()
 
-        shell_info = ShellInfo(displacement_fn=displacement_fn)
+        shell_info = ShellInfo(displacement_fn=displacement_fn, shift_fn=shift_fn)
         shell_info.rigid_body = shell_info.rigid_body[:-1]
         shell_energy_fn = shell_info.get_energy_fn()
 

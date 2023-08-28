@@ -102,7 +102,8 @@ def optimize(args):
 
     def loss_fn(params, key):
         complex_info = ComplexInfo(
-            initial_separation_coefficient, vertex_to_bind_idx, displacement_fn,
+            initial_separation_coefficient, vertex_to_bind_idx,
+            displacement_fn, shift_fn,
             params['spider_base_radius'], params['spider_head_height'],
             params['spider_base_particle_radius'], params['spider_head_particle_radius'],
             spider_point_mass=1.0, spider_mass_err=1e-6, spider_bond_idxs=spider_bond_idxs
@@ -199,7 +200,8 @@ def optimize(args):
         rep_traj  = trajs[min_loss_sample_idx][rep_traj_idxs]
         rep_traj_bad  = trajs[max_loss_sample_idx][rep_traj_idxs]
         rep_complex_info = ComplexInfo(
-            initial_separation_coefficient, vertex_to_bind_idx, displacement_fn,
+            initial_separation_coefficient, vertex_to_bind_idx,
+            displacement_fn, shift_fn,
             params['spider_base_radius'], params['spider_head_height'],
             params['spider_base_particle_radius'], params['spider_head_particle_radius'],
             spider_point_mass=1.0, spider_mass_err=1e-6,
