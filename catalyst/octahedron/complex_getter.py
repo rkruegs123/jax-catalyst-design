@@ -6,7 +6,6 @@ import numpy as onp
 
 from jax import vmap, lax
 import jax.numpy as jnp
-# from jax_md import rigid_body, energy, space # FIXME: switch to mod_rigid_body after initial testing
 from jax_md import energy, space
 
 import catalyst.octahedron.rigid_body as rigid_body
@@ -374,7 +373,6 @@ class TestComplexInfo(unittest.TestCase):
 
     def test_write_injavis(self):
         complex_rb = self.complex_info.rigid_body
-        pdb.set_trace()
         injavis_lines, _, _, _ = self.complex_info.body_to_injavis_lines(complex_rb, box_size=15.0)
         with open('octahedron_complex.pos', 'w+') as of:
             of.write('\n'.join(injavis_lines))

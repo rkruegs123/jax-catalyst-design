@@ -6,8 +6,8 @@ from tqdm import tqdm
 from jax import jit, random, vmap, lax
 
 from jax_md.util import *
-# from jax_md import space, smap, energy, minimize, quantity, simulate, partition, rigid_body
 from jax_md import space, smap, energy, minimize, quantity, simulate, partition
+# from jax_md import rigid_body
 from jax_md import dataclasses
 from jax_md import util
 

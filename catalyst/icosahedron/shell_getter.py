@@ -5,8 +5,8 @@ from tqdm import tqdm
 
 from jax import vmap, jit, lax, random
 import jax.numpy as jnp
-# from jax_md import rigid_body, energy, space
 from jax_md import energy, space, simulate
+from jax_md import rigid_body as orig_rigid_body
 
 from catalyst.icosahedron import utils
 import catalyst.icosahedron.rigid_body as rigid_body
@@ -82,8 +82,8 @@ class ShellInfo:
             [0.0, -1*phi, -1.0]])
 
         # note: we rotate by a random quaternion to avoid numerical issues
-        # rand_quat = rigid_body.random_quaternion(random.PRNGKey(0), jnp.float64)
-        # vertex_coords = rigid_body.quaternion_rotate(rand_quat, vertex_coords)
+        # rand_quat = orig_rigid_body.random_quaternion(random.PRNGKey(0), jnp.float64)
+        # vertex_coords = orig_rigid_body.quaternion_rotate(rand_quat, vertex_coords)
 
         # Compute the vertex shape positions
         # note: first position is vertex, rest are patches
@@ -101,7 +101,7 @@ class ShellInfo:
         mass = jnp.concatenate((jnp.array([vertex_mass]), patch_mass), axis=0)
 
         # Set the shape
-        vertex_shape = rigid_body.point_union_shape(vertex_rb_positions, mass).set(
+        vertex_shape = orig_rigid_body.point_union_shape(vertex_rb_positions, mass).set(
             point_species=species)
         self.shape = vertex_shape
         self.shape_species = None
@@ -137,9 +137,9 @@ class ShellInfo:
         orientation = jnp.concatenate([cos_part, sin_part], axis=1)
         norm = jnp.linalg.norm(orientation, axis=1).reshape(-1, 1)
         orientation /= norm
-        orientation = rigid_body.Quaternion(orientation)
+        orientation = orig_rigid_body.Quaternion(orientation)
 
-        icosahedron_rb = rigid_body.RigidBody(vertex_coords, orientation)
+        icosahedron_rb = orig_rigid_body.RigidBody(vertex_coords, orientation)
 
         return icosahedron_rb
 
@@ -168,7 +168,7 @@ class ShellInfo:
                                               epsilon=morse_eps_mat, alpha=morse_alpha)
         pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) \
                          + pair_energy_morse(R, **kwargs)
-        energy_fn = rigid_body.point_energy(pair_energy_fn, self.shape)
+        energy_fn = orig_rigid_body.point_energy(pair_energy_fn, self.shape)
 
         init_fn, step_fn = simulate.nvt_nose_hoover(energy_fn, self.shift_fn, dt, kTs[0])
         step_fn = jit(step_fn)
@@ -179,17 +179,6 @@ class ShellInfo:
         do_step = jit(do_step)
 
         state, traj = lax.scan(do_step, state, jnp.arange(num_steps))
-
-        # Write trajectory to file
-        all_lines = list()
-        vis_every = 1000
-        assert(num_steps % vis_every == 0)
-        for n_body in tqdm(range(0, num_steps+1, vis_every)):
-            body = traj[n_body]
-            body_lines, _, _, _ = self.body_to_injavis_lines(body, box_size=15.0)
-            all_lines += body_lines
-        with open('minimization.pos', 'w+') as of:
-            of.write('\n'.join(all_lines))
 
         self.rigid_body = state.position
 
@@ -244,13 +233,10 @@ class ShellInfo:
                                    and self.vertex_shape_point_species_path.exists() \
                                    and self.vertex_shape_point_radius_path.exists()
 
-        if icosahedron_paths_exist and vertex_shape_paths_exist:
-            self.load_from_file()
-        else:
+        if not (icosahedron_paths_exist and vertex_shape_paths_exist):
             self.run_minimization()
 
-            # write to file
-
+            # Write to file
             rb_center = self.rigid_body.center
             rb_orientation_vec = self.rigid_body.orientation.vec
             jnp.save(self.rb_center_path, rb_center, allow_pickle=False)
@@ -268,6 +254,10 @@ class ShellInfo:
             jnp.save(self.vertex_shape_point_offset_path, vertex_shape_point_offset, allow_pickle=False)
             jnp.save(self.vertex_shape_point_species_path, vertex_shape_point_species, allow_pickle=False)
             jnp.save(self.vertex_shape_point_radius_path, vertex_shape_point_radius, allow_pickle=False)
+
+        self.load_from_file()
+
+
 
 
     def get_body_frame_positions(self, body):
@@ -352,6 +342,10 @@ class ShellInfo:
 
 
 class TestShellInfo(unittest.TestCase):
+
+    def test_load(self):
+        displacement_fn, shift_fn = space.free()
+        shell_info = ShellInfo(displacement_fn, shift_fn)
 
     def test_final_configuration(self):
         displacement_fn, shift_fn = space.free()

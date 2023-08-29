@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from jax import vmap, lax
 import jax.numpy as jnp
-# from jax_md import rigid_body # FIXME: switch to mod_rigid_body after initial testing
+# from jax_md import rigid_body
 
 import catalyst.icosahedron.rigid_body as rigid_body
 from catalyst.icosahedron import utils
@@ -50,7 +50,7 @@ class SpiderInfo:
             return spider_pos, i
 
         spider_base, _ = lax.scan(scan_fn, spider_pos, jnp.arange(len(spider_pos)))
-        spider_head = jnp.array([[0., 0., -1 * (self.head_height + z)]])
+        spider_head = jnp.array([[0., 0., 1 * (self.head_height + z)]])
 
         return jnp.array(jnp.concatenate([spider_base, spider_head]))
 
