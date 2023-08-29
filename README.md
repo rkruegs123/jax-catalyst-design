@@ -2,6 +2,20 @@
 
 Code for designing **spider catalysts**
 
+# August 29, 2023
+
+So, we realized why we are having all these weird orientation things
+
+When you create a shape in JAX-MD, it changes the default body frame such that the moment of inertia is diagonal. When we say the default body frame, we mean the relative space frame positions when the orientation is [1, 0, 0, 0]. This is typically fine for the psider as the longest axis of ortation wlil be from head to base, but for the vertex shape this can certainl8y vary.
+
+So, we set the spider orientation in the complex similar to how we se the vertex shape -- by measuring the current body frame vector (i.e. head to base center) of the spider, as well a the target vector (i.e. the vector from the vertex to bind to the center of the shell), and doing the same trig. trick to reorient the thing. This works just fine.
+
+Priorities going forwrad:
+- Get octahedron optimization working
+- Do the same for icosahedron. Can then probably get rid of all this orig\_rigid\_body nonsense
+
+
+
 # August 24, 2023
 
 We have been evaluating the Zorana dimer thing. They only found the effect they cared about at high epsilon, so things take really long timescales, eg 1e9, 1e10 (note: we don't know if they did ensembles or not, and we also don't know why the efefect can't be observed at lower enerygy scales). This raised some question marks for us in terms of how to do the optimzation.

@@ -90,9 +90,36 @@ class ComplexInfo:
 
         spider_center = vertex_to_bind.center + disp_vector * self.shell_info.vertex_radius * self.initial_separation_coeff # shift spider away from vertex
 
+
+
+        # FIXME: Get the spider orientation
+
+        ## FIXME: Step 1, get vector from spider head to center of spider base
+        orig_vec = self.displacement_fn(spider_info.shape.points[-1], jnp.mean(spider_info.shape.points[0:-1], axis=0))
+        orig_vec /= jnp.linalg.norm(orig_vec)
+
+
+        ## FIXME: Step 2, get vector to which we want to map that vector -- i.e. the one pointing from the vertex to bind to the center of the shell
+        central_point = jnp.mean(self.shell_info.rigid_body.center, axis=0) # center of the shell
+        reoriented_vector = self.displacement_fn(vertex_to_bind.center, central_point)
+        reoriented_vector /= jnp.linalg.norm(reoriented_vector)
+
+        ## FIXME: Step 3, find the quaternion that maps orig_vec onto reorienteed_vec
+        crossed = jnp.cross(orig_vec, reoriented_vector)
+        dotted = jnp.dot(reoriented_vector, orig_vec)
+
+        theta = jnp.arccos(dotted)
+        cos_part = jnp.cos(theta / 2)
+        sin_part = crossed * jnp.sin(theta/2)
+        orientation = jnp.concatenate([cos_part.reshape(-1, 1), sin_part.reshape(-1, 3)], axis=1)
+        norm = jnp.linalg.norm(orientation)
+        orientation /= norm
+        spider_orientation = rigid_body.Quaternion(orientation)
+
         spider_rigid_body = rigid_body.RigidBody(
             center=jnp.array([spider_center]),
-            orientation=rigid_body.Quaternion(jnp.array([vertex_to_bind.orientation.vec])))
+            orientation=spider_orientation)
+            # orientation=rigid_body.Quaternion(jnp.array([vertex_to_bind.orientation.vec])))
             # orientation=rigid_body.Quaternion(jnp.array([[1.0, 0.0, 0.0, 0.0]])))
         spider_info.rigid_body = spider_rigid_body
         max_shell_species = self.shell_info.shape.point_species[-1] # assumes monotonicity
@@ -345,7 +372,7 @@ class ComplexInfo:
 class TestComplexInfo(unittest.TestCase):
     displacement_fn, shift_fn = space.free()
     complex_info = ComplexInfo(
-            initial_separation_coeff=4.0, vertex_to_bind_idx=utils.vertex_to_bind_idx,
+            initial_separation_coeff=1.0, vertex_to_bind_idx=utils.vertex_to_bind_idx,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=5.0, spider_head_height=4.0,
             spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
