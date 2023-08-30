@@ -95,12 +95,41 @@ class TestSimulate(unittest.TestCase):
             morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
         )
 
-        n_steps = 1000
+        n_steps = 5000
         assert(n_steps % 100 == 0)
         key = random.PRNGKey(0)
         fin_state, traj = simulation(
             complex_info, energy_fn, num_steps=n_steps,
             gamma=10.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
+
+
+        mapped_displacement = vmap(displacement_fn, (0, None))
+        def get_com_dists(body):
+            shell_body = body[:-1]
+
+            remaining_vertices = jnp.concatenate(
+                [shell_body.center[:utils.vertex_to_bind_idx],
+                 shell_body.center[utils.vertex_to_bind_idx+1:]],
+                axis=0)
+
+            remaining_com = jnp.mean(remaining_vertices, axis=0)
+            com_dists = space.distance(mapped_displacement(remaining_vertices, remaining_com))
+            return com_dists
+
+        min_com_dist = 1e6
+        max_com_dist = -1e6
+        for i in tqdm(range(n_steps)):
+            i_com_dists = get_com_dists(traj[i])
+            min_i_com_dist = i_com_dists.min()
+            if min_i_com_dist < min_com_dist:
+                min_com_dist = min_i_com_dist
+
+            max_i_com_dist = i_com_dists.max()
+            if max_i_com_dist > max_com_dist:
+                max_com_dist = max_i_com_dist
+
+        pdb.set_trace()
+
 
         # Write final states to file -- visualize with `java -Xmx4096m -jar injavis.jar <name>.pos`
 
@@ -156,6 +185,33 @@ class TestSimulate(unittest.TestCase):
         fin_state, traj = simulation(
             shell_info, shell_energy_fn, num_steps=n_steps,
             gamma=10.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
+
+
+        mapped_displacement = vmap(displacement_fn, (0, None))
+        def get_com_dists(shell_body):
+            remaining_vertices = jnp.concatenate(
+                [shell_body.center[:utils.vertex_to_bind_idx],
+                 shell_body.center[utils.vertex_to_bind_idx+1:]],
+                axis=0)
+
+            remaining_com = jnp.mean(remaining_vertices, axis=0)
+            com_dists = space.distance(mapped_displacement(remaining_vertices, remaining_com))
+            return com_dists
+
+        min_com_dist = 1e6
+        max_com_dist = -1e6
+        for i in tqdm(range(n_steps)):
+            i_com_dists = get_com_dists(traj[i])
+            min_i_com_dist = i_com_dists.min()
+            if min_i_com_dist < min_com_dist:
+                min_com_dist = min_i_com_dist
+
+            max_i_com_dist = i_com_dists.max()
+            if max_i_com_dist > max_com_dist:
+                max_com_dist = max_i_com_dist
+
+
+        pdb.set_trace()
 
 
         # Write trajectory to file
