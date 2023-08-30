@@ -11,12 +11,12 @@ from jax_md import space, smap, energy, minimize, quantity, simulate, partition
 from jax_md import dataclasses
 from jax_md import util
 
-import catalyst.icosahedron.rigid_body as rigid_body
+import catalyst.octahedron.rigid_body as rigid_body
 from catalyst.checkpoint import checkpoint_scan
-from catalyst.icosahedron.complex_getter import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS
-from catalyst.icosahedron.shell_getter import ShellInfo
-from catalyst.icosahedron.utils import get_body_frame_positions, traj_to_pos_file
-from catalyst.icosahedron.loss import get_loss_fn
+from catalyst.octahedron.complex_getter import ComplexInfo, TETRAPOD_LEGS, BASE_LEGS
+from catalyst.octahedron.shell_getter import ShellInfo
+from catalyst.octahedron.utils import get_body_frame_positions, traj_to_pos_file
+from catalyst.octahedron import utils
 
 from jax.config import config
 config.update('jax_enable_x64', True)
@@ -73,15 +73,15 @@ class TestSimulate(unittest.TestCase):
         'morse_r_cutoff': 11.93
     }
 
-    def test_energy_fn(self):
+    def test_simulate_complex(self):
 
         displacement_fn, shift_fn = space.free()
 
         # both-stable-shell-loss-stiffness50 Iteration 99
-        spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
+        spider_bond_idxs = jnp.concatenate([TETRAPOD_LEGS, BASE_LEGS])
 
         complex_info = ComplexInfo(
-            initial_separation_coeff=0.0, vertex_to_bind_idx=5,
+            initial_separation_coeff=0.0, vertex_to_bind_idx=utils.vertex_to_bind_idx,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=self.sim_params["spider_base_radius"],
             spider_head_height=self.sim_params["spider_head_height"],
@@ -137,13 +137,12 @@ class TestSimulate(unittest.TestCase):
 
 
         # Write trajectory to file
-
         vis_traj_idxs = jnp.arange(0, n_steps+1, 100)
         traj = traj[vis_traj_idxs]
 
         traj_to_pos_file(traj, complex_info, "traj.pos", box_size=30.0)
 
-    def _test_simulate_shell(self):
+    def test_simulate_shell(self):
 
         displacement_fn, shift_fn = space.free()
 
@@ -164,7 +163,7 @@ class TestSimulate(unittest.TestCase):
         vis_traj = traj[vis_traj_idxs]
         traj_to_pos_file(vis_traj, shell_info, "traj_shell.pos", box_size=30.0)
 
-    def _test_simulate_shell_remainder(self):
+    def test_simulate_shell_remainder(self):
 
         displacement_fn, shift_fn = space.free()
 
