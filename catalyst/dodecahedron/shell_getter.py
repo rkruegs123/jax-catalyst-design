@@ -54,8 +54,8 @@ class ShellInfo:
                                    and self.vertex_shape_point_radius_path.exists()
 
         if not (rb_paths_exist and vertex_shape_paths_exist):
-            # self.run_minimization()
-            self.rigid_body = self.get_unminimized_shell(vertex_mass=vertex_mass, patch_mass=patch_mass) # FIXME: only for testing
+            self.run_minimization()
+            # self.rigid_body = self.get_unminimized_shell(vertex_mass=vertex_mass, patch_mass=patch_mass) # FIXME: only for testing
 
             # write to file
             rb_center = self.rigid_body.center
@@ -346,6 +346,43 @@ class ShellInfo:
         all_lines = [box_def, vertex_def, to_bind_def, patch_def] + position_lines + ["eof"]
         return all_lines, box_def, [vertex_def, to_bind_def, patch_def], position_lines
 
+
+    def get_energy_fn(self, morse_ii_eps=20.0, morse_ii_alpha=3.0, soft_eps=10000.0,
+                      morse_r_onset=10.0, morse_r_cutoff=12.0
+    ):
+
+        n_point_species = 2 # hardcoded for clarity
+
+        zero_interaction = jnp.zeros((n_point_species, n_point_species))
+
+        # icosahedral patches attract eachother
+        morse_eps = zero_interaction.at[1, 1].set(morse_ii_eps)
+        morse_alpha = zero_interaction.at[1, 1].set(morse_ii_alpha)
+
+        # icosahedral centers repel each other
+        soft_sphere_eps = zero_interaction.at[0, 0].set(soft_eps)
+
+        soft_sphere_sigma = zero_interaction.at[0, 0].set(self.vertex_radius*2)
+        soft_sphere_sigma = jnp.where(soft_sphere_sigma == 0.0, 1e-5, soft_sphere_sigma) # avoids nans
+
+        pair_energy_soft = energy.soft_sphere_pair(
+            self.displacement_fn, species=n_point_species,
+            sigma=soft_sphere_sigma, epsilon=soft_sphere_eps)
+        pair_energy_morse = energy.morse_pair(
+            self.displacement_fn, species=n_point_species,
+            sigma=0.0, epsilon=morse_eps, alpha=morse_alpha,
+            r_onset=morse_r_onset, r_cutoff=morse_r_cutoff)
+        pair_energy_fn = lambda R, **kwargs: pair_energy_soft(R, **kwargs) + pair_energy_morse(R, **kwargs)
+
+        # will accept body where body.center has dimensions (12, 3)
+        # and body.orientation.vec has dimensions (12, 4)
+        energy_fn = rigid_body.point_energy(
+            pair_energy_fn,
+            self.shape,
+            # jnp.zeros(12) # FIXME: check if we need this
+        )
+
+        return energy_fn
 
 class TestShellInfo(unittest.TestCase):
 
