@@ -48,30 +48,37 @@ def simulation(complex_info, complex_energy_fn, num_steps, gamma, kT, shift_fn, 
 
 class TestSimulate(unittest.TestCase):
 
-
-    """
     sim_params = {
-        "log_morse_shell_center_spider_head_eps": 5.467912900697836,
-        "morse_shell_center_spider_head_alpha": 1.2654897136989913,
-        "spider_base_particle_radius": 0.5328196552783585,
-        "spider_base_radius": 4.965124458025015,
-        "spider_head_height": 4.764709630665588,
-        "spider_head_particle_radius": 0.1828697409842395,
+        # catalyst shape
+        'spider_base_radius': 5.0,
+        'spider_head_height': 5.0,
+        'spider_base_particle_radius': 0.5,
+        'spider_head_particle_radius': 0.5,
+
+        # catalyst energy
+        # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
+        'log_morse_shell_center_spider_head_eps': 3.5,
+        'morse_shell_center_spider_head_alpha': 1.5,
+        'morse_r_onset': 10.0,
+        'morse_r_cutoff': 12.0
     }
+
     """
     sim_params = {
         # catalyst shape
-        'spider_base_radius': 4.939,
-        'spider_head_height': 5.09,
-        'spider_base_particle_radius': 0.5619,
-        'spider_head_particle_radius': 0.404,
+        'spider_base_radius': 4.103463813108187,
+        'spider_head_height': 4.294780341317228,
+        'spider_base_particle_radius': 1.2990435786109489,
+        'spider_head_particle_radius': 1.1969779863039625,
 
         # catalyst energy
-        'log_morse_shell_center_spider_head_eps': 6.9, # ln(10000.0)
-        'morse_shell_center_spider_head_alpha': 1.637,
-        'morse_r_onset': 9.987,
-        'morse_r_cutoff': 11.93
+        'log_morse_shell_center_spider_head_eps': 5.459285346558597,
+        'morse_shell_center_spider_head_alpha': 1.9035377832430982,
+        'morse_r_onset': 8.710272064079756,
+        'morse_r_cutoff': 9.799286196658203
     }
+    """
+
 
     def test_simulate_complex(self):
 
@@ -95,7 +102,7 @@ class TestSimulate(unittest.TestCase):
             morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
         )
 
-        n_steps = 5000
+        n_steps = 20000
         assert(n_steps % 100 == 0)
         key = random.PRNGKey(0)
         fin_state, traj = simulation(
@@ -103,6 +110,7 @@ class TestSimulate(unittest.TestCase):
             gamma=10.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)
 
 
+        """
         mapped_displacement = vmap(displacement_fn, (0, None))
         def get_com_dists(body):
             shell_body = body[:-1]
@@ -127,8 +135,7 @@ class TestSimulate(unittest.TestCase):
             max_i_com_dist = i_com_dists.max()
             if max_i_com_dist > max_com_dist:
                 max_com_dist = max_i_com_dist
-
-        pdb.set_trace()
+        """
 
 
         # Write final states to file -- visualize with `java -Xmx4096m -jar injavis.jar <name>.pos`

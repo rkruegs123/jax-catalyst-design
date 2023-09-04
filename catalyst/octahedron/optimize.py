@@ -27,6 +27,7 @@ def optimize(args):
     n_iters = args['n_iters']
     n_steps = args['n_steps']
     data_dir = args['data_dir']
+    init_log_head_eps = args['init_log_head_eps']
     lr = args['lr']
     dt = args['dt']
     key_seed = args['key_seed']
@@ -49,7 +50,7 @@ def optimize(args):
     elif leg_mode == "base":
         spider_bond_idxs = BASE_LEGS
     elif leg_mode == "both":
-        spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
+        spider_bond_idxs = jnp.concatenate([TETRAPOD_LEGS, BASE_LEGS])
     else:
         raise RuntimeError(f"Invalid leg mode: {leg_mode}")
 
@@ -137,7 +138,7 @@ def optimize(args):
 
         # catalyst energy
         # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
-        'log_morse_shell_center_spider_head_eps': 5.5,
+        'log_morse_shell_center_spider_head_eps': init_log_head_eps,
         'morse_shell_center_spider_head_alpha': 1.5,
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0
@@ -246,9 +247,10 @@ def get_argparse():
     parser.add_argument('--vertex-to-bind', type=int, default=5, help="Index of vertex to bind")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
     parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
+    parser.add_argument('--init-log-head-eps', type=float, default=5.5, help="Initial value for parameter: log_morse_shell_center_spider_head_eps")
 
     parser.add_argument('-d', '--data-dir', type=str,
-                        default="data/",
+                        default="data/octahedron",
                         help='Path to base data directory')
     parser.add_argument('-kT', '--temperature', type=float, default=1.0, help="Temperature in kT")
     parser.add_argument('--dt', type=float, default=1e-3, help="Time step")

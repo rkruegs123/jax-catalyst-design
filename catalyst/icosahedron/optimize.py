@@ -248,7 +248,7 @@ def get_argparse():
     parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
 
     parser.add_argument('-d', '--data-dir', type=str,
-                        default="data/",
+                        default="data/icosahedron",
                         help='Path to base data directory')
     parser.add_argument('-kT', '--temperature', type=float, default=1.0, help="Temperature in kT")
     parser.add_argument('--dt', type=float, default=1e-3, help="Time step")
