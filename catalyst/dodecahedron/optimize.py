@@ -12,10 +12,10 @@ import jax.debug
 
 from jax_md import space
 
-from catalyst.octahedron.complex_getter import ComplexInfo, TETRAPOD_LEGS, BASE_LEGS
-from catalyst.octahedron.loss import get_loss_fn
-from catalyst.octahedron.simulation import simulation
-import catalyst.octahedron.utils as utils
+from catalyst.dodecahedron.complex_getter import ComplexInfo, TRIPOD_LEGS, BASE_LEGS
+from catalyst.dodecahedron.loss import get_loss_fn
+from catalyst.dodecahedron.simulation import simulation
+import catalyst.dodecahedron.utils as utils
 
 from jax.config import config
 config.update('jax_enable_x64', True)
@@ -45,12 +45,12 @@ def optimize(args):
 
     if leg_mode == "none":
         spider_bond_idxs = None
-    elif leg_mode == "tetrapod":
-        spider_bond_idxs = TETRAPOD_LEGS
+    elif leg_mode == "pentapod":
+        spider_bond_idxs = TRIPOD_LEGS
     elif leg_mode == "base":
         spider_bond_idxs = BASE_LEGS
     elif leg_mode == "both":
-        spider_bond_idxs = jnp.concatenate([TETRAPOD_LEGS, BASE_LEGS])
+        spider_bond_idxs = jnp.concatenate([TRIPOD_LEGS, BASE_LEGS])
     else:
         raise RuntimeError(f"Invalid leg mode: {leg_mode}")
 
@@ -131,8 +131,8 @@ def optimize(args):
     # FIXME: assume that we start with a fixed set of parameters for now
     params = {
         # catalyst shape
-        'spider_base_radius': 5.0,
-        'spider_head_height': 5.0,
+        'spider_base_radius': 2.5,
+        'spider_head_height': 4.0,
         'spider_base_particle_radius': 0.5,
         'spider_head_particle_radius': 0.5,
 
@@ -246,7 +246,7 @@ def get_argparse():
     parser.add_argument('--n-steps', type=int, default=1000, help="Num. steps per simulation")
     parser.add_argument('--vertex-to-bind', type=int, default=5, help="Index of vertex to bind")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
-    parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
+    parser.add_argument('--init-separate', type=float, default=0.75, help="Initial separation coefficient")
     parser.add_argument('--init-log-head-eps', type=float, default=5.5, help="Initial value for parameter: log_morse_shell_center_spider_head_eps")
 
     parser.add_argument('-d', '--data-dir', type=str,
@@ -254,14 +254,14 @@ def get_argparse():
                         help='Path to base data directory')
     parser.add_argument('-kT', '--temperature', type=float, default=1.0, help="Temperature in kT")
     parser.add_argument('--dt', type=float, default=1e-3, help="Time step")
-    parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
+    parser.add_argument('-g', '--gamma', type=float, default=10.0, help="friction coefficient")
     parser.add_argument('--use-abduction-loss', action='store_true')
     parser.add_argument('--use-stable-shell-loss', action='store_true')
     parser.add_argument('--use-remaining-shell-vertices-loss', action='store_true')
     parser.add_argument('--vis-frame-rate', type=int, default=100,
                         help="The sample rate for saving a representative trajectory from each optimization iteration")
     parser.add_argument('--leg-mode', type=str,
-                        default="none", choices=["none", "tetrapod", "base", "both"],
+                        default="none", choices=["none", "tripod", "base", "both"],
                         help='Type of spider legs')
     parser.add_argument('--run-name', type=str, nargs='?',
                         help='Name of run directory')
