@@ -42,6 +42,7 @@ def optimize(args):
     leg_mode = args['leg_mode']
     stable_shell_k = args['stable_shell_k']
     remaining_shell_vertices_loss_coeff = args['remaining_shell_vertices_loss_coeff']
+    patch_eps = args['patch_eps']
 
     if leg_mode == "none":
         spider_bond_idxs = None
@@ -113,7 +114,8 @@ def optimize(args):
         complex_energy_fn = complex_info.get_energy_fn(
             morse_shell_center_spider_head_eps=jnp.exp(params['log_morse_shell_center_spider_head_eps']),
             morse_shell_center_spider_head_alpha=params['morse_shell_center_spider_head_alpha'],
-            morse_r_onset=params['morse_r_onset'], morse_r_cutoff=params['morse_r_cutoff']
+            morse_r_onset=params['morse_r_onset'], morse_r_cutoff=params['morse_r_cutoff'],
+            morse_ii_eps=patch_eps
         )
         fin_state, traj = simulation(complex_info, complex_energy_fn, n_steps, gamma, kT, shift_fn, dt, key)
         init_state = traj[0]
@@ -250,7 +252,7 @@ def get_argparse():
     parser.add_argument('--init-log-head-eps', type=float, default=5.5, help="Initial value for parameter: log_morse_shell_center_spider_head_eps")
 
     parser.add_argument('-d', '--data-dir', type=str,
-                        default="data/octahedron",
+                        default="data/dodecahedron",
                         help='Path to base data directory')
     parser.add_argument('-kT', '--temperature', type=float, default=1.0, help="Temperature in kT")
     parser.add_argument('--dt', type=float, default=1e-3, help="Time step")
@@ -269,6 +271,8 @@ def get_argparse():
                         help="Spring constant for the wide spring for computing the loss term to keep the shell together")
     parser.add_argument('--remaining-shell-vertices-loss-coeff', type=float, default=10.0,
                         help="Multiplicative scalar for the remaining energy loss term")
+    parser.add_argument('--patch-eps', type=float, default=30.0,
+                        help="Epsilon for patch-patch interaction")
 
     return parser
 

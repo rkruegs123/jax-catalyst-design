@@ -2,6 +2,23 @@
 
 Code for designing **spider catalysts**
 
+# September 7, 2023
+
+There are really three things wrong at th emoment
+- we don't think the legs are working
+- we thought we had the initialization right, but we don't really -- at least tha's what it looks like in th eoptimization
+- wea re coloring the wrong ertex to bind in the trajectories. That would help for checking the above.
+
+So, we shouuld do the following:
+- fix (3)
+- have some hepler function in complex getter that gets is the energy terms so we can look at all them .e.g. the shell energy, spider energy, interaction energy (and maybe its subcomponents) and the leg energy. Then, we can evalutae on an initialization and see (i) what's wrong with th eorienation and (ii) what's wrong with th eleg energy, if anything for both
+
+Note that the initiailization is currently wrong in suc a way that the leg energy should be high, so we should look at the leg energy term before we fix the initializaation
+
+Also note that one thing that could be wrong with the initailziation is init_fn from simulate. So, we should visualizae both pre- and post- state initialization. Because we thought things were working, but we weren't initailizing a siulation, whereas the ifrst state of a trajectory (which is what currently looks wrong) will be post-initialization of state, and we know that initialization involves some diagonzliation, etc.
+- if that's the case, easiest thing to try would be different vertex to bind. ha. otherwise we can try different eigenvalue stuff, etc ,etc.
+
+
 # August 29, 2023
 
 So, we realized why we are having all these weird orientation things
