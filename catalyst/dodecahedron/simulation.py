@@ -194,6 +194,55 @@ class TestSimulate(unittest.TestCase):
         vis_traj = traj[vis_traj_idxs]
         traj_to_pos_file(vis_traj, shell_info, "traj_shell.pos", box_size=30.0)
 
+    def test_init_energy_terms(self):
+        displacement_fn, shift_fn = space.free()
+
+        # both-stable-shell-loss-stiffness50 Iteration 99
+        spider_bond_idxs = jnp.concatenate([TRIPOD_LEGS, BASE_LEGS])
+
+        complex_info = ComplexInfo(
+            initial_separation_coeff=0.0,
+            # vertex_to_bind_idx=utils.vertex_to_bind_idx,
+            vertex_to_bind_idx=5,
+            displacement_fn=displacement_fn, shift_fn=shift_fn,
+            spider_base_radius=self.sim_params["spider_base_radius"],
+            spider_head_height=self.sim_params["spider_head_height"],
+            spider_base_particle_radius=self.sim_params["spider_base_particle_radius"],
+            spider_head_particle_radius=self.sim_params["spider_head_particle_radius"],
+            spider_point_mass=1.0, spider_mass_err=1e-6,
+            spider_bond_idxs=spider_bond_idxs, spider_leg_radius=0.5
+        )
+        energy_fn = complex_info.get_energy_fn(
+            morse_shell_center_spider_head_eps=jnp.exp(self.sim_params["log_morse_shell_center_spider_head_eps"]),
+            morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
+        )
+
+        init_body = complex_info.rigid_body
+        """
+        kT = 1.0
+        dt = 1e-3
+        key = random.PRNGKey(0)
+        gamma = 10.0
+        gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
+        init_fn, step_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt, kT, gamma=gamma_rb)
+
+        mass = complex_info.shape.mass(complex_info.shape_species)
+        state = init_fn(key, init_body, mass=mass)
+        body = state.position
+        """
+
+        soft_eps = 10000.0
+        leg_energy_fn = complex_info.get_leg_energy_fn(
+            soft_eps, 2 * complex_info.spider_leg_radius, leg_alpha=2.0)
+        leg_energy = leg_energy_fn(init_body)
+
+        all_lines, _, _, _ =  complex_info.body_to_injavis_lines(init_body, box_size=30.0)
+
+        with open("init_complex_pre_init.pos", 'w+') as of:
+            of.write('\n'.join(all_lines))
+
+
+
 
 
 if __name__ == "__main__":

@@ -158,7 +158,7 @@ class ComplexInfo:
             bond_energy_sm = jnp.sum(
                 energy.soft_sphere(all_dists,
                                    epsilon=soft_eps,
-                                   sigma=bond_diameter,
+                                   sigma=bond_diameter / 2 + self.shell_info.vertex_radius,
                                    alpha=jnp.array(leg_alpha)))
 
             return bond_energy_sm
