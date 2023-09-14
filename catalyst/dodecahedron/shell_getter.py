@@ -307,7 +307,9 @@ class ShellInfo:
     def body_to_injavis_lines(
             self, body, box_size,
             patch_radius=0.25,
-            vertex_color="43a5be", patch_color="4fb06d"):
+            vertex_color="43a5be", patch_color="4fb06d",
+            vertex_to_bind_idx=None
+    ):
 
         assert(len(body.center.shape) == 2)
         body_pos = self.get_body_frame_positions(body)
@@ -331,7 +333,7 @@ class ShellInfo:
 
             # vertex center
             vertex_center_pos = body_pos[vertex_start_idx]
-            if num_vertex == utils.vertex_to_bind_idx:
+            if vertex_to_bind_idx is not None and num_vertex == vertex_to_bind_idx:
                 vertex_line = f"T {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
             else:
                 vertex_line = f"V {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"

@@ -92,7 +92,7 @@ class ComplexInfo:
 
         # Get the spider orientation
 
-        ## Step 1, get vector from spider head to center of spider base
+        ## Step 1, get vector from spider head to center of spider base in the spider body frame
         orig_vec = self.displacement_fn(spider_info.shape.points[-1], jnp.mean(spider_info.shape.points[0:-1], axis=0))
         orig_vec /= jnp.linalg.norm(orig_vec)
 
@@ -355,7 +355,8 @@ class ComplexInfo:
         _, spider_box_def, spider_type_defs, spider_pos = self.spider_info.body_to_injavis_lines(
             spider_body, box_size, spider_head_color, spider_base_color)
         _, shell_box_def, shell_type_defs, shell_pos = self.shell_info.body_to_injavis_lines(
-            shell_body, box_size, shell_patch_radius, shell_vertex_color, shell_patch_color)
+            shell_body, box_size, shell_patch_radius, shell_vertex_color,
+            shell_patch_color, vertex_to_bind_idx=self.vertex_to_bind_idx)
 
         assert(spider_box_def == shell_box_def)
         box_def = spider_box_def

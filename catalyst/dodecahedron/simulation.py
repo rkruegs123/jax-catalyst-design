@@ -201,9 +201,9 @@ class TestSimulate(unittest.TestCase):
         spider_bond_idxs = jnp.concatenate([TRIPOD_LEGS, BASE_LEGS])
 
         complex_info = ComplexInfo(
-            initial_separation_coeff=0.0,
+            initial_separation_coeff=0.75,
             # vertex_to_bind_idx=utils.vertex_to_bind_idx,
-            vertex_to_bind_idx=5,
+            vertex_to_bind_idx=0,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=self.sim_params["spider_base_radius"],
             spider_head_height=self.sim_params["spider_head_height"],
@@ -240,6 +240,35 @@ class TestSimulate(unittest.TestCase):
 
         with open("init_complex_pre_init.pos", 'w+') as of:
             of.write('\n'.join(all_lines))
+
+    def test_save_things(self):
+        displacement_fn, shift_fn = space.free()
+
+        for v_idx in range(20):
+            spider_bond_idxs = jnp.concatenate([TRIPOD_LEGS, BASE_LEGS])
+
+            complex_info = ComplexInfo(
+                initial_separation_coeff=0.75,
+                # vertex_to_bind_idx=utils.vertex_to_bind_idx,
+                vertex_to_bind_idx=v_idx,
+                displacement_fn=displacement_fn, shift_fn=shift_fn,
+                spider_base_radius=self.sim_params["spider_base_radius"],
+                spider_head_height=self.sim_params["spider_head_height"],
+                spider_base_particle_radius=self.sim_params["spider_base_particle_radius"],
+                spider_head_particle_radius=self.sim_params["spider_head_particle_radius"],
+                spider_point_mass=1.0, spider_mass_err=1e-6,
+                spider_bond_idxs=spider_bond_idxs, spider_leg_radius=0.5
+            )
+            energy_fn = complex_info.get_energy_fn(
+                morse_shell_center_spider_head_eps=jnp.exp(self.sim_params["log_morse_shell_center_spider_head_eps"]),
+                morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
+            )
+
+            init_body = complex_info.rigid_body
+            all_lines, _, _, _ =  complex_info.body_to_injavis_lines(init_body, box_size=30.0)
+
+            with open(f"init_complex_pre_init_v{v_idx}.pos", 'w+') as of:
+                of.write('\n'.join(all_lines))
 
 
 
