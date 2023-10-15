@@ -6,6 +6,7 @@ import numpy as onp
 from jax_md import space
 
 from catalyst.octahedron import shell_getter
+from figures.utils import shell_patch_color, shell_vertex_color
 
 
 # mode = "entire-shell"
@@ -53,10 +54,10 @@ scene = fresnel.Scene(device)
 geometry = fresnel.geometry.Sphere(scene, N=body_pos.shape[0], radius=radii)
 geometry.position[:] = body_pos
 
-geometry.material = fresnel.material.Material(color=fresnel.color.linear([0.25,0.5,0.9]),
+geometry.material = fresnel.material.Material(color=fresnel.color.linear(shell_patch_color),
                                               roughness=0.8)
 geometry.material.primitive_color_mix = 0.5
-geometry.color[::(num_patches+1)] = fresnel.color.linear([0, 1, 0])
+geometry.color[::(num_patches+1)] = fresnel.color.linear(shell_vertex_color)
 
 scene.camera = fresnel.camera.Orthographic.fit(scene)
 
@@ -92,8 +93,8 @@ def check_pos(x=100, y=100, z=100):
     out = fresnel.preview(scene)
     image = PIL.Image.fromarray(out[:], mode='RGBA')
 
-    image.save("single.png")
-    # image.show()
+    # image.save("single.png")
+    image.show()
 
 # check_pos()
 check_pos(50, 450, 50)
