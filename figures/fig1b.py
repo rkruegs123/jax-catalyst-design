@@ -14,9 +14,9 @@ displacement_fn, shift_fn = space.free()
 vertex_to_bind_idx = 0
 
 
-mode = "just-entire-shell"
+# mode = "just-entire-shell"
 # mode = "complex-bound"
-# mode = "just-spider"
+mode = "just-spider"
 # mode = "complex-unbound"
 
 init_sep_coeff = 3.5
@@ -141,7 +141,8 @@ elif mode == "just-spider":
     out = fresnel.preview(scene)
     image = PIL.Image.fromarray(out[:], mode='RGBA')
 
-    image.show()
+    # image.show()
+    image.save("just_spider.png")
 
 
 elif mode == "complex-bound":
@@ -232,7 +233,8 @@ elif mode == "complex-bound":
     out = fresnel.preview(scene)
     image = PIL.Image.fromarray(out[:], mode='RGBA')
 
-    image.show()
+    # image.show()
+    image.save("bound.png")
 
 elif mode == "complex-unbound":
 
@@ -255,7 +257,7 @@ elif mode == "complex-unbound":
     vtx_to_spider_head_dist = space.distance(vtx_to_spider_head)
 
     # move_vtx_vec = vtx_to_spider_head * (1 - head_radius/vtx_to_spider_head_dist)
-    move_vtx_vec = vtx_to_spider_head * 1.2
+    move_vtx_vec = vtx_to_spider_head * 1.1
 
     start_bind_idx = vertex_to_bind_idx * 5
     end_bind_idx = start_bind_idx + 5
@@ -339,4 +341,5 @@ elif mode == "complex-unbound":
     out = fresnel.preview(scene)
     image = PIL.Image.fromarray(out[:], mode='RGBA')
 
-    image.show()
+    # image.show()
+    image.save("unbound_far.png")
