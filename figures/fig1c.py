@@ -17,7 +17,7 @@ displacement_fn, shift_fn = space.free()
 vertex_to_bind_idx = 0
 
 
-init_sep_coeff = 1.5
+init_sep_coeff = 5.0
 head_radius = 1.0
 
 head_height = 6.5
@@ -65,7 +65,7 @@ geometry_shell.material = fresnel.material.Material(color=fresnel.color.linear(s
 geometry_shell.material.primitive_color_mix = 0.5
 geometry_shell.color[::(num_patches+1)] = fresnel.color.linear(shell_vertex_color)
 
-tracer = fresnel.tracer.Path(device, w=450, h=450)
+tracer = fresnel.tracer.Path(device, w=1000, h=1000)
 
 geometry_shell.outline_width = 0.05
 geometry_shell.material.solid = 1.0
@@ -115,9 +115,9 @@ geometry2.radius[:] = [leg_radius] * 8
 scene.camera = fresnel.camera.Orthographic.fit(scene)
 scene.lights = fresnel.light.butterfly()
 
-tracer.sample(scene, samples=64, light_samples=10)
+tracer.sample(scene, samples=32, light_samples=64)
 
-fresnel.pathtrace(scene, w=300, h=300, light_samples=40)
+fresnel.pathtrace(scene, w=1000, h=1000, light_samples=64)
 
 default_height = scene.camera.height
 default_look_at = scene.camera.look_at
@@ -129,17 +129,21 @@ def check_pos(x, y, z, height=default_height, look_at=default_look_at):
 
     # scene.camera.position = (50, 450, 50)
     scene.camera.position = (x, y, z)
-    out = fresnel.preview(scene)
+    out = fresnel.preview(scene, h=370*2, w=600*2)
     image = PIL.Image.fromarray(out[:], mode='RGBA')
 
-    image.show()
+    # image.show()
+    image.save("fig1c_base.png")
 
 
-check_pos(50, 450, 50, 15)
-pdb.set_trace()
+# check_pos(50, 450, 50, 15)
+# pdb.set_trace()
 
 # check_pos(125, 450, 100, 15, default_look_at + onp.array([0.0, 3.0, 0.0]))
 
-check_pos(50, 450, 50, 15, default_look_at + onp.array([0.0, 15.5, 0.0]))
+check_pos(50, 450, 50, 20, default_look_at + onp.array([0.0, 18.0, 0.0]))
+
+
+pdb.set_trace()
 
 print("done")

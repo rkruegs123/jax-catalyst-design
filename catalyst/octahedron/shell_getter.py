@@ -287,7 +287,7 @@ class ShellInfo:
                 vertex_line = f"V {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
             position_lines.append(vertex_line)
 
-            for num_patch in range(5):
+            for num_patch in range(4):
                 patch_pos = body_pos[vertex_start_idx+num_patch+1]
                 patch_line = f"P {patch_pos[0]} {patch_pos[1]} {patch_pos[2]}"
                 position_lines.append(patch_line)
