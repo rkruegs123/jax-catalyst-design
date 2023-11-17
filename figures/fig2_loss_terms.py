@@ -3,15 +3,16 @@ import pdb
 import numpy as np
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib import rc
 
 
+rc('text', usetex=True)
+
+plt.rcParams.update({'font.size': 24})
 
 
-plt.rcParams.update({'font.size': 22})
-
-
-mode = "diffusive"
-# mode = "abduction"
+# mode = "diffusive"
+mode = "abduction"
 if mode == "diffusive":
     terms_fpath = "figures/data/fig2/diffusive-loss-terms.txt"
     loss_fpath = "figures/data/fig2/diffusive-loss.txt"
@@ -51,19 +52,20 @@ with open(loss_fpath, "r") as f:
     unprocessed_loss_lines = f.readlines()
 losses = [float(l.strip()) for l in unprocessed_loss_lines if l.strip()]
 
+legend_text_size = 22
 
 if mode == "diffusive":
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), height_ratios=[1.5, 1])
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), height_ratios=[1.5, 1], sharex=True)
 
     ax1.plot(losses[:max_iter], color="black")
     # ax1.set_xlabel("Iteration")
     ax1.set_ylabel("Total Loss")
 
-    ax2.plot(all_abduction_losses[:max_iter], label="Abduction Term")
+    ax2.plot(all_abduction_losses[:max_iter], label="Abduction Term", color="purple")
     # ax2.plot(all_stability_losses, label="Stability")
-    ax2.plot(all_energy_losses[:max_iter], label="Energy Term")
+    ax2.plot(all_energy_losses[:max_iter], label="Energy Term", color="orange")
     # ax2.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=3, shadow=True, prop={'size': 16})
-    ax2.legend(loc="upper right", prop={'size': 16})
+    ax2.legend(loc="upper right", prop={'size': legend_text_size})
     ax2.set_xlabel("Iteration")
     ax2.set_ylabel("Loss Term")
 elif mode == "abduction":
@@ -117,16 +119,24 @@ elif mode == "abduction":
 
 
     # create bottom subplot as usual
-    axes[1].plot(all_abduction_losses[:max_iter], label="Abduction Term")
+    axes[1].plot(all_abduction_losses[:max_iter], label="Abduction Term", color="purple")
     # axes[1].plot(all_stability_losses, label="Stability")
-    axes[1].plot(np.log(all_energy_losses)[:max_iter], label="Log Energy Term")
+    axes[1].plot(np.log(all_energy_losses)[:max_iter], label="Log Energy Term", color="orange")
     # axes[1].legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=3, shadow=True, prop={'size': 16})
-    axes[1].legend(loc="upper right", prop={'size': 16})
+    axes[1].legend(loc="upper right", prop={'size': legend_text_size})
+    # axes[1].legend(loc="upper right")
     axes[1].set_xlabel("Iteration")
     axes[1].set_ylabel("Loss Term")
 
 
 
+
 plt.tight_layout()
+
+if mode == "diffusive":
+    fpath = "diffusive_loss.png"
+elif mode == "abduction":
+    fpath = "abduction_loss.png"
+
 # plt.show()
-plt.savefig("diffusive_loss.png")
+plt.savefig(fpath)

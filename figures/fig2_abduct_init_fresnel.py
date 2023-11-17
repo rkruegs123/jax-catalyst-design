@@ -78,7 +78,7 @@ geometry_shell.material = fresnel.material.Material(color=fresnel.color.linear(s
 geometry_shell.material.primitive_color_mix = 0.5
 geometry_shell.color[::(num_patches+1)] = fresnel.color.linear(shell_vertex_color)
 
-tracer = fresnel.tracer.Path(device, w=450, h=450)
+tracer = fresnel.tracer.Path(device, w=1000, h=1000)
 
 geometry_shell.outline_width = 0.05
 geometry_shell.material.solid = 1.0
@@ -122,12 +122,12 @@ scene.lights = fresnel.light.butterfly()
 
 tracer.sample(scene, samples=64, light_samples=10)
 
-fresnel.pathtrace(scene, w=300, h=300, light_samples=40)
+fresnel.pathtrace(scene, w=1000, h=1000, light_samples=32)
 
 
 # scene.camera.position = (50, 450, 50)
-out = fresnel.preview(scene)
+out = fresnel.preview(scene, h=370*2, w=600*2)
 image = PIL.Image.fromarray(out[:], mode='RGBA')
 
-image.show()
-# image.save("unbound_far.png")
+# image.show()
+image.save("abduction-init.png")
