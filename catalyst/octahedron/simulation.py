@@ -49,6 +49,7 @@ def simulation(complex_info, complex_energy_fn, num_steps, gamma, kT, shift_fn, 
 class TestSimulate(unittest.TestCase):
 
 
+    """
     sim_params = {
         # catalyst shape
         'spider_base_radius': 5.0,
@@ -63,8 +64,9 @@ class TestSimulate(unittest.TestCase):
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0
     }
-    
-    
+    """
+
+
     """
     sim_params = {
         # catalyst shape
@@ -82,21 +84,20 @@ class TestSimulate(unittest.TestCase):
     }
     """
 
-    """
+
     sim_params = {
         # catalyst shape
-        'spider_base_radius': 4.103463813108187,
-        'spider_head_height': 4.294780341317228,
-        'spider_base_particle_radius': 1.2990435786109489,
-        'spider_head_particle_radius': 1.1969779863039625,
+        'spider_base_radius': 3.5840026373978295,
+        'spider_head_height': 5.115084320046582,
+        'spider_base_particle_radius': 1.4346354598234001,
+        'spider_head_particle_radius': 0.3512838741801363,
 
         # catalyst energy
-        'log_morse_shell_center_spider_head_eps': 5.459285346558597,
-        'morse_shell_center_spider_head_alpha': 1.9035377832430982,
-        'morse_r_onset': 8.710272064079756,
-        'morse_r_cutoff': 9.799286196658203
+        'log_morse_shell_center_spider_head_eps': 8.026303026255157,
+        'morse_shell_center_spider_head_alpha': 1.607497515884616,
+        'morse_r_onset': 9.634198891023516,
+        'morse_r_cutoff': 10.955930086397101
     }
-    """
 
 
     def test_simulate_complex(self):

@@ -61,11 +61,12 @@ if mode == "diffusive":
     # ax1.set_xlabel("Iteration")
     ax1.set_ylabel("Total Loss")
 
-    ax2.plot(all_abduction_losses[:max_iter], label="Abduction Term", color="purple")
+    ax2.plot(all_abduction_losses[:max_iter], label="Extraction Term", color="purple")
     # ax2.plot(all_stability_losses, label="Stability")
-    ax2.plot(all_energy_losses[:max_iter], label="Energy Term", color="orange")
+    ax2.plot(all_energy_losses[:max_iter], label="Remaining Energy Term", color="orange")
     # ax2.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=3, shadow=True, prop={'size': 16})
-    ax2.legend(loc="upper right", prop={'size': legend_text_size})
+    # ax2.legend(loc="upper right", prop={'size': legend_text_size})
+    ax2.legend(loc="upper right", bbox_to_anchor=(1.0, 0.925), prop={'size': legend_text_size})
     ax2.set_xlabel("Iteration")
     ax2.set_ylabel("Loss Term")
 elif mode == "abduction":
@@ -119,9 +120,9 @@ elif mode == "abduction":
 
 
     # create bottom subplot as usual
-    axes[1].plot(all_abduction_losses[:max_iter], label="Abduction Term", color="purple")
+    axes[1].plot(all_abduction_losses[:max_iter], label="Extraction Term", color="purple")
     # axes[1].plot(all_stability_losses, label="Stability")
-    axes[1].plot(np.log(all_energy_losses)[:max_iter], label="Log Energy Term", color="orange")
+    axes[1].plot(np.log(all_energy_losses)[:max_iter], label="Log Remaining Energy Term", color="orange")
     # axes[1].legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=3, shadow=True, prop={'size': 16})
     axes[1].legend(loc="upper right", prop={'size': legend_text_size})
     # axes[1].legend(loc="upper right")
@@ -134,9 +135,9 @@ elif mode == "abduction":
 plt.tight_layout()
 
 if mode == "diffusive":
-    fpath = "diffusive_loss.png"
+    fpath = "diffusive_loss.svg"
 elif mode == "abduction":
-    fpath = "abduction_loss.png"
+    fpath = "abduction_loss.svg"
 
 # plt.show()
 plt.savefig(fpath)
