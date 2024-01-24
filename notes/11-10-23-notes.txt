@@ -1,0 +1,7 @@
+Maybe no xlabel in the first plot in the column
+
+Maybe rerun the abductive limit with higher energy so that the stability loss temr blows up
+
+Maybe take the log of the remaining energyterm, as well as maybe the stability term, in the diffusive limit. Could also either cut the x or y axis.
+
+See screenshot for revised Figure 3

@@ -7,3 +7,10 @@
 
 
 data/
+
+*.png
+*.pos
+
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+**/**/.ipynb_checkpoints/
