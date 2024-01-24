@@ -61,19 +61,19 @@ class TestSimulate(unittest.TestCase):
     """
     sim_params = {
         # catalyst shape
-        'spider_base_radius': 4.939,
-        'spider_head_height': 5.09,
-        'spider_base_particle_radius': 0.5619,
-        'spider_head_particle_radius': 0.404,
+        'spider_base_radius': 5.0,
+        'spider_head_height': 5.0,
+        'spider_base_particle_radius': 0.5,
+        'spider_head_particle_radius': 0.5,
 
         # catalyst energy
-        'log_morse_shell_center_spider_head_eps': 6.9, # ln(10000.0)
-        'morse_shell_center_spider_head_alpha': 1.637,
-        'morse_r_onset': 9.987,
-        'morse_r_cutoff': 11.93
+        'log_morse_shell_center_spider_head_eps': 8.0,
+        'morse_shell_center_spider_head_alpha': 1.0,
+        'morse_r_onset': 10.0,
+        'morse_r_cutoff': 12.0
     }
 
-    def test_energy_fn(self):
+    def test_simulate_complex(self):
 
         displacement_fn, shift_fn = space.free()
 
@@ -95,7 +95,7 @@ class TestSimulate(unittest.TestCase):
             morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
         )
 
-        n_steps = 1000
+        n_steps = 20000
         assert(n_steps % 100 == 0)
         key = random.PRNGKey(0)
         fin_state, traj = simulation(

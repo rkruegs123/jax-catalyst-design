@@ -246,7 +246,7 @@ def get_argparse():
     parser.add_argument('--n-iters', type=int, default=2, help="Num. iterations of gradient descent")
     parser.add_argument('-k', '--key-seed', type=int, default=0, help="Random key")
     parser.add_argument('--n-steps', type=int, default=1000, help="Num. steps per simulation")
-    parser.add_argument('--vertex-to-bind', type=int, default=5, help="Index of vertex to bind")
+    parser.add_argument('--vertex-to-bind', type=int, default=utils.vertex_to_bind_idx, help="Index of vertex to bind")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
     parser.add_argument('--init-separate', type=float, default=0.75, help="Initial separation coefficient")
     parser.add_argument('--init-log-head-eps', type=float, default=5.5, help="Initial value for parameter: log_morse_shell_center_spider_head_eps")

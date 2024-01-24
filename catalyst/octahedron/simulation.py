@@ -48,6 +48,7 @@ def simulation(complex_info, complex_energy_fn, num_steps, gamma, kT, shift_fn, 
 
 class TestSimulate(unittest.TestCase):
 
+
     sim_params = {
         # catalyst shape
         'spider_base_radius': 5.0,
@@ -57,11 +58,29 @@ class TestSimulate(unittest.TestCase):
 
         # catalyst energy
         # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
-        'log_morse_shell_center_spider_head_eps': 3.5,
+        'log_morse_shell_center_spider_head_eps':  3.5,
         'morse_shell_center_spider_head_alpha': 1.5,
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0
     }
+    
+    
+    """
+    sim_params = {
+        # catalyst shape
+        'spider_base_radius': 5.0,
+        'spider_head_height': 5.0,
+        'spider_base_particle_radius': 0.5,
+        'spider_head_particle_radius': 0.5,
+
+        # catalyst energy
+        # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
+        'log_morse_shell_center_spider_head_eps': 8.5,
+        'morse_shell_center_spider_head_alpha': 1.0,
+        'morse_r_onset': 10.0,
+        'morse_r_cutoff': 12.0
+    }
+    """
 
     """
     sim_params = {
@@ -102,7 +121,7 @@ class TestSimulate(unittest.TestCase):
             morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
         )
 
-        n_steps = 20000
+        n_steps = 10000
         assert(n_steps % 100 == 0)
         key = random.PRNGKey(0)
         fin_state, traj = simulation(
@@ -176,7 +195,7 @@ class TestSimulate(unittest.TestCase):
         vis_traj_idxs = jnp.arange(0, n_steps+1, 100)
         traj = traj[vis_traj_idxs]
 
-        traj_to_pos_file(traj, complex_info, "traj.pos", box_size=30.0)
+        traj_to_pos_file(traj, complex_info, "traj2.pos", box_size=30.0)
 
     def test_simulate_shell(self):
 

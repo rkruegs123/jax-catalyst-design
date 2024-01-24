@@ -28,6 +28,7 @@ def optimize(args):
     n_steps = args['n_steps']
     data_dir = args['data_dir']
     init_log_head_eps = args['init_log_head_eps']
+    init_alpha = args['init_alpha']
     lr = args['lr']
     dt = args['dt']
     key_seed = args['key_seed']
@@ -42,6 +43,11 @@ def optimize(args):
     leg_mode = args['leg_mode']
     stable_shell_k = args['stable_shell_k']
     remaining_shell_vertices_loss_coeff = args['remaining_shell_vertices_loss_coeff']
+    min_head_radius = args['min_head_radius']
+    perturb_init_head_eps = args['perturb_init_head_eps']
+
+    if perturb_init_head_eps:
+        init_log_head_eps += onp.random.normal(0.0, 0.1)
 
     if leg_mode == "none":
         spider_bond_idxs = None
@@ -106,7 +112,8 @@ def optimize(args):
             initial_separation_coefficient, vertex_to_bind_idx,
             displacement_fn, shift_fn,
             params['spider_base_radius'], params['spider_head_height'],
-            params['spider_base_particle_radius'], params['spider_head_particle_radius'],
+            params['spider_base_particle_radius'],
+            jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']])),
             spider_point_mass=1.0, spider_mass_err=1e-6, spider_bond_idxs=spider_bond_idxs
         )
 
@@ -139,7 +146,7 @@ def optimize(args):
         # catalyst energy
         # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
         'log_morse_shell_center_spider_head_eps': init_log_head_eps,
-        'morse_shell_center_spider_head_alpha': 1.5,
+        'morse_shell_center_spider_head_alpha': init_alpha,
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0
     }
@@ -247,7 +254,10 @@ def get_argparse():
     parser.add_argument('--vertex-to-bind', type=int, default=5, help="Index of vertex to bind")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
     parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
-    parser.add_argument('--init-log-head-eps', type=float, default=5.5, help="Initial value for parameter: log_morse_shell_center_spider_head_eps")
+    parser.add_argument('--init-log-head-eps', type=float, default=5.5,
+                        help="Initial value for parameter: log_morse_shell_center_spider_head_eps")
+    parser.add_argument('--init-alpha', type=float, default=1.5,
+                        help="Initial value for parameter: morse_shell_center_spider_head_alpha")
 
     parser.add_argument('-d', '--data-dir', type=str,
                         default="data/octahedron",
@@ -269,6 +279,9 @@ def get_argparse():
                         help="Spring constant for the wide spring for computing the loss term to keep the shell together")
     parser.add_argument('--remaining-shell-vertices-loss-coeff', type=float, default=10.0,
                         help="Multiplicative scalar for the remaining energy loss term")
+    parser.add_argument('--min-head-radius', type=float, default=0.1, help="Minimum radius for spider head")
+
+    parser.add_argument('--perturb-init-head-eps', action='store_true')
 
     return parser
 
