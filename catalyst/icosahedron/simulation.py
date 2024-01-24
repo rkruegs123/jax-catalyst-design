@@ -143,6 +143,7 @@ class TestSimulate(unittest.TestCase):
 
         traj_to_pos_file(traj, complex_info, "traj.pos", box_size=30.0)
 
+
     def _test_simulate_shell(self):
 
         displacement_fn, shift_fn = space.free()
