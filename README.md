@@ -2,6 +2,12 @@
 
 Code for designing **spider catalysts**
 
+# January 30, 2024
+
+We realized that som eof the octahedron results blow up. Porbably because we mistakenly removed the stable shell loss. We think we removed it because thought that the enrgy term would take care of it, but we ignored the fact that the geometry could be optimized in a way that also blows up the shell. Whoops.
+
+We were in the process of looking at the energy over the pathway. for now, we will just take som eresults that did use the stable shell loss. Then we will go from ther.
+
 # September 7, 2023
 
 There are really three things wrong at th emoment
