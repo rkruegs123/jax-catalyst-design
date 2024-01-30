@@ -55,7 +55,7 @@ def run(args):
     data_dir = Path(args['data_dir'])
     run_name = args['run_name']
     init_sep_coeff = args['init_sep_coeff']
-    run_dir = output_basedir / run_name
+    run_dir = data_dir / run_name
     run_dir.mkdir(parents=False, exist_ok=False)
 
     params_str = ""
@@ -71,17 +71,17 @@ def run(args):
     complex_info = ComplexInfo(
         initial_separation_coeff=init_sep_coeff, vertex_to_bind_idx=5,
         displacement_fn=displacement_fn, shift_fn=shift_fn,
-        spider_base_radius=self.sim_params["spider_base_radius"],
-        spider_head_height=self.sim_params["spider_head_height"],
-        spider_base_particle_radius=self.sim_params["spider_base_particle_radius"],
-        spider_head_particle_radius=self.sim_params["spider_head_particle_radius"],
+        spider_base_radius=sim_params["spider_base_radius"],
+        spider_head_height=sim_params["spider_head_height"],
+        spider_base_particle_radius=sim_params["spider_base_particle_radius"],
+        spider_head_particle_radius=sim_params["spider_head_particle_radius"],
         spider_point_mass=1.0, spider_mass_err=1e-6,
         spider_bond_idxs=spider_bond_idxs, spider_leg_radius=1.0
     )
 
     energy_fn = complex_info.get_energy_fn(
-        morse_shell_center_spider_head_eps=jnp.exp(self.sim_params["log_morse_shell_center_spider_head_eps"]),
-        morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
+        morse_shell_center_spider_head_eps=jnp.exp(sim_params["log_morse_shell_center_spider_head_eps"]),
+        morse_shell_center_spider_head_alpha=sim_params["morse_shell_center_spider_head_alpha"]
     )
 
     n_steps = 20000
