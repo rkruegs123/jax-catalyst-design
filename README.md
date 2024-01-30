@@ -2,6 +2,225 @@
 
 Code for designing **spider catalysts**
 
+# September 7, 2023
+
+There are really three things wrong at th emoment
+- we don't think the legs are working
+- we thought we had the initialization right, but we don't really -- at least tha's what it looks like in th eoptimization
+- wea re coloring the wrong ertex to bind in the trajectories. That would help for checking the above.
+
+So, we shouuld do the following:
+- fix (3)
+- have some hepler function in complex getter that gets is the energy terms so we can look at all them .e.g. the shell energy, spider energy, interaction energy (and maybe its subcomponents) and the leg energy. Then, we can evalutae on an initialization and see (i) what's wrong with th eorienation and (ii) what's wrong with th eleg energy, if anything for both
+
+Note that the initiailization is currently wrong in suc a way that the leg energy should be high, so we should look at the leg energy term before we fix the initializaation
+
+Also note that one thing that could be wrong with the initailziation is init_fn from simulate. So, we should visualizae both pre- and post- state initialization. Because we thought things were working, but we weren't initailizing a siulation, whereas the ifrst state of a trajectory (which is what currently looks wrong) will be post-initialization of state, and we know that initialization involves some diagonzliation, etc.
+- if that's the case, easiest thing to try would be different vertex to bind. ha. otherwise we can try different eigenvalue stuff, etc ,etc.
+
+
+# August 29, 2023
+
+So, we realized why we are having all these weird orientation things
+
+When you create a shape in JAX-MD, it changes the default body frame such that the moment of inertia is diagonal. When we say the default body frame, we mean the relative space frame positions when the orientation is [1, 0, 0, 0]. This is typically fine for the psider as the longest axis of ortation wlil be from head to base, but for the vertex shape this can certainl8y vary.
+
+So, we set the spider orientation in the complex similar to how we se the vertex shape -- by measuring the current body frame vector (i.e. head to base center) of the spider, as well a the target vector (i.e. the vector from the vertex to bind to the center of the shell), and doing the same trig. trick to reorient the thing. This works just fine.
+
+Priorities going forwrad:
+- Get octahedron optimization working
+- Do the same for icosahedron. Can then probably get rid of all this orig\_rigid\_body nonsense
+
+
+
+# August 24, 2023
+
+We have been evaluating the Zorana dimer thing. They only found the effect they cared about at high epsilon, so things take really long timescales, eg 1e9, 1e10 (note: we don't know if they did ensembles or not, and we also don't know why the efefect can't be observed at lower enerygy scales). This raised some question marks for us in terms of how to do the optimzation.
+
+As a first way to address these question marks, we just wanted to see if we could take stable gradients through long simulations with their gamma and dt. We did this for 1e6, 1e7, and 1e8 (note that 1e8 is sitll running). We did see stable (i.e. non-exploding gradients). With rigid bodies, 1e6 took like 220 seconds per gradient update and 1e7 took 10x that, so compiling didn't relaly get a speedup. Note that we are using a foriloop and just computing a runing average (of sorts) so that we don't have to store all the distances. It runs out of memory for 1e9 -- we could probably address this by doing a scan with some rematting, but is it really worth it...? For 1e9 steps, we expect a single gradient update (without any rematting) to take ~220*1e3 seconds, which is way too much.
+
+So, looking forward, we see Zorana's caes as a great test bed for optimizing w.r.t. enhanced sampling but we don't want to do that right now.
+
+We'd rather just prove that we can do the icosahedron thing for other shells, close that loop, then try to deal with enhanced sampling for different reaction types (i.e. substitution, addition, elimination).
+
+So, we are going to go forth and try to do what we did for the icosahedron for the octahedron.
+
+
+
+# August 18, 2023
+
+We agree that we will follow one of two courses:
+- (i) get optimization over long simulations to work either by enhanced sampling (e.g. metadynamics of DNEB) or some other method
+  - to give us confidence that we need this, we are running some gradient checks over long simulatoins. We set this up without rigid bodies, and we want to add rigid bodies later to see how gradient stability is affected
+- (ii) Somethign else -- e.g. relax the problem definition
+
+Note that we also still want to email Zoarana at some point, something including the following three points:
+- why didn't lower epsilons work?
+- did you simulate things in ensembles?
+- why did you use such a small time step?
+
+Another tihng we want to do: run dimer dissociation tests at higher dt and see if we can rpeproduce the same expected rates
+
+# August 14, 2023
+
+Goal for today:
+- set up eval for non-RB vs RB for different epsilons for dissociation time
+- reread paper
+- email zorana and first author with questions
+  - e.g. whether or not their simulations were in bulk, simulation times, why they did such a large epsilon for the substrate
+
+# August 10, 2023
+
+Gameplan:
+
+Need to scan the dissociation times thing to do higher throughoupt. Then, confir mwith larger batch sizes for eps 4, and 5. Could also try 15
+
+Then, do the same for the monomers as rigid bodies, confirm that we get same results.
+
+Then do with catalyst. Have to be careful with valence considerations...
+
+Also should probably read the paper...
+
+# August 8, 2023
+
+We finally are simulating a catalyst and some monomers. Next, need tro continue validating them in the forward case with each other (e.g. setting the right epsilons and measuring rates, also measuring bulk properties)
+
+Then, before we do any optimization, we need to make a rigid body for the dimer that uses the right counts (i.e. not 6 and 6). Note that this versio nof rigid body will only be valid for transfomriong/simulating the complex (i.e. monomers + catalyst). We will also have to be careful with species for monomers and catalyst.
+
+(Notes Part 2):
+
+Nose-Hoover takes forever to run. We want to validate the catalyst + substrate simulations, but we are just going to wait until Langevin is put in.
+
+In the meantime, ew wrote the componets for the loss. While we could directly optimize for the monomers falling off, we are going to target the energies instead. That term will just be porportional to epsilon. the other term will just be the distances betwen the monomers.
+
+
+# August 2, 2023
+
+Reconvening on icosahedron stuff before we move onto Zorana dimer stuff:
+
+Before we left off, we learned many things. The first was that at kT of 2.0, the shell falls apart by itself for simulations > 1000 timesteps. So, we set kT to  1.0 and confirmed that the icosahedron was stable at this temperature.
+
+Once ew fixed kT at 1.0, we sought to optimize such that the thing fell off. We tried to achieve byis by adding a loss term that minimized the remianing energy bewteen the spider/catalyst and the *remianing* 11 vertices (i.e. those that you aren't trying to pull off).
+
+However, for any optimizion to work, we learned something (obvious) -- that you need a signal to start. This means that you can't start with the catalyst not interacting *at all* with the icosahedron. For all optimizations, we started with the following set of parameters:
+```
+params = {
+    # catalyst shape
+    'spider_base_radius': 5.0,
+    'spider_head_height': 5.0,
+    'spider_base_particle_radius': 0.5,
+    'spider_head_particle_radius': 0.5,
+
+    # catalyst energy
+    'log_morse_shell_center_spider_head_eps': FIXME,
+    'morse_shell_center_spider_head_alpha': 1.5,
+    'morse_r_onset': 10.0,
+    'morse_r_cutoff': 12.0
+}
+```
+Note the ``FIXME'' for `log_morse_shell_center_spider_head_eps`. This is the one parameter that we varied across runs. We found that, for there to be any gradient signal (i.e. any interaction between the icosahedron and the catalyst), we needed a log head eps of at least 5.5-6.0 ish. Note that at this lower end, there is no vertex abduction to begin with. So, falling off (i.e. the catalyst diffusin gaway) is "easy", but there is no abduction.
+
+The opposite scenario is to start with *too strong* of an interaction between the catalyst and the icosahedron. Empirically, this will manifest as the shell blowing paart/being attracted to the catalyst (either within 1000 steps or for longer trajectories). This is th eopposite end of the spectrum, where abduction/pulling off is easy, but falling off is hard.
+
+So, we sought to do two kinds of optimizations -- one where we begin with falling off/diffusion and try to balance that with abduction, and another where abduction is easy and we try to balance that with falling off/diffusion/not interacting too strongly with the rest of the shell. These are characterized by a low and high starting log head eps, respectively.
+
+Note that in the following, we record the parameters from the last iteration, even toiugh for each optimization run we produce a summary file that logs th ebest iteration.
+
+Limit 1: low starting head eps, start with falling off due to diffusion, need to get abduciton. (i.e. abduction starts hard).
+- Starting with a starting log head eps of 5.5
+- Ran the following command: `python3 -m catalyst.optimize --use-abduction-loss --batch-size 10 --n-iters 250 --n-steps 1000 -g 10 -kT 1.0 --vis-frame-rate 100 --lr 0.01 -k 0 --leg-mode both --use-stable-shell-loss --stable-shell-k 20.0 --use-remaining-shell-vertices-loss --remaining-shell-vertices-loss-coeff 1.0 --run-name first-try-kt1-coeff1-eps55`
+- Parameters of final iteration:
+```
+Iteration 249:
+- log_morse_shell_center_spider_head_eps: 6.564301325813623
+- morse_r_cutoff: 10.588998628881034
+- morse_r_onset: 8.948694316574155
+- morse_shell_center_spider_head_alpha: 1.87168885282763
+- spider_base_particle_radius: 0.600637705989551
+- spider_base_radius: 4.840478096384897
+- spider_head_height: 4.6262113602045805
+- spider_head_particle_radius: 0.7778571364301861
+```
+- We checked this with a 20k step simulation using `python3 -m catalyst.simulation`. Note that you have to set the parameters of the simulation by hand.
+- Note that we named the directory "first-try-kt1-coeff1-eps55". We have created a directory called `good-icos-optimizations` and have copied this run as `good-icos-optimizations/init-diffusive-limit`
+  - We have copied the sanity check simulation using the parameters from the final iteratoin and 20k steps in this directory as `iter249_20k_traj.pos`
+
+
+Limit 2: high starting head eps, start with abduction, need to get falling off due to diffusion (and no shell explosion). (i.e. falling off/diffusion/not exploding starts hard).
+- Starting with a starting log head eps of 9.2
+- Ran the following command: `python3 -m catalyst.optimize --use-abduction-loss --batch-size 10 --n-iters 250 --n-steps 1000 -g 10 -kT 1.0 --vis-frame-rate 100 --lr 0.01 -k 0 --leg-mode both --use-stable-shell-loss --stable-shell-k 20.0 --use-remaining-shell-vertices-loss --remaining-shell-vertices-loss-coeff 1.0 --run-name first-try-kt1-coeff1-eps92`
+- Parameters of final iteration:
+```
+Iteration 249:
+- log_morse_shell_center_spider_head_eps: 8.933010009519583
+- morse_r_cutoff: 11.742239951761889
+- morse_r_onset: 9.803544376687315
+- morse_shell_center_spider_head_alpha: 1.7910141878127712
+- spider_base_particle_radius: 0.6394784533750115
+- spider_base_radius: 4.787588005279043
+- spider_head_height: 5.331054263095673
+- spider_head_particle_radius: 0.17076660748048453
+```
+- We checked this with a 20k step simulation using `python3 -m catalyst.simulation`. Note that you have to set the parameters of the simulation by hand.
+- Note that we named the directory "first-try-kt1-coeff1-eps92". We have copied this run as `good-icos-optimizations/init-abduction-limit`
+  - We have copied the sanity check simulation using the parameters from the final iteratoin and 20k steps in this directory as `iter249_20k_traj.pos`
+
+
+
+## July 17, 2023
+
+We coul doptimize for things including this wide spring potential, but it blows up for longer trajectories. This made us look at the interaction energy, because we thought that maybe we could betterrestrict the range of the pairwise morse potential (note that morse_pair uses multiplicaitve isotropic cutofF)
+
+We have a couple of takewaay notes from this:
+- we should really be using the papropriate sigma for the morse potential, and not rely on soft sphere as the repuslve component. Currently, we have a frustraed system (with sigma=0 for the morse potential) and perhaps this could affect gradient stability
+- one potential way to mitigate "explosion" for timescales longer than those of the optimization is to optimize for 2k steps, with the loss requiring abduction at 1k steps and non-explosion the whole way thorugh
+  - but, to get a sense of this, we should really be able to track the value of the explosion term/wide spring term throughout the simulation, up to 2k steps
+
+
+## July 14, 2023
+
+We switched to 64 bit precision, as well as the correct eigen calculation (becauese ew are already using the new rigid body stuff) to get more stability because our loss funcitonw as a bit all ove rthe place. Then, we ran wit ha bunch of differen tparametres, like a lower agmma, higher kt, highe rlearning rate. What ee found is that increasing kT allowed us to retrievee our lod loss/behavior in a stable fashion.
+
+We also visualized the final state, so the last frame in an injavis trajectory will be off by one because we enforce that the number of steps is divisible by th eframe rate
+
+The parameters that seem to work are the following:
+- batch_size: 10
+- n_iters: 100
+- key_seed: 0
+- n_steps: 1000
+- vertex_to_bind: 5
+- lr: 0.01
+- init_separate: 0.0
+- data_dir: data/
+- temperature: 2.0
+- dt: 0.001
+- gamma: 10.0
+- use_abduction_loss: True
+- use_stable_shell_loss: False
+- vis_frame_rate: 100
+
+## July 14, 2023
+
+We set up legls but it doesn't look like it's working bsaed on simulations. As a first test, we are going to add it as a fourth term in the energy components function and check the value of that term. If that doesn't work, we'll probably have to do the calculation manually on some final state -- we'll do the postiion transformation, etc.
+
+
+## July 13, 2023
+
+Part 1:
+- accomplished lots of logging, like the trajectory per iteration (with a sufficiently low number of frames to make injavis conversion onot crazy expensive) and the average gradients. Also better formatting...
+- we need to experiment a bit with forward simulation tot hceck if things are even interacting in our initla parameters and if we can get abduction by hand turning the paremetress i.e. just to fheck that there *is* a solution). Some things to checK: strong head eps, lower head alpha. Right now alpha is 4.5 and 1/4.5 is quite small. Also, we may want to set kT t o1.0 and vary gamma. Maybe we also want to vary the head height
+
+
+## July 11, 2023
+
+We are getting 0 gradients. This is probably because of not using mod rigid body -- we think we vaguely remember something in the shape definition that is discontinuous, and that we specialized for rigid bodies.
+
+Should start next time by doing a diff on mod_rigid_bodey and rigid_body, and then trying to use it where appropriate. Should be careful about this.
+
+## June 29, 2023
+
+Note for today: we are not adding any leg energy function for now
+
 ## May 16, 2023
 Have the forwrad pass working iwth a simple graph neural network. Next time, we are gonig to optimize over it. The following are some basic notes re. what we'll have to change to optimiez over it:
 - The graph network must be initizlied so that it has the right input shape. We should only do this once. So, unlike the previous neergy function case, we will need some type of "getter"/factory for the run dynamics function that will be responsible for initializing the network with the appropriate shape
