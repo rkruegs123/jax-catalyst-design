@@ -36,7 +36,8 @@ class Leg:
         leg_positions = jnp.array([head_pos, attr_pos, base_pos])
 
         n_positions = len(leg_positions)
-        masses = jnp.ones(n_positions) * self.point_mass + jnp.arange(n_positions) * self.mass_err
+        # masses = jnp.ones(n_positions) * self.point_mass + jnp.arange(n_positions) * self.mass_err
+        masses = jnp.array([0.01, 0.5, 1.0]) + jnp.arange(n_positions) * self.mass_err
 
         leg_rb = rigid_body.RigidBody(
             center=jnp.array([0.0, 0.0, 0.0]),
