@@ -46,6 +46,7 @@ class Spider:
         self.head_particle_radius = head_particle_radius
         self.attr_site_radius = attr_site_radius
         self.head_height = head_height
+        self.particle_radii = jnp.array([head_particle_radius, attr_site_radius, base_particle_radius])
 
         self.legs = [Leg(base_radius, head_height, base_particle_radius,
                          attr_particle_pos_norm, attr_site_radius,

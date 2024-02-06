@@ -4,8 +4,8 @@ Code for designing **spider catalysts**
 
 # February 6, 2024
 
-- Need to add interaction energy between shell and spider
-  - also leg repulsion
+- Added interaction energy between shell and spider (just morse attraction and general soft sphere repulsion)
+  - next: leg repulsion, maybe add repulsion between head vertex and extracted vertex
 - Then, optimize for extraction
 - Then go from there...
   - e.g. add an energy penalty for the vertex to bind interaction. Want to minimize this.

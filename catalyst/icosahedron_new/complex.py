@@ -161,6 +161,9 @@ class Complex:
 
             # Shell-shell interaction energy parameters
             morse_ii_eps=10.0, morse_ii_alpha=5.0,
+       
+            # Shell-attr interaction parameters
+            morse_attr_eps=300.0, morse_attr_alpha=1.5, morse_r_onset=12.0, morse_r_cutoff=14.0,
 
             # Misc. parameters
             soft_eps=10000.0,
@@ -172,12 +175,55 @@ class Complex:
 
         spider_energy_fn = self.spider.get_energy_fn()
 
+	## soft sphere repulsion between spider and shell
 
+        # vertex center, vertex patch, spider head, spider attr, spider base
+        zero_interaction = jnp.zeros((5, 5))
+        spider_pt_species = jnp.array([2, 3, 4])
+        soft_sphere_eps = zero_interaction.at[0, spider_pt_species].set(soft_eps)
+        soft_sphere_eps = soft_sphere_eps.at[spider_pt_species, 0].set(soft_eps)
+
+        soft_sphere_sigma = zero_interaction.at[0, spider_pt_species].set(self.shell.vertex_radius + self.spider.particle_radii) 
+        soft_sphere_sigma = soft_sphere_sigma.at[spider_pt_species, 0].set(self.shell.vertex_radius + self.spider.particle_radii)
+        sigma = jnp.where(soft_sphere_sigma == 0.0, 1e-5, soft_sphere_sigma) # avoids nans
+        pair_energy_soft = energy.soft_sphere_pair(
+            self.displacement_fn,
+            # species=self.n_point_species
+            species=5,
+            sigma=sigma, epsilon=soft_sphere_eps)
+        soft_energy_fn = rigid_body.point_energy(pair_energy_soft, self.shape, self.shape_species)
+
+
+        ## attraction between attr and shell vertex
+        morse_eps = zero_interaction.at[0, 3].set(morse_attr_eps)
+        morse_eps = morse_eps.at[3, 0].set(morse_attr_eps)
+
+        morse_alpha = zero_interaction.at[0, 3].set(morse_attr_alpha)
+        morse_alpha = morse_alpha.at[3, 0].set(morse_attr_alpha)
+
+        pair_energy_morse = energy.morse_pair(
+            self.displacement_fn,
+            # species=self.n_point_species,
+            species=5,
+            sigma=sigma, epsilon=morse_eps, alpha=morse_alpha,
+            r_onset=morse_r_onset, r_cutoff=morse_r_cutoff
+        )
+
+        morse_energy_fn = rigid_body.point_energy(pair_energy_morse, self.shape, self.shape_species)
+
+
+
+
+        def interaction_energy_fn(body: rigid_body.RigidBody, **kwargs):
+            return soft_energy_fn(body, **kwargs) + morse_energy_fn(body, **kwargs)
+            
+                 
         def energy_fn(body: rigid_body.RigidBody, **kwargs):
             spider_body, shell_body = self.split_body(body)
             shell_energy = shell_energy_fn(shell_body, **kwargs)
             spider_energy = spider_energy_fn(spider_body, **kwargs)
-            return shell_energy + spider_energy
+            interaction_energy = interaction_energy_fn(body, **kwargs)
+            return shell_energy + spider_energy + interaction_energy
 
         # FIXME: have to add interaction energy. Could add a repulsive interaction between the head and the vertices that has a cutoff slightly lesss than the head height to mitigate off target of a single attractive site wanting to bind the vertex itself. Also, weak attraction between base sites and vertices. Of course attraction between attractive sites and vertices. Maybe or maybe not weak repulsion between attractive sites.
 
@@ -253,7 +299,7 @@ class TestComplex(unittest.TestCase):
         state = init_fn(key, complex_.rigid_body, mass=mass)
 
         trajectory = list()
-        n_steps = 50000
+        n_steps = 20000#50000
         energies = list()
         for _ in tqdm(range(n_steps)):
             state = step_fn(state)
