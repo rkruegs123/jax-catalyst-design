@@ -5,11 +5,12 @@ from tqdm import tqdm
 import numpy as onp
 import matplotlib.pyplot as plt
 
-from jax import vmap, lax, tree_util, jit, random
+from jax import vmap, lax, jit, random
 import jax.numpy as jnp
 from jax_md import rigid_body, space, simulate, energy
 
 from catalyst.icosahedron_new.leg import Leg
+from catalyst.icosahedron_new import utils
 
 from jax.config import config
 config.update('jax_enable_x64', True)
@@ -17,8 +18,17 @@ config.update('jax_enable_x64', True)
 
 
 
-def tree_stack(trees):
-    return tree_util.tree_map(lambda *v: jnp.stack(v), *trees)
+def get_target_positions(head_height, base_radius):
+    target_positions = jnp.zeros((5, 3))
+    x = head_height
+    def scan_fn(target_positions, i):
+        y = base_radius * jnp.cos(i * 2 * jnp.pi / 5)
+        z = base_radius * jnp.sin(i * 2 * jnp.pi / 5)
+        target_positions = target_positions.at[i, :].set(jnp.array([x, y, z]))
+        return target_positions, i
+    target_positions, _ = lax.scan(scan_fn, target_positions, jnp.arange(5))
+
+    return target_positions
 
 class Spider:
     def __init__(self, displacement_fn, shift_fn,
@@ -26,7 +36,7 @@ class Spider:
                  base_particle_radius,
                  attr_particle_pos_norm, attr_site_radius,
                  head_particle_radius,
-                 point_mass=1.0, mass_err=1e-6):
+                 point_mass=1.0, mass_err=1e-6, target_positions=None):
 
         self.displacement_fn = displacement_fn
         self.shift_fn = shift_fn
@@ -35,30 +45,49 @@ class Spider:
         self.base_particle_radius = base_particle_radius
         self.head_particle_radius = head_particle_radius
         self.attr_site_radius = attr_site_radius
+        self.head_height = head_height
 
         self.legs = [Leg(base_radius, head_height, base_particle_radius,
                          attr_particle_pos_norm, attr_site_radius,
                          head_particle_radius, point_mass, mass_err) for _ in range(self.n_legs)]
-        spider_rb = tree_stack([leg.rigid_body for leg in self.legs])
+        spider_rb = utils.tree_stack([leg.rigid_body for leg in self.legs])
         spider_shape = self.legs[0].shape
 
 
-        d = vmap(displacement_fn, (None, 0))
+        d = vmap(displacement_fn, (0, None))
 
-        target_positions = jnp.zeros((5, 3))
         leg_length = self.legs[0].leg_length
-        x = head_height
-        def scan_fn(target_positions, i):
-            y = base_radius * jnp.cos(i * 2 * jnp.pi / 5)
-            z = base_radius * jnp.sin(i * 2 * jnp.pi / 5)
-            target_positions = target_positions.at[i, :].set(jnp.array([x, y, z]))
-            return target_positions, i
-        target_positions, _ = lax.scan(scan_fn, target_positions, jnp.arange(5))
+
+        if target_positions is None:
+            target_positions = get_target_positions(head_height, base_radius)
+
+        self.target_positions = target_positions
         self.target_position_dx = space.distance(displacement_fn(target_positions[0], target_positions[1]))
+
+
+        """
+        # Note: so close!
+        target_positions = jnp.array([
+            [ 2.09483774, -3.57390989,  4.88250171],
+            [ 1.75247897,  2.23091615,  5.74036851],
+            [-3.38942973,  4.08615956,  3.5798137 ],
+            [-6.22494531, -0.57206299,  1.3866506 ],
+            [-2.83548161, -5.30624626,  2.19175606]], dtype=jnp.float64)
+        """
+
+        """
+        target_positions = jnp.array([
+            [ 0.69152563,  3.33549209,  5.42183408],
+            [ 2.6534608 , -2.205193  ,  5.39409581],
+            [-1.42928022, -5.56490865,  2.82647303],
+            [-5.91448812, -2.10064202,  1.26733316],
+            [-4.60375802,  3.40010815,  2.8713545 ]], dtype=jnp.float64)
+        """
+
 
         start_base_pos = jnp.array([leg_length, 0.0, 0.0])
         start_head_pos = jnp.array([0.0, 0.0, 0.0])
-        reoriented_vectors = d(start_head_pos, target_positions)
+        reoriented_vectors = d(target_positions, start_head_pos)
         norm = jnp.linalg.norm(reoriented_vectors, axis=1).reshape(-1, 1)
         reoriented_vectors /= norm
 
@@ -125,7 +154,8 @@ class Spider:
         if add_bonds:
             flattened_base_idxs = onp.arange(2, self.n_legs*3)[::3]
             bonds = jnp.array([[flattened_base_idxs[0], flattened_base_idxs[1]],
-                               [flattened_base_idxs[2], flattened_base_idxs[3]]
+                               [flattened_base_idxs[2], flattened_base_idxs[3]],
+                               [flattened_base_idxs[3], flattened_base_idxs[4]]
             ])
             pair_energy_bond = energy.simple_spring_bond(self.displacement_fn, bonds, length=self.target_position_dx, epsilon=100)
             pair_energy_fn_with_bonds = lambda R, **kwargs: pair_energy_fn(R, **kwargs) + pair_energy_bond(R, **kwargs)
@@ -199,7 +229,7 @@ class TestSpider(unittest.TestCase):
             trajectory.append(state.position)
             energies.append(energy_fn(state.position))
 
-        trajectory = tree_stack(trajectory)
+        trajectory = utils.tree_stack(trajectory)
 
         n_vis_freq = 500
         vis_traj_idxs = jnp.arange(0, n_steps+1, n_vis_freq)
