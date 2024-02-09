@@ -49,7 +49,7 @@ class Complex:
                  verbose=True,
 
                  # legs
-                 spider_bond_idxs=None, spider_leg_radius=0.5
+                 bond_radius=0.5, bond_alpha=2.0
 
     ):
         self.n_legs = 5
@@ -69,8 +69,8 @@ class Complex:
 
         self.verbose = verbose
 
-        self.spider_bond_idxs = spider_bond_idxs
-        self.spider_leg_radius = spider_leg_radius
+        self.bond_radius = bond_radius
+        self.bond_alpha = bond_alpha
 
         self.load()
 
@@ -156,12 +156,81 @@ class Complex:
         self.shape = complex_shape
         self.shape_species = onp.array(list(onp.zeros(12)) + [1]*spider.n_legs, dtype=onp.int32).flatten()
 
+
+    def get_rep_bond_energy_fn(self, soft_eps, bond_radius, bond_alpha):
+
+        def single_leg_rep(l_idx, all_leg_space_frame_pos, all_vertex_space_frame_pos):
+            leg_start_idx = 3*l_idx
+            leg_end_idx = leg_start_idx+3
+
+            leg_space_frame = all_leg_space_frame_pos[leg_start_idx:leg_end_idx]
+
+            leg_bond_idxs = jnp.array([[0, 1], [1, 2]], dtype=jnp.int32)
+            leg_bond_positions = leg_space_frame[leg_bond_idxs]
+
+            all_dists = utils.mapped_dist_point_to_line(
+                leg_bond_positions, all_vertex_space_frame_pos, self.displacement_fn)
+
+            bond_energy_sm = jnp.sum(
+                energy.soft_sphere(all_dists,
+                                   epsilon=soft_eps,
+                                   sigma=bond_radius + self.shell.vertex_radius,
+                                   alpha=jnp.array(bond_alpha)))
+
+            return bond_energy_sm
+
+        def base_bond_rep(bond_spider_idxs, all_leg_space_frame_pos, all_vertex_space_frame_pos):
+            l_idx1, l_idx2 = bond_spider_idxs
+
+            leg1_base_pos = all_leg_space_frame_pos[3*l_idx1+2]
+            leg2_base_pos = all_leg_space_frame_pos[3*l_idx2+2]
+
+            bond_positions = jnp.array([[leg1_base_pos, leg2_base_pos]])
+
+            all_dists = utils.mapped_dist_point_to_line(
+                bond_positions, all_vertex_space_frame_pos, self.displacement_fn)
+
+            bond_energy_sm = jnp.sum(
+                energy.soft_sphere(all_dists,
+                                   epsilon=soft_eps,
+                                   sigma=bond_radius + self.shell.vertex_radius,
+                                   alpha=jnp.array(bond_alpha)))
+
+            return bond_energy_sm
+
+
+        def rep_bond_energy_fn(body):
+            spider_body, shell_body = self.split_body(body)
+
+            spider_space_frame_pos = vmap(self.spider.legs[0].get_body_frame_positions)(spider_body).reshape(-1, 3)
+            shell_body_pos = self.shell.get_body_frame_positions(shell_body)
+            shell_vertex_centers = shell_body_pos[::6]
+
+            """
+            all_leg_rep_vals = vmap(single_leg_rep, (0, None, None))(
+                jnp.arange(5), # note: really self.spider.n_legs
+                spider_space_frame_pos, shell_vertex_centers)
+            return all_leg_rep_vals.sum()
+            """
+            rep_val = single_leg_rep(0, spider_space_frame_pos, shell_vertex_centers)
+            rep_val += single_leg_rep(1, spider_space_frame_pos, shell_vertex_centers)
+            rep_val += single_leg_rep(2, spider_space_frame_pos, shell_vertex_centers)
+            rep_val += single_leg_rep(3, spider_space_frame_pos, shell_vertex_centers)
+            rep_val += single_leg_rep(4, spider_space_frame_pos, shell_vertex_centers)
+            rep_val += base_bond_rep(jnp.array([0, 1]), spider_space_frame_pos, shell_vertex_centers)
+            rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, shell_vertex_centers)
+            rep_val += base_bond_rep(jnp.array([3, 4]), spider_space_frame_pos, shell_vertex_centers)
+            return rep_val
+            # return single_leg_rep(0, spider_space_frame_pos, shell_vertex_centers)
+
+        return rep_bond_energy_fn
+
     def get_energy_fn(
             self,
 
             # Shell-shell interaction energy parameters
             morse_ii_eps=10.0, morse_ii_alpha=5.0,
-       
+
             # Shell-attr interaction parameters
             morse_attr_eps=300.0, morse_attr_alpha=1.5, morse_r_onset=12.0, morse_r_cutoff=14.0,
 
@@ -183,7 +252,7 @@ class Complex:
         soft_sphere_eps = zero_interaction.at[0, spider_pt_species].set(soft_eps)
         soft_sphere_eps = soft_sphere_eps.at[spider_pt_species, 0].set(soft_eps)
 
-        soft_sphere_sigma = zero_interaction.at[0, spider_pt_species].set(self.shell.vertex_radius + self.spider.particle_radii) 
+        soft_sphere_sigma = zero_interaction.at[0, spider_pt_species].set(self.shell.vertex_radius + self.spider.particle_radii)
         soft_sphere_sigma = soft_sphere_sigma.at[spider_pt_species, 0].set(self.shell.vertex_radius + self.spider.particle_radii)
         sigma = jnp.where(soft_sphere_sigma == 0.0, 1e-5, soft_sphere_sigma) # avoids nans
         pair_energy_soft = energy.soft_sphere_pair(
@@ -211,13 +280,17 @@ class Complex:
 
         morse_energy_fn = rigid_body.point_energy(pair_energy_morse, self.shape, self.shape_species)
 
+        rep_bond_energy_fn = self.get_rep_bond_energy_fn(soft_eps, self.bond_radius, self.bond_alpha)
+
 
 
 
         def interaction_energy_fn(body: rigid_body.RigidBody, **kwargs):
-            return soft_energy_fn(body, **kwargs) + morse_energy_fn(body, **kwargs)
-            
-                 
+            pointwise_interaction_energy = soft_energy_fn(body, **kwargs) + morse_energy_fn(body, **kwargs)
+            bond_interaction_energy = rep_bond_energy_fn(body)
+            return pointwise_interaction_energy + bond_interaction_energy
+
+
         def energy_fn(body: rigid_body.RigidBody, **kwargs):
             spider_body, shell_body = self.split_body(body)
             shell_energy = shell_energy_fn(shell_body, **kwargs)
@@ -299,7 +372,7 @@ class TestComplex(unittest.TestCase):
         state = init_fn(key, complex_.rigid_body, mass=mass)
 
         trajectory = list()
-        n_steps = 20000#50000
+        n_steps = 5000 # 50000
         energies = list()
         for _ in tqdm(range(n_steps)):
             state = step_fn(state)

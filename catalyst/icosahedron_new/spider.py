@@ -36,7 +36,9 @@ class Spider:
                  base_particle_radius,
                  attr_particle_pos_norm, attr_site_radius,
                  head_particle_radius,
-                 point_mass=1.0, mass_err=1e-6, target_positions=None):
+                 point_mass=1.0, mass_err=1e-6, target_positions=None,
+                 bond_alpha=2.0
+    ):
 
         self.displacement_fn = displacement_fn
         self.shift_fn = shift_fn
@@ -47,6 +49,7 @@ class Spider:
         self.attr_site_radius = attr_site_radius
         self.head_height = head_height
         self.particle_radii = jnp.array([head_particle_radius, attr_site_radius, base_particle_radius])
+        self.bond_alpha = bond_alpha
 
         self.legs = [Leg(base_radius, head_height, base_particle_radius,
                          attr_particle_pos_norm, attr_site_radius,
@@ -64,26 +67,6 @@ class Spider:
 
         self.target_positions = target_positions
         self.target_position_dx = space.distance(displacement_fn(target_positions[0], target_positions[1]))
-
-
-        """
-        # Note: so close!
-        target_positions = jnp.array([
-            [ 2.09483774, -3.57390989,  4.88250171],
-            [ 1.75247897,  2.23091615,  5.74036851],
-            [-3.38942973,  4.08615956,  3.5798137 ],
-            [-6.22494531, -0.57206299,  1.3866506 ],
-            [-2.83548161, -5.30624626,  2.19175606]], dtype=jnp.float64)
-        """
-
-        """
-        target_positions = jnp.array([
-            [ 0.69152563,  3.33549209,  5.42183408],
-            [ 2.6534608 , -2.205193  ,  5.39409581],
-            [-1.42928022, -5.56490865,  2.82647303],
-            [-5.91448812, -2.10064202,  1.26733316],
-            [-4.60375802,  3.40010815,  2.8713545 ]], dtype=jnp.float64)
-        """
 
 
         start_base_pos = jnp.array([leg_length, 0.0, 0.0])
@@ -163,6 +146,7 @@ class Spider:
             energy_fn = rigid_body.point_energy(pair_energy_fn_with_bonds, self.shape)
         else:
             energy_fn = rigid_body.point_energy(pair_energy_fn, self.shape)
+
         return energy_fn
 
 
