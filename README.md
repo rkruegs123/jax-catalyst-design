@@ -4,8 +4,10 @@ Code for designing **spider catalysts**
 
 # February 16, 2024
 - did lots of experimenting: we're having lots of issues with interactions with other vertices
-- plan (next week): cheat by only having the spider attract the vertex to bind, the physical analogy is adding
-  a tag to the particle we want to pull off at a later time
+- plan (next week): 
+    --add loose springs between non-bonded spider base particles so that the spider stays sort of together/can't fully flatten out
+    --cheat by only having the spider attract the vertex to bind, the physical analogy is adding
+      a tag to the particle we want to pull off at a later time
 
 
 
