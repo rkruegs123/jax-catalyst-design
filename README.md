@@ -2,6 +2,13 @@
 
 Code for designing **spider catalysts**
 
+# February 16, 2024
+- did lots of experimenting: we're having lots of issues with interactions with other vertices
+- plan (next week): cheat by only having the spider attract the vertex to bind, the physical analogy is adding
+  a tag to the particle we want to pull off at a later time
+
+
+
 # February 6, 2024
 
 - Added interaction energy between shell and spider (just morse attraction and general soft sphere repulsion)
