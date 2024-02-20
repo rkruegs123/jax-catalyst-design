@@ -2,6 +2,13 @@
 
 Code for designing **spider catalysts**
 
+# February 20, 2024
+- added the "cheating" by only interacting with the vertex to bind
+- played around - we can still extract, can't get it to release
+- next: formulate optimization to get it to extract and release
+
+
+
 # February 16, 2024
 - did lots of experimenting: we're having lots of issues with interactions with other vertices
 - plan (next week): 
