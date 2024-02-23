@@ -6,7 +6,9 @@ import numpy as onp
 
 from jax import vmap, lax
 import jax.numpy as jnp
-from jax_md import rigid_body
+# from jax_md import rigid_body
+
+import catalyst.icosahedron_tagged.rigid_body as rigid_body
 
 from jax.config import config
 config.update('jax_enable_x64', True)

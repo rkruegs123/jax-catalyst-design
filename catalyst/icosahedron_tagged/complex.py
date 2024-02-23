@@ -7,8 +7,10 @@ import matplotlib.pyplot as plt
 
 from jax import vmap, lax, jit, random
 import jax.numpy as jnp
-from jax_md import energy, space, rigid_body, simulate
+from jax_md import energy, space, simulate
+# from jax_md import rigid_body
 
+import catalyst.icosahedron_tagged.rigid_body as rigid_body
 from catalyst.icosahedron_tagged.spider import Spider
 from catalyst.icosahedron_tagged.shell import Shell
 from catalyst.icosahedron_tagged import utils
@@ -284,7 +286,7 @@ class Complex:
             species=5,
             sigma=sigma, epsilon=morse_eps, alpha=morse_alpha,
             r_onset=morse_r_onset, r_cutoff=morse_r_cutoff,
-            per_particle=True, 
+            per_particle=True,
         )
 
         morse_energy_fn = rigid_body.point_energy(pair_energy_morse, self.shape, self.shape_species)
@@ -347,6 +349,8 @@ class TestComplex(unittest.TestCase):
             spider_head_particle_radius=0.5,
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
+
+        pdb.set_trace()
 
         energy_fn = complex_.get_energy_fn()
         #energy_fn = jit(energy_fn)

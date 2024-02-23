@@ -7,10 +7,12 @@ import matplotlib.pyplot as plt
 
 from jax import vmap, lax, jit, random
 import jax.numpy as jnp
-from jax_md import rigid_body, space, simulate, energy
+from jax_md import space, simulate, energy
+# from jax_md import rigid_body
 
-from catalyst.icosahedron_new.leg import Leg
-from catalyst.icosahedron_new import utils
+import catalyst.icosahedron_tagged.rigid_body as rigid_body
+from catalyst.icosahedron_tagged.leg import Leg
+from catalyst.icosahedron_tagged import utils
 
 from jax.config import config
 config.update('jax_enable_x64', True)
