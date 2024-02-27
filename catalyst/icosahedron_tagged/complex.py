@@ -296,7 +296,7 @@ class Complex:
 
 
         def interaction_energy_fn(body: rigid_body.RigidBody, **kwargs):
-            #pdb.set_trace()
+            # pdb.set_trace()
             pointwise_morse_vec = morse_energy_fn(body, **kwargs) #Mask out everything but the vertex to bind and the spider attractive sites
             pointwise_morse = pointwise_morse_vec[self.vertex_to_bind_idx*6]*2 #* self.mask#jnp.dot(pointwise_morse_vec, self.mask)
             pointwise_interaction_energy = soft_energy_fn(body, **kwargs) + pointwise_morse #morse_energy_fn(body, **kwargs)
@@ -350,7 +350,6 @@ class TestComplex(unittest.TestCase):
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
 
-        pdb.set_trace()
 
         energy_fn = complex_.get_energy_fn()
         #energy_fn = jit(energy_fn)

@@ -29,7 +29,7 @@ class Leg:
         self.mass_err = mass_err
         self.point_mass = point_mass
 
-        self.leg_length = onp.sqrt(base_radius**2 + head_height**2)
+        self.leg_length = jnp.sqrt(base_radius**2 + head_height**2)
 
 
         head_pos = [0.0, 0.0, 0.0]

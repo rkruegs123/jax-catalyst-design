@@ -13,7 +13,6 @@ from jax_md import util
 
 import catalyst.icosahedron_tagged.rigid_body as rigid_body
 from catalyst.checkpoint import checkpoint_scan
-from catalyst.icosahedron_tagged.complex import ComplexInfo
 from catalyst.icosahedron_tagged.shell import Shell
 from catalyst.icosahedron_tagged.utils import get_body_frame_positions
 
@@ -37,7 +36,7 @@ def simulation(complex_, complex_energy_fn, num_steps,
                                              kT, gamma=gamma_rb)
     step_fn = jit(step_fn)
 
-    mass = complex_.shape.mass(complex_info.shape_species)
+    mass = complex_.shape.mass(complex_.shape_species)
     state = init_fn(key, complex_.rigid_body, mass=mass)
 
     do_step = lambda state, t: (step_fn(state), state.position)

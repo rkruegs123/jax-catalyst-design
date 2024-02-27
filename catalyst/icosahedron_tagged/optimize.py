@@ -8,13 +8,12 @@ import numpy as onp
 
 from jax import random, grad, jit, vmap, value_and_grad
 import jax.numpy as jnp
-import jax.debug
 
 from jax_md import space
 
-from catalyst.icosahedron_tagged.complex_getter import Complex
+from catalyst.icosahedron_tagged.complex import Complex
 from catalyst.icosahedron_tagged.simulation import simulation
-import catalyst.icosahedron.utils as utils
+from catalyst.icosahedron_tagged.loss import get_loss_fn
 
 from jax.config import config
 config.update('jax_enable_x64', True)
@@ -35,6 +34,10 @@ def optimize(args):
     initial_separation_coefficient = args['init_separate']
     gamma = args['gamma']
     vertex_to_bind_idx = args['vertex_to_bind']
+
+    displacement_fn, shift_fn = space.free()
+    state_loss_fn, state_loss_terms_fn = get_loss_fn(displacement_fn, vertex_to_bind_idx)
+
 
     data_dir = Path(data_dir)
     if not data_dir.exists():
@@ -60,7 +63,6 @@ def optimize(args):
     key = random.PRNGKey(key_seed)
     keys = random.split(key, n_iters)
 
-    displacement_fn, shift_fn = space.free()
 
 
     # Dummy loss function for now
@@ -87,10 +89,11 @@ def optimize(args):
         fin_state, traj = simulation(complex_, complex_energy_fn,
                                      n_steps, gamma, kT, shift_fn, dt, key)
 
+        loss = state_loss_fn(fin_state, params, complex_)
+        return loss, traj
+        # return traj[-1].center.sum(), traj
 
-        return traj[-1]_.center.sum()
-
-    grad_fn = value_and_grad(loss_fn, has_aux=False)
+    grad_fn = value_and_grad(loss_fn, has_aux=True)
     batched_grad_fn = jit(vmap(grad_fn, in_axes=(None, 0)))
 
 
@@ -120,7 +123,7 @@ def optimize(args):
         iter_key = keys[i]
         batch_keys = random.split(iter_key, batch_size)
         start = time.time()
-        vals, grads = batched_grad_fn(params, batch_keys)
+        (vals, trajs), grads = batched_grad_fn(params, batch_keys)
         end = time.time()
 
         avg_grads = {k: jnp.mean(grads[k], axis=0) for k in grads}
@@ -129,9 +132,32 @@ def optimize(args):
         with open(losses_path, "a") as f:
             f.write(f"{vals}\n")
         avg_loss = onp.mean(vals)
-        all_avg_losses.append(avg_loss)
         with open(loss_path, "a") as f:
             f.write(f"{avg_loss}\n")
+
+
+        box_size = 30.0
+        traj_injavis_lines = list()
+        traj_path = traj_dir / "traj_i{i}_b0.pos"
+        n_vis_freq = 50
+        vis_traj_idxs = jnp.arange(0, n_steps+1, n_vis_freq)
+        n_vis_states = len(vis_traj_idxs)
+        rep_complex_ = Complex(
+            initial_separation_coeff=initial_separation_coefficient,
+            vertex_to_bind_idx=vertex_to_bind_idx,
+            displacement_fn=displacement_fn, shift_fn=shift_fn,
+            spider_base_radius=params['spider_base_radius'],
+            spider_head_height=params['spider_head_height'],
+            spider_base_particle_radius=params['spider_base_particle_radius'],
+            spider_attr_particle_radius=params['spider_attr_particle_radius'],
+            spider_head_particle_radius=params['spider_head_particle_radius'],
+            spider_point_mass=1.0, spider_mass_err=1e-6
+        )
+        for i in tqdm(range(n_vis_states), desc="Generating injavis output"):
+            s = trajs[0][i]
+            traj_injavis_lines += rep_complex_.body_to_injavis_lines(s, box_size=box_size)[0]
+        with open(traj_path, 'w+') as of:
+            of.write('\n'.join(traj_injavis_lines))
 
         # Update the parameters once we are done logging everyting
         params = optax.apply_updates(params, updates)
@@ -151,7 +177,7 @@ def get_argparse():
     parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
 
     parser.add_argument('-d', '--data-dir', type=str,
-                        default="data/icosahedron",
+                        default="data/icosahedron-tagged",
                         help='Path to base data directory')
     parser.add_argument('-kT', '--temperature', type=float, default=1.0, help="Temperature in kT")
     parser.add_argument('--dt', type=float, default=1e-3, help="Time step")
