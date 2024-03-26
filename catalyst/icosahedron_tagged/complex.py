@@ -4,6 +4,7 @@ import unittest
 from tqdm import tqdm
 import numpy as onp
 import matplotlib.pyplot as plt
+import time
 
 from jax import vmap, lax, jit, random
 import jax.numpy as jnp
@@ -51,7 +52,7 @@ class Complex:
                  verbose=True,
 
                  # legs
-                 bond_radius=1.0, bond_alpha=2.0
+                 bond_radius=0.25, bond_alpha=2.0
 
     ):
         self.n_legs = 5
@@ -286,22 +287,44 @@ class Complex:
             species=5,
             sigma=sigma, epsilon=morse_eps, alpha=morse_alpha,
             r_onset=morse_r_onset, r_cutoff=morse_r_cutoff,
-            per_particle=True,
+            # per_particle=True,
+            per_particle=False,
         )
 
-        morse_energy_fn = rigid_body.point_energy(pair_energy_morse, self.shape, self.shape_species)
+        self.tagged_shape_species = onp.array([0, 1, 1, 1, 1, 1])
+        # morse_energy_fn = rigid_body.point_energy(pair_energy_morse, self.shape, self.shape_species)
+        morse_energy_fn = rigid_body.point_energy(pair_energy_morse, self.shape, self.tagged_shape_species)
 
         rep_bond_energy_fn = self.get_rep_bond_energy_fn(soft_eps, self.bond_radius, self.bond_alpha)
 
+        def pointwise_interaction_energy_fn(body: rigid_body.RigidBody, **kwargs):
+            spider_body, shell_body = self.split_body(body)
+            bind_body_flat = body[self.vertex_to_bind_idx]
+            combined_body_center = jnp.concatenate([bind_body_flat.center.reshape(1, -1),
+                                                    spider_body.center])
+            combined_body_qvec = jnp.concatenate([bind_body_flat.orientation.vec.reshape(1, -1),
+                                                  spider_body.orientation.vec])
+            combined_body = rigid_body.RigidBody(combined_body_center, rigid_body.Quaternion(combined_body_qvec))
+            pointwise_morse = morse_energy_fn(combined_body, **kwargs)
+            # pointwise_morse = 0.0
+            
+            # pointwise_morse_vec = morse_energy_fn(body, **kwargs) # Mask out everything but the vertex to bind and the spider attractive sites
 
+            # pointwise_morse = pointwise_morse_vec[self.vertex_to_bind_idx*6]*2 #* self.mask#jnp.dot(pointwise_morse_vec, self.mask)
+            # pointwise_morse = 0.0
+            pointwise_interaction_energy = soft_energy_fn(body, **kwargs) + pointwise_morse # morse_energy_fn(body, **kwargs)
+
+            return pointwise_interaction_energy
+        
 
         def interaction_energy_fn(body: rigid_body.RigidBody, **kwargs):
-            # pdb.set_trace()
-            pointwise_morse_vec = morse_energy_fn(body, **kwargs) #Mask out everything but the vertex to bind and the spider attractive sites
-            pointwise_morse = pointwise_morse_vec[self.vertex_to_bind_idx*6]*2 #* self.mask#jnp.dot(pointwise_morse_vec, self.mask)
-            pointwise_interaction_energy = soft_energy_fn(body, **kwargs) + pointwise_morse #morse_energy_fn(body, **kwargs)
+
+            pointwise_interaction_energy = pointwise_interaction_energy_fn(body, **kwargs)
             bond_interaction_energy = rep_bond_energy_fn(body)
+            
             return pointwise_interaction_energy + bond_interaction_energy
+            # return bond_interaction_energy
+            # return pointwise_interaction_energy
 
 
         def energy_fn(body: rigid_body.RigidBody, **kwargs):
@@ -310,10 +333,12 @@ class Complex:
             spider_energy = spider_energy_fn(spider_body, **kwargs)
             interaction_energy = interaction_energy_fn(body, **kwargs)
             return shell_energy + spider_energy + interaction_energy
+            # return spider_energy
+            # return interaction_energy
 
         # FIXME: have to add interaction energy. Could add a repulsive interaction between the head and the vertices that has a cutoff slightly lesss than the head height to mitigate off target of a single attractive site wanting to bind the vertex itself. Also, weak attraction between base sites and vertices. Of course attraction between attractive sites and vertices. Maybe or maybe not weak repulsion between attractive sites.
 
-        return energy_fn
+        return energy_fn, pointwise_interaction_energy_fn
 
 
     def body_to_injavis_lines(
@@ -417,6 +442,11 @@ class TestComplex(unittest.TestCase):
             traj_injavis_lines += complex_.body_to_injavis_lines(s, box_size=box_size)[0]
         with open(traj_path, 'w+') as of:
             of.write('\n'.join(traj_injavis_lines))
+
+        
+
+
+
 
 
 if __name__ == "__main__":

@@ -14,12 +14,13 @@ def get_loss_fn(displacement_fn, vertex_to_bind):
 
     d = vmap(displacement_fn, (0, None))
     def abduction_loss(body):
-        shell_body = body[:-1]
+        shell_body = body[:12]
         disps = d(shell_body.center, body[vertex_to_bind].center)
         dists = space.distance(disps)
         vertex_far_from_icos = -jnp.sum(dists)
         return vertex_far_from_icos
 
+    """
     def release_term(body, params, complex_):
         init_rb = complex_.rigid_body
         init_spider_rb, init_shell_rb = self.split_body(body)
@@ -32,6 +33,7 @@ def get_loss_fn(displacement_fn, vertex_to_bind):
         disp_vector_norm = disp_vector / space.distance(disp_vector)
 
         dist_to_attr_site = init_leg0.leg_length * init_leg0.attr_particle_pos_norm
+    """
         
 
     def loss_terms_fn(body, params, complex_info):

@@ -5,6 +5,7 @@ from tqdm import tqdm
 import time
 import pdb
 import numpy as onp
+import pprint
 
 from jax import random, grad, jit, vmap, value_and_grad
 import jax.numpy as jnp
@@ -34,6 +35,7 @@ def optimize(args):
     initial_separation_coefficient = args['init_separate']
     gamma = args['gamma']
     vertex_to_bind_idx = args['vertex_to_bind']
+    release_coeff = args['release_coeff']
 
     displacement_fn, shift_fn = space.free()
     state_loss_fn, state_loss_terms_fn = get_loss_fn(displacement_fn, vertex_to_bind_idx)
@@ -80,8 +82,8 @@ def optimize(args):
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
 
-        complex_energy_fn = complex_.get_energy_fn(
-            morse_attr_eps=params['log_morse_attr_eps'],
+        complex_energy_fn, pointwise_interaction_energy_fn = complex_.get_energy_fn(
+            morse_attr_eps=jnp.exp(params['log_morse_attr_eps']),
             morse_attr_alpha=params['morse_attr_alpha'],
             morse_r_onset=params['morse_r_onset'],
             morse_r_cutoff=params['morse_r_cutoff'])
@@ -90,6 +92,11 @@ def optimize(args):
                                      n_steps, gamma, kT, shift_fn, dt, key)
 
         loss = state_loss_fn(fin_state, params, complex_)
+
+        # Note: hopefully promotes "release"
+        fin_pointwise_energy = pointwise_interaction_energy_fn(traj[-1])
+        loss += release_coeff*(-fin_pointwise_energy)
+        
         return loss, traj
         # return traj[-1].center.sum(), traj
 
@@ -115,7 +122,10 @@ def optimize(args):
     opt_state = optimizer.init(params)
 
     loss_path = run_dir / "loss.txt"
+    grads_path = run_dir / "grads.txt"
     losses_path = run_dir / "losses.txt"
+    times_path = run_dir / "times.txt"
+    iter_params_path = run_dir / "iter_params.txt"
 
 
     for i in tqdm(range(n_iters)):
@@ -134,11 +144,17 @@ def optimize(args):
         avg_loss = onp.mean(vals)
         with open(loss_path, "a") as f:
             f.write(f"{avg_loss}\n")
+        with open(times_path, "a") as f:
+            f.write(f"{end - start}\n")
+        with open(iter_params_path, "a") as f:
+            f.write(f"{pprint.pformat(params)}\n")
+        with open(grads_path, "a") as f:
+            f.write(f"{pprint.pformat(avg_grads)}\n")
 
 
         box_size = 30.0
         traj_injavis_lines = list()
-        traj_path = traj_dir / "traj_i{i}_b0.pos"
+        traj_path = traj_dir / f"traj_i{i}_b0.pos"
         n_vis_freq = 50
         vis_traj_idxs = jnp.arange(0, n_steps+1, n_vis_freq)
         n_vis_states = len(vis_traj_idxs)
@@ -153,7 +169,7 @@ def optimize(args):
             spider_head_particle_radius=params['spider_head_particle_radius'],
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
-        for i in tqdm(range(n_vis_states), desc="Generating injavis output"):
+        for i in tqdm(vis_traj_idxs, desc="Generating injavis output"):
             s = trajs[0][i]
             traj_injavis_lines += rep_complex_.body_to_injavis_lines(s, box_size=box_size)[0]
         with open(traj_path, 'w+') as of:
@@ -174,23 +190,26 @@ def get_argparse():
     parser.add_argument('--n-steps', type=int, default=1000, help="Num. steps per simulation")
     parser.add_argument('--vertex-to-bind', type=int, default=5, help="Index of vertex to bind")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
-    parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
+    parser.add_argument('--init-separate', type=float, default=2.5, help="Initial separation coefficient")
 
     parser.add_argument('-d', '--data-dir', type=str,
                         default="data/icosahedron-tagged",
                         help='Path to base data directory')
     parser.add_argument('-kT', '--temperature', type=float, default=1.0, help="Temperature in kT")
     parser.add_argument('--dt', type=float, default=1e-3, help="Time step")
-    parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
+    parser.add_argument('-g', '--gamma', type=float, default=10.0, help="friction coefficient")
 
 
     parser.add_argument('--run-name', type=str, nargs='?',
                         help='Name of run directory')
 
-    parser.add_argument('--init-log-head-eps', type=float, default=5.5,
+    parser.add_argument('--init-log-head-eps', type=float, default=4.0,
                         help="Initial value for parameter: log_morse_shell_center_spider_head_eps")
-    parser.add_argument('--init-alpha', type=float, default=1.5,
+    parser.add_argument('--init-alpha', type=float, default=1.0,
                         help="Initial value for parameter: morse_shell_center_spider_head_alpha")
+
+    parser.add_argument('--release-coeff', type=float, default=1.5,
+                        help="Coefficient for release")
 
 
     return parser
