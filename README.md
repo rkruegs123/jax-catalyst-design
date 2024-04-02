@@ -2,6 +2,11 @@
 
 Code for designing **spider catalysts**
 
+# April 2, 2024
+
+- We decided to do the following for the WHAM energy function: make it all a part of complex and just have separate helpe rfunctions for e.g. constructing th combined eneryg, and also getting the energy function. Then all the logic stays in the same place. We do this next time.
+
+
 # February 20, 2024
 - added the "cheating" by only interacting with the vertex to bind
 - played around - we can still extract, can't get it to release

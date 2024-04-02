@@ -102,11 +102,21 @@ combined_shape_species = onp.array([0, 1, 1, 1, 1, 1])
 
 spider_energy_fn = complex_.spider.get_energy_fn()
 
+
+_, _, interaction_energy_fn = complex_.get_energy_fn(
+    morse_attr_eps=jnp.exp(params['log_morse_attr_eps']),
+    morse_attr_alpha=params['morse_attr_alpha'],
+    morse_r_onset=params['morse_r_onset'],
+    morse_r_cutoff=params['morse_r_cutoff'],
+    override_shape_species=combined_shape_species
+)
+
 def base_energy_fn(body, **kwargs):
     vertex_body = body[0]
     spider_body = body[1:]
     spider_val = spider_energy_fn(spider_body, **kwargs)
-    return spider_val
+    interaction_val = interaction_energy_fn(body, **kwargs)
+    return spider_val + interaction_val
 
 
 pdb.set_trace()
