@@ -23,7 +23,7 @@ from jax.config import config
 config.update('jax_enable_x64', True)
 
 
-checkpoint_every = None
+checkpoint_every = 50
 if checkpoint_every is None:
     scan = lax.scan
 else:
@@ -168,14 +168,15 @@ class TestSimulate(unittest.TestCase):
     def test_sim(self):
 
         displacement_fn, shift_fn = space.free()
-        initial_separation_coefficient = 2.5
+        # initial_separation_coefficient = 2.5
+        initial_separation_coefficient = 5.5
         vertex_to_bind_idx = 5
         dt = 1e-3
         kT = 1.0
         # gamma = 10
         gamma = 10
         key = random.PRNGKey(0)
-        n_steps = 25000
+        n_steps = 250
         init_log_head_eps = 4.0
         init_alpha = 1.0
 
@@ -196,6 +197,7 @@ class TestSimulate(unittest.TestCase):
         }
         """
 
+        """
         params = {
             'log_morse_attr_eps': 4.05178597, 
             'morse_attr_alpha': 1.31493759, 
@@ -207,6 +209,20 @@ class TestSimulate(unittest.TestCase):
             'spider_head_height': 5.21336873, 
             'spider_head_particle_radius': 0.330227
         }
+        """
+
+        params = {
+            'log_morse_attr_eps': 4.05178597, 
+            'morse_attr_alpha': 1.31493759, 
+            'morse_r_cutoff': 12., 
+            'morse_r_onset': 10., 
+            'spider_attr_particle_radius': 1.07176809, 
+            'spider_base_particle_radius': 1.03204563, 
+            'spider_base_radius': 4.49771056, 
+            'spider_head_height': 10.0,
+            'spider_head_particle_radius': 0.330227
+        }
+        
 
         complex_ = Complex(
             initial_separation_coeff=initial_separation_coefficient,
@@ -217,7 +233,8 @@ class TestSimulate(unittest.TestCase):
             spider_base_particle_radius=params['spider_base_particle_radius'],
             spider_attr_particle_radius=params['spider_attr_particle_radius'],
             spider_head_particle_radius=params['spider_head_particle_radius'],
-            spider_point_mass=1.0, spider_mass_err=1e-6
+            spider_point_mass=1.0, spider_mass_err=1e-6,
+            rel_attr_particle_pos=0.75
         )
 
         complex_energy_fn, _ = complex_.get_energy_fn(
@@ -231,6 +248,7 @@ class TestSimulate(unittest.TestCase):
 
         fin_state, traj = simulation(complex_, complex_energy_fn,
                                      n_steps, gamma, kT, shift_fn, dt, key)
+
 
         traj_injavis_lines = list()
         n_vis_states = len(traj.center)

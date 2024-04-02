@@ -52,8 +52,8 @@ class Complex:
                  verbose=True,
 
                  # legs
-                 bond_radius=0.25, bond_alpha=2.0
-
+                 bond_radius=0.25, bond_alpha=2.0,
+                 rel_attr_particle_pos=0.5
     ):
         self.n_legs = 5
 
@@ -74,6 +74,8 @@ class Complex:
 
         self.bond_radius = bond_radius
         self.bond_alpha = bond_alpha
+
+        self.rel_attr_particle_pos = rel_attr_particle_pos
 
         self.load()
 
@@ -111,7 +113,7 @@ class Complex:
             self.displacement_fn, self.shift_fn,
             self.spider_base_radius, self.spider_head_height,
             self.spider_base_particle_radius,
-            0.5, self.spider_attr_particle_radius,
+            self.rel_attr_particle_pos, self.spider_attr_particle_radius,
             self.spider_head_particle_radius,
             self.spider_point_mass, self.spider_mass_err,
             target_positions=new_target_positions
@@ -148,6 +150,7 @@ class Complex:
         spider_species = spider.shape.point_species + max_shell_species + 1
         # spider.shape = spider.shape.set(point_species=spider_species)
         spider_in_complex_shape = spider.shape.set(point_species=spider_species)
+        self.spider_in_complex_shape = spider_in_complex_shape
         self.spider = spider
         self.spider_radii = jnp.array([self.spider.head_particle_radius,
                                        self.spider.attr_site_radius,
