@@ -310,7 +310,7 @@ class Complex:
             combined_body = rigid_body.RigidBody(combined_body_center, rigid_body.Quaternion(combined_body_qvec))
             pointwise_morse = morse_energy_fn(combined_body, **kwargs)
             # pointwise_morse = 0.0
-            
+
             # pointwise_morse_vec = morse_energy_fn(body, **kwargs) # Mask out everything but the vertex to bind and the spider attractive sites
 
             # pointwise_morse = pointwise_morse_vec[self.vertex_to_bind_idx*6]*2 #* self.mask#jnp.dot(pointwise_morse_vec, self.mask)
@@ -318,13 +318,13 @@ class Complex:
             pointwise_interaction_energy = soft_energy_fn(body, **kwargs) + pointwise_morse # morse_energy_fn(body, **kwargs)
 
             return pointwise_interaction_energy
-        
+
 
         def interaction_energy_fn(body: rigid_body.RigidBody, **kwargs):
 
             pointwise_interaction_energy = pointwise_interaction_energy_fn(body, **kwargs)
             bond_interaction_energy = rep_bond_energy_fn(body)
-            
+
             return pointwise_interaction_energy + bond_interaction_energy
             # return bond_interaction_energy
             # return pointwise_interaction_energy
@@ -364,6 +364,161 @@ class Complex:
         return all_lines, box_def, type_defs, positions
 
 
+    # The below is for the single vertex to bind and the spider
+    def get_extracted_rb_info(
+            self,
+
+            # Shell-shell interaction energy parameters
+            morse_ii_eps=10.0, morse_ii_alpha=5.0,
+
+            # Shell-attr interaction parameters
+            morse_attr_eps=350.0, morse_attr_alpha=2.0, morse_r_onset=12.0, morse_r_cutoff=14.0,
+
+            # Misc. parameters
+            soft_eps=10000.0,
+    ):
+        # Returns both a body and an energy function
+
+        ## Construct the body
+        spider_body, shell_body = self.split_body(self.rigid_body)
+        vertex_to_bind = shell_body[self.vertex_to_bind_idx]
+
+        combined_center = jnp.concatenate([onp.array([vertex_to_bind.center]), spider_body.center])
+        combined_quat_vec = jnp.concatenate([
+            onp.array([vertex_to_bind.orientation.vec]),
+            spider_body.orientation.vec])
+        combined_body = rigid_body.RigidBody(combined_center, rigid_body.Quaternion(combined_quat_vec))
+        combined_shape_species = onp.array([0, 1, 1, 1, 1, 1])
+
+
+        ## Construct the energy function
+
+        ### Get the contribution from the spider
+        spider_energy_fn = self.spider.get_energy_fn()
+
+        ### Note: no contribution from just the vertex
+
+        ### Construct the pointwise interaction energy
+
+        zero_interaction = jnp.zeros((5, 5))
+        spider_pt_species = jnp.array([2, 3, 4])
+        soft_sphere_eps = zero_interaction.at[0, spider_pt_species].set(soft_eps)
+        soft_sphere_eps = soft_sphere_eps.at[spider_pt_species, 0].set(soft_eps)
+
+        soft_sphere_sigma = zero_interaction.at[0, spider_pt_species].set(self.shell.vertex_radius + self.spider.particle_radii)
+        soft_sphere_sigma = soft_sphere_sigma.at[spider_pt_species, 0].set(self.shell.vertex_radius + self.spider.particle_radii)
+        sigma = jnp.where(soft_sphere_sigma == 0.0, 1e-5, soft_sphere_sigma) # avoids nans
+        pair_energy_soft = energy.soft_sphere_pair(
+            self.displacement_fn,
+            # species=self.n_point_species
+            species=5,
+            sigma=sigma, epsilon=soft_sphere_eps)
+        soft_energy_fn = rigid_body.point_energy(pair_energy_soft, self.shape, combined_shape_species)
+
+        morse_eps = zero_interaction.at[0, 3].set(morse_attr_eps)
+        morse_eps = morse_eps.at[3, 0].set(morse_attr_eps)
+
+        morse_alpha = zero_interaction.at[0, 3].set(morse_attr_alpha)
+        morse_alpha = morse_alpha.at[3, 0].set(morse_attr_alpha)
+
+        pair_energy_morse = energy.morse_pair(
+            self.displacement_fn,
+            species=5,
+            sigma=sigma, epsilon=morse_eps, alpha=morse_alpha,
+            r_onset=morse_r_onset, r_cutoff=morse_r_cutoff,
+            per_particle=False,
+        )
+
+        morse_energy_fn = rigid_body.point_energy(pair_energy_morse, self.shape, combined_shape_species)
+
+        ### Construct the bond repulsion
+        bond_radius = self.bond_radius
+        bond_alpha = self.bond_alpha
+
+
+        def single_leg_rep(l_idx, all_leg_space_frame_pos, vertex_to_bind_space_frame_pos):
+            leg_start_idx = 3*l_idx
+            leg_end_idx = leg_start_idx+3
+
+            leg_space_frame = all_leg_space_frame_pos[leg_start_idx:leg_end_idx]
+
+            leg_bond_idxs = jnp.array([[0, 1], [1, 2]], dtype=jnp.int32)
+            leg_bond_positions = leg_space_frame[leg_bond_idxs]
+
+            all_dists = utils.mapped_dist_point_to_line(
+                leg_bond_positions, jnp.array([vertex_to_bind_space_frame_pos]),
+                self.displacement_fn)
+
+            bond_energy_sm = jnp.sum(
+                energy.soft_sphere(all_dists,
+                                   epsilon=soft_eps,
+                                   sigma=bond_radius + self.shell.vertex_radius,
+                                   alpha=jnp.array(bond_alpha)))
+
+            return bond_energy_sm
+
+        def base_bond_rep(bond_spider_idxs, all_leg_space_frame_pos, vertex_to_bind_space_frame_pos):
+            l_idx1, l_idx2 = bond_spider_idxs
+
+            leg1_base_pos = all_leg_space_frame_pos[3*l_idx1+2]
+            leg2_base_pos = all_leg_space_frame_pos[3*l_idx2+2]
+
+            bond_positions = jnp.array([[leg1_base_pos, leg2_base_pos]])
+
+            all_dists = utils.mapped_dist_point_to_line(
+                bond_positions, jnp.array([vertex_to_bind_space_frame_pos]), self.displacement_fn)
+
+            bond_energy_sm = jnp.sum(
+                energy.soft_sphere(all_dists,
+                                   epsilon=soft_eps,
+                                   sigma=bond_radius + self.shell.vertex_radius,
+                                   alpha=jnp.array(bond_alpha)))
+
+            return bond_energy_sm
+
+        def rep_bond_energy_fn(body):
+            spider_body = body[-5:]
+            vertex_to_bind = body[0]
+            # spider_body, shell_body = self.split_body(body)
+
+            spider_space_frame_pos = vmap(self.spider.legs[0].get_body_frame_positions)(spider_body).reshape(-1, 3)
+            # shell_body_pos = self.shell.get_body_frame_positions(shell_body)
+            vertex_to_bind_space_pos = self.shell.get_body_frame_positions(
+                rigid_body.RigidBody(center=jnp.array([vertex_to_bind.center]),
+                                     orientation=rigid_body.Quaternion(vec=jnp.array([vertex_to_bind.orientation.vec]))))
+            # vertex_to_bind_center = jnp.array([vertex_to_bind_space_pos[0]])
+            vertex_to_bind_center = vertex_to_bind_space_pos[0]
+
+            rep_val = single_leg_rep(0, spider_space_frame_pos, vertex_to_bind_center)
+            rep_val += single_leg_rep(1, spider_space_frame_pos, vertex_to_bind_center)
+            rep_val += single_leg_rep(2, spider_space_frame_pos, vertex_to_bind_center)
+            rep_val += single_leg_rep(3, spider_space_frame_pos, vertex_to_bind_center)
+            rep_val += single_leg_rep(4, spider_space_frame_pos, vertex_to_bind_center)
+            rep_val += base_bond_rep(jnp.array([0, 1]), spider_space_frame_pos, vertex_to_bind_center)
+            rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, vertex_to_bind_center)
+            rep_val += base_bond_rep(jnp.array([1, 2]), spider_space_frame_pos, vertex_to_bind_center)
+            return rep_val
+
+        def pointwise_interaction_energy_fn(body: rigid_body.RigidBody, **kwargs):
+            pointwise_morse = morse_energy_fn(body, **kwargs)
+            pointwise_interaction_energy = soft_energy_fn(body, **kwargs) + pointwise_morse
+            return pointwise_interaction_energy
+
+        def interaction_energy_fn(body: rigid_body.RigidBody, **kwargs):
+
+            pointwise_interaction_energy = pointwise_interaction_energy_fn(body, **kwargs)
+            bond_interaction_energy = rep_bond_energy_fn(body)
+
+            return pointwise_interaction_energy + bond_interaction_energy
+
+
+        def energy_fn(body: rigid_body.RigidBody, **kwargs):
+            spider_body = body[-5:]
+            spider_energy = spider_energy_fn(spider_body, **kwargs)
+            interaction_energy = interaction_energy_fn(body, **kwargs)
+            return spider_energy + interaction_energy
+
+        return combined_body, energy_fn
 
 class TestComplex(unittest.TestCase):
 
@@ -446,7 +601,84 @@ class TestComplex(unittest.TestCase):
         with open(traj_path, 'w+') as of:
             of.write('\n'.join(traj_injavis_lines))
 
-        
+
+    def test_sim_extracted(self):
+
+        displacement_fn, shift_fn = space.free()
+        complex_ = Complex(
+            initial_separation_coeff=5.5, vertex_to_bind_idx=5,
+            displacement_fn=displacement_fn, shift_fn=shift_fn,
+            spider_base_radius=5.0, spider_head_height=10.0,
+            spider_base_particle_radius=0.5, spider_attr_particle_radius=0.5,
+            spider_head_particle_radius=0.25,
+            spider_point_mass=1.0, spider_mass_err=1e-6
+        )
+
+
+        def combined_body_to_injavis_lines(
+                body, box_size, shell_patch_radius=0.5, shell_vertex_color="43a5be",
+                shell_patch_color="4fb06d", spider_head_color="ff0000", spider_base_color="1c1c1c"):
+
+            vertex_body = body[0]
+            vertex_body = rigid_body.RigidBody(
+                center=jnp.expand_dims(vertex_body.center, 0),
+                orientation=rigid_body.Quaternion(jnp.expand_dims(vertex_body.orientation.vec, 0)))
+            spider_body = body[1:]
+
+            _, spider_box_def, spider_type_defs, spider_pos = complex_.spider.body_to_injavis_lines(
+                spider_body, box_size)
+            _, shell_box_def, shell_type_defs, shell_pos = complex_.shell.body_to_injavis_lines(
+                vertex_body, box_size, shell_patch_radius, vertex_to_bind=complex_.vertex_to_bind_idx)
+
+            assert(spider_box_def == shell_box_def)
+            box_def = spider_box_def
+            type_defs = shell_type_defs + spider_type_defs
+            positions = shell_pos + spider_pos
+            all_lines = [box_def] + type_defs + positions + ["eof"]
+            return all_lines, box_def, type_defs, positions
+
+        init_body, energy_fn = complex_.get_extracted_rb_info()
+        init_energy = energy_fn(init_body)
+        energy_fn = jit(energy_fn)
+
+
+
+        dt = 1e-3
+        kT = 1.0
+        gamma = 10.0
+        gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
+
+        init_fn, step_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt, kT, gamma=gamma_rb)
+        step_fn = jit(step_fn)
+        key = random.PRNGKey(0)
+        mass = complex_.shape.mass(onp.array([0, 1, 1, 1, 1, 1]))
+        state = init_fn(key, init_body, mass=mass)
+
+        trajectory = list()
+        n_steps = 20000
+        energies = list()
+        for _ in tqdm(range(n_steps)):
+            state = step_fn(state)
+            trajectory.append(state.position)
+            energies.append(energy_fn(state.position))
+
+        plt.plot(energies)
+        plt.show()
+        plt.clf()
+
+        traj_injavis_lines = list()
+        n_vis_states = len(trajectory)
+        box_size = 30.0
+        vis_every = 250
+        for i in tqdm(range(n_vis_states), desc="Generating injavis output"):
+            if i % vis_every == 0:
+                s = trajectory[i]
+                traj_injavis_lines += combined_body_to_injavis_lines(s, box_size=box_size)[0]
+
+        with open("test_combined_sim.pos", 'w+') as of:
+            of.write('\n'.join(traj_injavis_lines))
+
+
 
 
 
