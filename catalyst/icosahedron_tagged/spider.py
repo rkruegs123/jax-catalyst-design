@@ -103,7 +103,8 @@ class Spider:
     def get_energy_fn(self, add_bonds=True):
         # Morse attraction between heads
         morse_alpha = 4.0
-        morse_eps = 100.0
+        # morse_eps = 100.0
+        morse_eps = 10000.0
         morse_eps_mat = morse_eps * jnp.array([[1.0, 0.0, 0.0],
                                                [0.0, 0.0, 0.0],
                                                [0.0, 0.0, 0.0]]) # only heads attract

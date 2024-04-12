@@ -520,6 +520,29 @@ class Complex:
 
         return combined_body, energy_fn
 
+def combined_body_to_injavis_lines(
+        complex_, body, box_size, shell_patch_radius=0.5, shell_vertex_color="43a5be",
+        shell_patch_color="4fb06d", spider_head_color="ff0000", spider_base_color="1c1c1c"):
+
+    vertex_body = body[0]
+    vertex_body = rigid_body.RigidBody(
+        center=jnp.expand_dims(vertex_body.center, 0),
+        orientation=rigid_body.Quaternion(jnp.expand_dims(vertex_body.orientation.vec, 0)))
+    spider_body = body[1:]
+
+    _, spider_box_def, spider_type_defs, spider_pos = complex_.spider.body_to_injavis_lines(
+        spider_body, box_size)
+    _, shell_box_def, shell_type_defs, shell_pos = complex_.shell.body_to_injavis_lines(
+        vertex_body, box_size, shell_patch_radius, vertex_to_bind=complex_.vertex_to_bind_idx)
+
+    assert(spider_box_def == shell_box_def)
+    box_def = spider_box_def
+    type_defs = shell_type_defs + spider_type_defs
+    positions = shell_pos + spider_pos
+    all_lines = [box_def] + type_defs + positions + ["eof"]
+    return all_lines, box_def, type_defs, positions
+
+    
 class TestComplex(unittest.TestCase):
 
     def test_init(self):
@@ -615,32 +638,9 @@ class TestComplex(unittest.TestCase):
         )
 
 
-        def combined_body_to_injavis_lines(
-                body, box_size, shell_patch_radius=0.5, shell_vertex_color="43a5be",
-                shell_patch_color="4fb06d", spider_head_color="ff0000", spider_base_color="1c1c1c"):
-
-            vertex_body = body[0]
-            vertex_body = rigid_body.RigidBody(
-                center=jnp.expand_dims(vertex_body.center, 0),
-                orientation=rigid_body.Quaternion(jnp.expand_dims(vertex_body.orientation.vec, 0)))
-            spider_body = body[1:]
-
-            _, spider_box_def, spider_type_defs, spider_pos = complex_.spider.body_to_injavis_lines(
-                spider_body, box_size)
-            _, shell_box_def, shell_type_defs, shell_pos = complex_.shell.body_to_injavis_lines(
-                vertex_body, box_size, shell_patch_radius, vertex_to_bind=complex_.vertex_to_bind_idx)
-
-            assert(spider_box_def == shell_box_def)
-            box_def = spider_box_def
-            type_defs = shell_type_defs + spider_type_defs
-            positions = shell_pos + spider_pos
-            all_lines = [box_def] + type_defs + positions + ["eof"]
-            return all_lines, box_def, type_defs, positions
-
         init_body, energy_fn = complex_.get_extracted_rb_info()
         init_energy = energy_fn(init_body)
         energy_fn = jit(energy_fn)
-
 
 
         dt = 1e-3
@@ -673,7 +673,7 @@ class TestComplex(unittest.TestCase):
         for i in tqdm(range(n_vis_states), desc="Generating injavis output"):
             if i % vis_every == 0:
                 s = trajectory[i]
-                traj_injavis_lines += combined_body_to_injavis_lines(s, box_size=box_size)[0]
+                traj_injavis_lines += combined_body_to_injavis_lines(complex_, s, box_size=box_size)[0]
 
         with open("test_combined_sim.pos", 'w+') as of:
             of.write('\n'.join(traj_injavis_lines))
