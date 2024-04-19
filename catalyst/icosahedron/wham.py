@@ -12,7 +12,7 @@ from jax import random, jit, vmap, lax
 import jax.numpy as jnp
 
 
-from catalyst.icosahedron.complex_info import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS, combined_body_to_injavis_lines
+from catalyst.icosahedron.complex_getter import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS, combined_body_to_injavis_lines
 
 
 sim_params = {
@@ -59,30 +59,33 @@ combined_body, base_energy_fn, leg_energy_fn = complex_.get_extracted_rb_info(
     morse_r_onset=sim_params['morse_r_onset'],
     morse_r_cutoff=sim_params['morse_r_cutoff']
 )
-init_energy = base_energy_fn(init_body)
+init_energy = base_energy_fn(combined_body)
 base_energy_fn = jit(base_energy_fn)
+
+mass = complex_.shape.mass(onp.array([0, 1]))
 
 
 
 # Do WHAM
-bin_centers = list(onp.linspace(2.5, 10.0, 20))
+bin_centers = list(onp.linspace(2.5, 6.0, 400))
 num_centers = len(bin_centers)
 bin_centers= jnp.array(bin_centers)
 
 k_biases = list()
 for center in bin_centers:
-    k_biases.append(5e3)
+    # k_biases.append(5e3)
+    k_biases.append(5e4)
 k_biases = jnp.array(k_biases)
 
 
 # FIXME
 def order_param_fn(R):
-    spider_body = body[-1]
-    vertex_body = body[0]
-    spider_body_pos = self.spider_info.get_body_frame_positions(spider_body)
+    spider_body = R[-1]
+    vertex_body = R[0]
+    spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
     head_pos = spider_body_pos[-1]
 
-    dr = displacement_fn(head_pos, vertecx_body.center)
+    dr = displacement_fn(head_pos, vertex_body.center)
     r = space.distance(dr)
     return r
 get_traj_order_params = vmap(order_param_fn)
@@ -216,3 +219,116 @@ plt.clf()
 for t_idx in range(num_centers-1):
     if not all_traj_order_params[t_idx].max() > all_traj_order_params[t_idx+1].min():
         print(f"WARNING: no overlap between windows {t_idx} and {t_idx+1}")
+
+
+pdb.set_trace()
+        
+
+def write_wham_timeseries(times, ops, fpath):
+    lines = list()
+    for t, op in zip(times, ops):
+        lines.append(f"{t}\t{op}\n")
+
+    with open(fpath, "w+") as f:
+        f.writelines(lines)
+
+    return
+
+
+# Do WHAM
+
+## Write the timeseries files
+fpaths = list()
+for t_idx in range(num_centers):
+    center = centers[t_idx]
+    traj_ops = all_traj_order_params[t_idx]
+    n_ops = len(traj_ops)
+
+    times = [sample_every*(i+1) for i in range(n_ops)]
+    fpath = wham_dir / f"timeseries_c{center}.txt"
+    fpaths.append(fpath)
+
+    write_wham_timeseries(times, traj_ops, fpath)
+
+## Write the metadata file
+metadata_lines = list()
+for t_idx in range(num_centers):
+    fpath = fpaths[t_idx]
+    center = centers[t_idx]
+    t_line = f"{fpath}\t{center}\t{k_bias}\n"
+    metadata_lines.append(t_line)
+
+metadata_path = wham_dir / "metadata.txt"
+with open(metadata_path , "w+") as f:
+    f.writelines(metadata_lines)
+
+
+## Run the WHAM executable
+wham_out_path = wham_dir / "analysis.txt"
+start = time.time()
+p = subprocess.Popen([wham_exec_path, str(min_center), str(1.0), str(n_bins),
+                      str(wham_tol), str(t_kelvin), str(0), metadata_path, wham_out_path])
+p.wait()
+end = time.time()
+wham_time = end - start
+rc = p.returncode
+if rc != 0:
+    raise RuntimeError(f"WHAM analysis failed with error code: {rc}")
+with open(run_dir / "summary.txt", "a") as f:
+    f.write(f"WHAM time: {wham_time}\n")
+
+
+## Read in the free energies (per R) and free energies (per bin)
+with open(wham_out_path, "r") as f:
+    wham_lines = f.readlines()
+pmf_lines = wham_lines[:n_bins+1] # really free energies
+hist_fe_lines = wham_lines[n_bins+1:]
+
+
+### pmf data (really free energies)
+assert(pmf_lines[0][:5] == "#Coor")
+header = pmf_lines[0][1:].split()
+assert(header == ["Coor", "Free", "+/-", "Prob", "+/-"])
+all_ex_ops = list()
+all_ex_fes = list()
+all_ex_probs = list()
+for line in pmf_lines[1:]:
+    assert(line[0] != "#")
+    tokens = line.split()
+
+    op = float(tokens[0])
+    all_ex_ops.append(op)
+
+    fe = float(tokens[1])
+    all_ex_fes.append(fe)
+
+    prob = float(tokens[3])
+    all_ex_probs.append(prob)
+all_ex_ops = onp.array(all_ex_ops)
+all_ex_fes = onp.array(all_ex_fes)
+all_ex_probs = onp.array(all_ex_probs)
+
+assert(hist_fe_lines[0][:7] == "#Window")
+header = hist_fe_lines[0][1:].split()
+assert(header == ["Window", "Free", "+/-"])
+bin_idxs = list()
+bin_fes = list()
+for line in hist_fe_lines[1:]:
+    assert(line[0] == "#")
+    tokens = line[1:].split()
+
+    bin_idx = int(tokens[0])
+    bin_idxs.append(bin_idx)
+
+    bin_fe = float(tokens[1])
+    bin_fes.append(bin_fe)
+bin_idx = onp.array(bin_idxs)
+bin_fes = onp.array(bin_fes)
+
+
+plt.plot(all_ex_ops, all_ex_fes)
+plt.xlabel("OP")
+plt.ylabel("Free Energy (kcal/mol)")
+plt.tight_layout()
+plt.savefig(run_dir / "fe.png")
+plt.clf()
