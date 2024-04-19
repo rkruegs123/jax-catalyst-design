@@ -7,6 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import argparse
 from pathlib import Path
+import subprocess
 
 from jax_md import space, simulate
 import catalyst.icosahedron.rigid_body as rigid_body
@@ -85,14 +86,17 @@ def run(args, sim_params):
 
 
     # Do WHAM
-    bin_centers = list(onp.linspace(2.5, 6.0, 400))
+    min_center = 2.5
+    max_center = 6.0    
+    bin_centers = list(onp.linspace(min_center, max_center, 400))
     num_centers = len(bin_centers)
     bin_centers= jnp.array(bin_centers)
+    n_bins = len(bin_centers)
 
     k_biases = list()
+    k_bias = 5e4
     for center in bin_centers:
-        # k_biases.append(5e3)
-        k_biases.append(5e4)
+        k_biases.append(k_bias)
     k_biases = jnp.array(k_biases)
 
 
@@ -138,7 +142,7 @@ def run(args, sim_params):
 
     key, eq_key = random.split(key)
     eq_keys = random.split(eq_key, num_centers)
-    start = time.time()n
+    start = time.time()
     # R_eq = vmap(eq_fn, (None, 0, 0))(combined_body, bin_centers, eq_keys)
     R_eq = vmap(eq_fn, (None, 0, 0))(combined_body, jnp.arange(num_centers), eq_keys)
     end = time.time()
@@ -257,7 +261,7 @@ def run(args, sim_params):
     ## Write the timeseries files
     fpaths = list()
     for t_idx in range(num_centers):
-        center = centers[t_idx]
+        center = bin_centers[t_idx]
         traj_ops = all_traj_order_params[t_idx]
         n_ops = len(traj_ops)
 
@@ -271,7 +275,7 @@ def run(args, sim_params):
     metadata_lines = list()
     for t_idx in range(num_centers):
         fpath = fpaths[t_idx]
-        center = centers[t_idx]
+        center = bin_centers[t_idx]
         t_line = f"{fpath}\t{center}\t{k_bias}\n"
         metadata_lines.append(t_line)
 
@@ -283,8 +287,8 @@ def run(args, sim_params):
     ## Run the WHAM executable
     wham_out_path = wham_dir / "analysis.txt"
     start = time.time()
-    p = subprocess.Popen([wham_exec_path, str(min_center), str(1.0), str(n_bins),
-                          str(wham_tol), str(t_kelvin), str(0), metadata_path, wham_out_path])
+    p = subprocess.Popen([wham_exec_path, str(min_center), str(max_center), str(n_bins),
+                          str(wham_tol), str(kT), str(0), metadata_path, wham_out_path])
     p.wait()
     end = time.time()
     wham_time = end - start
@@ -345,7 +349,7 @@ def run(args, sim_params):
 
     plt.plot(all_ex_ops, all_ex_fes)
     plt.xlabel("OP")
-    plt.ylabel("Free Energy (kcal/mol)")
+    plt.ylabel("Free Energy (kT)")
     plt.tight_layout()
     plt.savefig(run_dir / "fe.png")
     plt.clf()
@@ -356,7 +360,9 @@ def get_parser():
     parser.add_argument('--run-name', type=str, help='Run name')
     parser.add_argument('--output-basedir', type=str, default="output/", help="Output base directory")
 
-    parser.add_argument('--wham-tol', type=float, default=1e-5,
+    parser.add_argument('--wham-tol', type=float,
+                        # default=1e-5,
+                        default=0.25,
                         help="Tolerance for free energy convergence.")
     parser.add_argument('--wham-basedir', type=str, help='Base directory for WHAM executable',
                         default="/n/home10/rkrueger/wham")
