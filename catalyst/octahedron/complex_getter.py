@@ -272,7 +272,7 @@ class ComplexInfo:
         # Construct the leg energy function
         if self.spider_bond_idxs is not None:
             leg_energy_fn = self.get_leg_energy_fn(
-                soft_eps, 2 * self.spider_leg_radius, ss_shell_center_spider_leg_alpha)
+                soft_eps, self.shell_info.vertex_radius + self.spider_leg_radius, ss_shell_center_spider_leg_alpha)
 
             energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
 

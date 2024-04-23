@@ -139,9 +139,10 @@ class Spider:
             flattened_base_idxs = onp.arange(2, self.n_legs*3)[::3]
             bonds = jnp.array([[flattened_base_idxs[0], flattened_base_idxs[1]],
                                [flattened_base_idxs[2], flattened_base_idxs[3]],
-                               [flattened_base_idxs[3], flattened_base_idxs[4]]
+                               [flattened_base_idxs[1], flattened_base_idxs[2]]
+                               #[flattened_base_idxs[3], flattened_base_idxs[4]]
             ])
-            pair_energy_bond = energy.simple_spring_bond(self.displacement_fn, bonds, length=self.target_position_dx, epsilon=100)
+            pair_energy_bond = energy.simple_spring_bond(self.displacement_fn, bonds, length=self.target_position_dx, epsilon=1000.)
             pair_energy_fn_with_bonds = lambda R, **kwargs: pair_energy_fn(R, **kwargs) + pair_energy_bond(R, **kwargs)
             energy_fn = rigid_body.point_energy(pair_energy_fn_with_bonds, self.shape)
         else:
