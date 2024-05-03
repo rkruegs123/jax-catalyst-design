@@ -2,6 +2,21 @@
 
 Code for designing **spider catalysts**
 
+# May 3, 2024
+
+Stuff that we need:
+
+Figure 1 will be overview, as we have it now
+
+Figure 2 will combine current Fig. 2 and Fig 3. Need t oshow it working in high and low initiailization limits, also releasing the particle
+
+Figure 3 will show similarity of FE energy diagram (OP as the extraction distance) w/ partial solutions. Need those partial solutions and those free energy diagrams. Kinetics matter!
+
+Fig 4 wlil show the bneefit of flexibility. Compare FE diagrams with OP as release distance. Need those free energy diagams. Both tagged in this case. Compute entropy differences.
+
+Fig 5 will show how one can add/change terms to the loss function to affect the optimized free energy diagram in an informed way. E.g. for flexibile version, add realeas term, show how this pushes FE towards release.
+
+
 # April 2, 2024
 
 - We decided to do the following for the WHAM energy function: make it all a part of complex and just have separate helpe rfunctions for e.g. constructing th combined eneryg, and also getting the energy function. Then all the logic stays in the same place. We do this next time.

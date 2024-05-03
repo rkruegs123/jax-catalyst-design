@@ -43,6 +43,7 @@ def optimize(args):
 
     init_log_head_eps = args['init_log_head_eps']
     init_alpha = args['init_alpha']
+    init_head_height = args['init_head_height']
     vis_frame_rate = args['vis_frame_rate']
 
     output_basedir = args['output_basedir']
@@ -100,14 +101,16 @@ def optimize(args):
         use_remaining_shell_vertices_loss=False
     )
 
+    spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
+    
     def loss_fn(params, key):
-        spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
+        
         complex_info = Complex(
             initial_separation_coefficient, vertex_to_bind_idx,
             displacement_fn, shift_fn,
             params['spider_base_radius'], params['spider_head_height'],
             params['spider_base_particle_radius'],
-            params['spider_attr_particle_pos_norm'],
+            jnp.clip(params['spider_attr_particle_pos_norm'], 0.0, 1.0),
             params['spider_attr_site_radius'],
             jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']])),
             spider_point_mass=1.0, spider_mass_err=1e-6,
@@ -136,7 +139,7 @@ def optimize(args):
     params = {
         # catalyst shape
         'spider_base_radius': 5.0,
-        'spider_head_height': 8.0,
+        'spider_head_height': init_head_height,
         'spider_base_particle_radius': 0.5,
         'spider_head_particle_radius': 0.5,
         'spider_attr_particle_pos_norm': 0.5,
@@ -210,7 +213,7 @@ def optimize(args):
             displacement_fn, shift_fn,
             params['spider_base_radius'], params['spider_head_height'],
             params['spider_base_particle_radius'],
-            params['spider_attr_particle_pos_norm'],
+            jnp.clip(params['spider_attr_particle_pos_norm'], 0.0, 1.0),
             params['spider_attr_site_radius'],
             jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']])),
             spider_point_mass=1.0, spider_mass_err=1e-6,
@@ -261,17 +264,17 @@ def get_argparse():
                         help='Path to base output directory')
     parser.add_argument('-kT', '--temperature', type=float, default=1.0, help="Temperature in kT")
     parser.add_argument('--dt', type=float, default=1e-3, help="Time step")
-    parser.add_argument('-g', '--gamma', type=float, default=0.1, help="friction coefficient")
+    parser.add_argument('-g', '--gamma', type=float, default=10.0, help="friction coefficient")
     parser.add_argument('--use-abduction-loss', action='store_true')
     parser.add_argument('--use-stable-shell-loss', action='store_true')
     parser.add_argument('--use-remaining-shell-vertices-loss', action='store_true')
     parser.add_argument('--vis-frame-rate', type=int, default=100,
                         help="The sample rate for saving a representative trajectory from each optimization iteration")
-    parser.add_argument('--run-name', type=str, nargs='?',
+    parser.add_argument('--run-name', type=str, required=True,
                         help='Name of run directory')
     parser.add_argument('--stable-shell-k', type=float, default=20.0,
                         help="Spring constant for the wide spring for computing the loss term to keep the shell together")
-    parser.add_argument('--remaining-shell-vertices-loss-coeff', type=float, default=10.0,
+    parser.add_argument('--remaining-shell-vertices-loss-coeff', type=float, default=1.0,
                         help="Multiplicative scalar for the remaining energy loss term")
     parser.add_argument('--min-head-radius', type=float, default=0.1, help="Minimum radius for spider head")
 
@@ -279,6 +282,8 @@ def get_argparse():
                         help="Initial value for parameter: log_morse_shell_center_spider_head_eps")
     parser.add_argument('--init-alpha', type=float, default=1.5,
                         help="Initial value for parameter: morse_shell_center_spider_head_alpha")
+    parser.add_argument('--init-head-height', type=float, default=10.0,
+                        help="Initial value for spider head height")
 
     parser.add_argument('--perturb-init-head-eps', action='store_true')
 
