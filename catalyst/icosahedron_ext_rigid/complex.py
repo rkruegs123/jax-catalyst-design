@@ -560,13 +560,15 @@ class TestComplex(unittest.TestCase):
     def test_sim_combined(self):
         displacement_fn, shift_fn = space.free()
         spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
-        complex_ = ComplexInfo(
+        complex_info = Complex(
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
-            spider_base_radius=5.0, spider_head_height=4.0,
-            spider_base_particle_radius=0.5, spider_head_particle_radius=0.5,
-            spider_point_mass=1.0, spider_mass_err=1e-6,
-            spider_bond_idxs=spider_bond_idxs
+            spider_base_radius=5.0, spider_head_height=10.0,
+            spider_base_particle_radius=0.5,
+            spider_attr_particle_pos_norm=0.5,
+            spider_attr_site_radius=0.3,
+            spider_head_particle_radius=0.5,
+            spider_point_mass=1.0, spider_mass_err=1e-6
         )
 
 

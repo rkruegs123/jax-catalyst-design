@@ -2,6 +2,10 @@
 
 Code for designing **spider catalysts**
 
+# May 14, 2024
+
+`rigid-ext-eps4-re-coeff0.0001-hh10.0`
+
 # May 3, 2024
 
 Stuff that we need:
