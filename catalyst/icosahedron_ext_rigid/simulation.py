@@ -48,6 +48,7 @@ def simulation(complex_info, complex_energy_fn, num_steps, gamma, kT, shift_fn, 
 
 class TestSimulate(unittest.TestCase):
 
+    """
     sim_params = {
         # catalyst shape
         'spider_base_radius': 5.0,
@@ -63,6 +64,19 @@ class TestSimulate(unittest.TestCase):
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0
     }
+    """
+    sim_params = {
+        "log_morse_attr_eps": 7.827934784259134,
+        "morse_attr_alpha": 1.21726197904724,
+        "morse_r_cutoff": 11.10868582814947,
+        "morse_r_onset": 8.456814325421334,
+        "spider_attr_particle_pos_norm": 0.7058241812815469,
+        "spider_attr_site_radius": 0.10350310125699402,
+        "spider_base_particle_radius": 0.47970176763955025,
+        "spider_base_radius": 5.190019721103641,
+        "spider_head_height": 10.22536600175864,
+        "spider_head_particle_radius": 0.2940990010043857
+    }
 
     def test_simulate_complex(self):
 
@@ -77,7 +91,7 @@ class TestSimulate(unittest.TestCase):
             spider_head_height=self.sim_params["spider_head_height"],
             spider_base_particle_radius=self.sim_params["spider_base_particle_radius"],
             spider_head_particle_radius=self.sim_params["spider_head_particle_radius"],
-            spider_attr_particle_pos_norm=self.sim_params['spider_attr_particle_pos_norm'],
+            spider_attr_particle_pos_norm=jnp.clip(self.sim_params['spider_attr_particle_pos_norm'], 0.0, 1.0),
             spider_attr_site_radius=self.sim_params['spider_attr_site_radius'],
             spider_point_mass=1.0, spider_mass_err=1e-6,
             spider_bond_idxs=spider_bond_idxs, spider_leg_radius=0.25
@@ -87,7 +101,7 @@ class TestSimulate(unittest.TestCase):
             morse_attr_alpha=self.sim_params["morse_attr_alpha"]
         )
 
-        n_steps = 2500
+        n_steps = 5000
         assert(n_steps % 100 == 0)
         key = random.PRNGKey(0)
         fin_state, traj = simulation(
