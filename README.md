@@ -2,6 +2,14 @@
 
 Code for designing **spider catalysts**
 
+# May 17, 2024
+
+For whatever reason, he gradients seem to be flipping sign across iteratoins, even with a remaining energy coefficient of 0. We agree that this flipping corresponds to moving in the direction of increasing and decreasing energy. So, the gradients are confused as to which direction it wants to move in.
+
+We think that this confusion comes from the stable shell term -- it wouldn't make sense for either of the other tmers, and fo rthe stable shell term, maybe it htinks the best way to minimize the avg COM distance is to abduct *all* of them.
+
+So, we are actually just going to remove it. We know it led to some degenerate solutions last time, but maybe if we fiddle with the remaining energy coefiennt a little more, we could still ignore the stable shell term. But, for now, our first check is just to se if removing that term stops the sign flipping for the gradients.
+
 # May 14, 2024
 
 `rigid-ext-eps4-re-coeff0.0001-hh10.0`
