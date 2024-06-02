@@ -59,6 +59,20 @@ class TestSimulate(unittest.TestCase):
         "spider_head_particle_radius": 0.1828697409842395,
     }
     """
+
+    # abduction-limit-min-head-no-stable-shell-long, iteration 3500
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 10.408032049462529,
+        "morse_r_cutoff": 11.56057750337057,
+        "morse_r_onset": 9.742170316460735,
+        "morse_shell_center_spider_head_alpha": 2.054583554380889,
+        "spider_base_particle_radius": 0.4129907309836615,
+        "spider_base_radius": 2.2604892727572756,
+        "spider_head_height": 6.274483061746559,
+        "spider_head_particle_radius": 0.09520242485086461
+    }
+    
+    """
     sim_params = {
         # catalyst shape
         'spider_base_radius': 5.0,
@@ -72,10 +86,12 @@ class TestSimulate(unittest.TestCase):
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0
     }
+    """
 
     def test_simulate_complex(self):
 
         displacement_fn, shift_fn = space.free()
+        min_head_radius = 0.1
 
         # both-stable-shell-loss-stiffness50 Iteration 99
         spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
@@ -86,16 +102,16 @@ class TestSimulate(unittest.TestCase):
             spider_base_radius=self.sim_params["spider_base_radius"],
             spider_head_height=self.sim_params["spider_head_height"],
             spider_base_particle_radius=self.sim_params["spider_base_particle_radius"],
-            spider_head_particle_radius=self.sim_params["spider_head_particle_radius"],
+            spider_head_particle_radius=jnp.max(jnp.array([min_head_radius, self.sim_params["spider_head_particle_radius"]])),
             spider_point_mass=1.0, spider_mass_err=1e-6,
-            spider_bond_idxs=spider_bond_idxs, spider_leg_radius=1.0
+            spider_bond_idxs=spider_bond_idxs
         )
         energy_fn = complex_info.get_energy_fn(
             morse_shell_center_spider_head_eps=jnp.exp(self.sim_params["log_morse_shell_center_spider_head_eps"]),
             morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
         )
 
-        n_steps = 20000
+        n_steps = 25000
         assert(n_steps % 100 == 0)
         key = random.PRNGKey(0)
         fin_state, traj = simulation(

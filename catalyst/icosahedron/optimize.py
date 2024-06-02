@@ -44,6 +44,7 @@ def optimize(args):
     stable_shell_k = args['stable_shell_k']
     remaining_shell_vertices_loss_coeff = args['remaining_shell_vertices_loss_coeff']
     min_head_radius = args['min_head_radius']
+    spider_leg_radius = args['spider_leg_radius']
 
     perturb_init_head_eps = args['perturb_init_head_eps']
 
@@ -115,7 +116,8 @@ def optimize(args):
             params['spider_base_radius'], params['spider_head_height'],
             params['spider_base_particle_radius'],
             jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']])),
-            spider_point_mass=1.0, spider_mass_err=1e-6, spider_bond_idxs=spider_bond_idxs
+            spider_point_mass=1.0, spider_mass_err=1e-6, spider_bond_idxs=spider_bond_idxs,
+            spider_leg_radius=spider_leg_radius
         )
 
         complex_energy_fn = complex_info.get_energy_fn(
@@ -214,9 +216,11 @@ def optimize(args):
             initial_separation_coefficient, vertex_to_bind_idx,
             displacement_fn, shift_fn,
             params['spider_base_radius'], params['spider_head_height'],
-            params['spider_base_particle_radius'], params['spider_head_particle_radius'],
+            params['spider_base_particle_radius'],
+            jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']])),
             spider_point_mass=1.0, spider_mass_err=1e-6,
-            verbose=False
+            verbose=False,
+            spider_leg_radius=spider_leg_radius
         )
         rep_traj_fname = traj_dir / f"traj_i{i}_b{min_loss_sample_idx}.pos"
         rep_traj_fname_bad = traj_dir / f"traj_i{i}_maxloss_b{max_loss_sample_idx}.pos"
@@ -257,6 +261,7 @@ def get_argparse():
     parser.add_argument('--vertex-to-bind', type=int, default=5, help="Index of vertex to bind")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
     parser.add_argument('--init-separate', type=float, default=0.0, help="Initial separation coefficient")
+    parser.add_argument('--spider-leg-radius', type=float, default=0.5, help="Spider leg radius")
 
     parser.add_argument('-d', '--data-dir', type=str,
                         default="data/icosahedron",
