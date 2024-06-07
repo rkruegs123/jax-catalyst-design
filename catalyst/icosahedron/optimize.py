@@ -222,10 +222,11 @@ def optimize(args):
             verbose=False,
             spider_leg_radius=spider_leg_radius
         )
-        rep_traj_fname = traj_dir / f"traj_i{i}_b{min_loss_sample_idx}.pos"
-        rep_traj_fname_bad = traj_dir / f"traj_i{i}_maxloss_b{max_loss_sample_idx}.pos"
-        utils.traj_to_pos_file(rep_traj, rep_complex_info, rep_traj_fname, box_size=30.0)
-        utils.traj_to_pos_file(rep_traj_bad, rep_complex_info, rep_traj_fname_bad, box_size=30.0)
+        if i % 10 == 0:
+            rep_traj_fname = traj_dir / f"traj_i{i}_b{min_loss_sample_idx}.pos"
+            rep_traj_fname_bad = traj_dir / f"traj_i{i}_maxloss_b{max_loss_sample_idx}.pos"
+            utils.traj_to_pos_file(rep_traj, rep_complex_info, rep_traj_fname, box_size=30.0)
+            utils.traj_to_pos_file(rep_traj_bad, rep_complex_info, rep_traj_fname_bad, box_size=30.0)
 
         loss_terms_str = f"\nIteration {i}:\n"
         loss_terms_str += f"- Best:\n\t- Abduction: {abduction_losses[min_loss_sample_idx]}\n\t- Stable Shell: {stable_shell_losses[min_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[min_loss_sample_idx]}\n"

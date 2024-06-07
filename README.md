@@ -2,6 +2,13 @@
 
 Code for designing **spider catalysts**
 
+# June 7, 2024
+
+- for WHAM, do:
+  - production-sep0.2-eps5.5-alph1.5-no-ss at iteration 0, 4950, 370, and 380. Note that 370 and 380 is the transition from extracting w/in 100 steps and not
+- waiting on new explosive limit because production-sep0.2-eps9.2-alph1.5-no-ss actually began extracting -- probably because we initialize a bit further away
+  - when that finishes, will want to check
+
 # May 17, 2024
 
 For whatever reason, he gradients seem to be flipping sign across iteratoins, even with a remaining energy coefficient of 0. We agree that this flipping corresponds to moving in the direction of increasing and decreasing energy. So, the gradients are confused as to which direction it wants to move in.

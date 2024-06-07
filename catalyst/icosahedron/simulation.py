@@ -61,6 +61,7 @@ class TestSimulate(unittest.TestCase):
     """
 
     # abduction-limit-min-head-no-stable-shell-long, iteration 3500
+    """
     sim_params = {
         "log_morse_shell_center_spider_head_eps": 10.408032049462529,
         "morse_r_cutoff": 11.56057750337057,
@@ -70,6 +71,33 @@ class TestSimulate(unittest.TestCase):
         "spider_base_radius": 2.2604892727572756,
         "spider_head_height": 6.274483061746559,
         "spider_head_particle_radius": 0.09520242485086461
+    }
+    """
+
+    # production-sep0.2-eps9.2-alph1.5-no-ss, iteration 150
+    """
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 9.005651628019526,
+        "morse_r_cutoff": 11.802113964947548,
+        "morse_r_onset": 9.83342386479687,
+        "morse_shell_center_spider_head_alpha": 1.7454608172250263,
+        "spider_base_particle_radius": 0.5,
+        "spider_base_radius": 4.569387777290548,
+        "spider_head_height": 5.282185267636781,
+        "spider_head_particle_radius": 0.22747195656686792,
+    }
+    """
+
+    # production-sep0.2-eps9.2-alph1.5-no-ss, iteration 4950
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 9.221475407506961,
+        "morse_r_cutoff": 10.546210091935214,
+        "morse_r_onset": 10.513544408974829,
+        "morse_shell_center_spider_head_alpha": 1.8757224643886063,
+        "spider_base_particle_radius": 0.5,
+        "spider_base_radius": 4.830050255104434,
+        "spider_head_height": 5.664320569392129,
+        "spider_head_particle_radius": 0.7632605079210569,
     }
     
     """
