@@ -48,6 +48,7 @@ def simulation(complex_info, complex_energy_fn, num_steps, gamma, kT, shift_fn, 
 
 class TestSimulate(unittest.TestCase):
 
+    init_sep_coeff = 0.0
 
     """
     sim_params = {
@@ -88,7 +89,9 @@ class TestSimulate(unittest.TestCase):
     }
     """
 
-    # production-sep0.2-eps9.2-alph1.5-no-ss, iteration 4950
+    
+    # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 4950
+    """
     sim_params = {
         "log_morse_shell_center_spider_head_eps": 9.221475407506961,
         "morse_r_cutoff": 10.546210091935214,
@@ -99,6 +102,111 @@ class TestSimulate(unittest.TestCase):
         "spider_head_height": 5.664320569392129,
         "spider_head_particle_radius": 0.7632605079210569,
     }
+    """
+
+
+    # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 350
+    init_sep_coeff = 0.2
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 5.856055409600398,
+        "morse_r_cutoff": 11.06205688820389,
+        "morse_r_onset": 9.259549799745674,
+        "morse_shell_center_spider_head_alpha": 2.0295389507816135,
+        "spider_base_particle_radius": 0.5,
+        "spider_base_radius": 5.172024778586832,
+        "spider_head_height": 4.5071973539472046,
+        "spider_head_particle_radius": 0.9053049966101149
+    }
+
+    # production-sep0.2-eps11-alph1.5-no-ss, iteration 0
+    """
+    init_sep_coeff = 0.2
+    sim_params = {
+        "spider_base_radius": 5.0,
+        "spider_head_height": 5.0,
+        "spider_base_particle_radius": 0.5,
+        "spider_head_particle_radius": 0.5,
+        "log_morse_shell_center_spider_head_eps": 11.0,
+        "morse_shell_center_spider_head_alpha": 1.5,
+        "morse_r_onset": 10.0,
+        "morse_r_cutoff": 12.0,
+    }
+    """
+
+    # production-sep0.2-eps11-alph1.5-no-ss, iteration 1700
+    """
+    init_sep_coeff = 0.2
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 10.5729055725228,
+        "morse_r_cutoff": 11.761658454863811,
+        "morse_r_onset": 9.849567656720794,
+        "morse_shell_center_spider_head_alpha": 1.95369930385077,
+        "spider_base_particle_radius": 0.5241586402941958,
+        "spider_base_radius": 4.7068378064708485,
+        "spider_head_height": 5.5381367409541085,
+        "spider_head_particle_radius": 0.08740544592241241
+    }
+    """
+
+    # production-sep0.2-eps11-alph1.5-no-ss, iteration 850
+    """
+    init_sep_coeff = 0.2
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 10.663925142281387,
+        "morse_r_cutoff": 11.761947663360134,
+        "morse_r_onset": 9.849393971871713,
+        "morse_shell_center_spider_head_alpha": 1.8764266998889352,
+        "spider_base_particle_radius": 0.5241586402941958,
+        "spider_base_radius": 4.840503520020092,
+        "spider_head_height": 5.381967092965107,
+        "spider_head_particle_radius": 0.11457184974371708
+    }
+    """
+
+    # production-sep0.2-eps11-alph1.5-no-ss, iteration 600
+    """
+    init_sep_coeff = 0.2
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 10.677680530185057,
+        "morse_r_cutoff": 11.762650290524169,
+        "morse_r_onset": 9.849412237413233,
+        "morse_shell_center_spider_head_alpha": 1.855672926758726,
+        "spider_base_particle_radius": 0.5241586402941958,
+        "spider_base_radius": 4.862781843797175,
+        "spider_head_height": 5.357382480123232,
+        "spider_head_particle_radius": 0.13945912142582137
+    }
+    """
+
+    # production-sep0.2-eps11-alph1.5-no-ss, iteration 425
+    """
+    init_sep_coeff = 0.2
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 10.702638890542561,
+        "morse_r_cutoff": 11.764529498601846,
+        "morse_r_onset": 9.849538414176202,
+        "morse_shell_center_spider_head_alpha": 1.8296436234025493,
+        "spider_base_particle_radius": 0.5241586402941958,
+        "spider_base_radius": 4.890507002056248,
+        "spider_head_height": 5.322118007162969,
+        "spider_head_particle_radius": 0.17426078866532183
+    }
+    """
+    
+    
+    # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 360
+    """
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 5.860381021234434,
+        "morse_r_cutoff": 11.044329521123666,
+        "morse_r_onset": 9.25568992413066,
+        "morse_shell_center_spider_head_alpha": 2.029099822995265,
+        "spider_base_particle_radius": 0.5,
+        "spider_base_radius": 5.181132757773662,
+        "spider_head_height": 4.503305867446094,
+        "spider_head_particle_radius": 0.9097058678968004,
+    }
+    """
     
     """
     sim_params = {
@@ -125,7 +233,7 @@ class TestSimulate(unittest.TestCase):
         spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
 
         complex_info = ComplexInfo(
-            initial_separation_coeff=0.0, vertex_to_bind_idx=5,
+            initial_separation_coeff=self.init_sep_coeff, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=self.sim_params["spider_base_radius"],
             spider_head_height=self.sim_params["spider_head_height"],
@@ -139,9 +247,12 @@ class TestSimulate(unittest.TestCase):
             morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
         )
 
-        n_steps = 25000
+        # n_steps = 25000
+        # n_steps = 100000
+        n_steps = 200000
         assert(n_steps % 100 == 0)
-        key = random.PRNGKey(0)
+        # key = random.PRNGKey(0)
+        key = random.PRNGKey(1)
         fin_state, traj = simulation(
             complex_info, energy_fn, num_steps=n_steps,
             gamma=10.0, kT=1.0, shift_fn=shift_fn, dt=1e-3, key=key)

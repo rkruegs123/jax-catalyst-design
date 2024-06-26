@@ -112,31 +112,24 @@ class Spider:
                                               epsilon=morse_eps_mat, alpha=morse_alpha)
 
         # Soft sphere repulsion between everything except heads
+        ## note: add weak repulsion between attractive sites by treating scaling their effective radii
+        # attr_radius_prefactor = 1.2
+        attr_radius_prefactor = 1.0
+        
         soft_sphere_eps = 1000.0
         soft_sphere_eps_mat = soft_sphere_eps * jnp.array([[0.0, 1.0, 1.0],
                                                            [1.0, 1.0, 1.0],
                                                            [1.0, 1.0, 1.0]])
         soft_sphere_sigma_mat = jnp.array([[self.head_particle_radius*2, self.head_particle_radius+self.attr_site_radius, self.base_particle_radius+self.head_particle_radius],
-                                           [self.head_particle_radius+self.attr_site_radius, self.attr_site_radius*2, self.base_particle_radius+self.attr_site_radius],
+                                           [self.head_particle_radius+self.attr_site_radius, attr_radius_prefactor*self.attr_site_radius*2, self.base_particle_radius+self.attr_site_radius],
                                            [self.head_particle_radius+self.base_particle_radius, self.attr_site_radius+self.base_particle_radius, self.base_particle_radius*2]])
         pair_energy_soft = energy.soft_sphere_pair(self.displacement_fn, species=3,
                                                    sigma=soft_sphere_sigma_mat,
                                                    epsilon=soft_sphere_eps_mat)
 
-        # Weak repulsion between attractive sites
-        weak_ss_eps = 10000.0
-        weak_ss_eps_mat = weak_ss_eps * jnp.array([
-            [0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0]]
-        )
-        pair_energy_soft_weak = energy.soft_sphere_pair(self.displacement_fn, species=3,
-                                                        sigma=1.2*self.attr_site_radius*2,
-                                                        epsilon=weak_ss_eps_mat, alpha=2.0)
 
         pair_energy_fn = lambda R, **kwargs: pair_energy_morse(R, **kwargs) \
                          + pair_energy_soft(R, **kwargs)
-                         # + pair_energy_soft_weak(R, **kwargs)
 
         if add_bonds:
             flattened_base_idxs = onp.arange(2, self.n_legs*3)[::3]
@@ -156,7 +149,6 @@ class Spider:
 
     def body_to_injavis_lines(self, body, box_size, head_color="ff0000",
                               base_color="1c1c1c", attr_color="3d8c40"):
-
 
         leg0 = self.legs[0]
 

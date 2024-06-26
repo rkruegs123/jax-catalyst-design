@@ -2,6 +2,29 @@
 
 Code for designing **spider catalysts**
 
+# June 25, 2024
+
+- Figure 1 will be overview, as we have it now
+  - nothing else needed for this
+- Figure 2 will combine current Fig. 2 and Fig 3. Need t oshow it working in high and low initiailization limits, also releasing the particle
+  - diffusive limit optimization directory: production-sep0.2-eps5.5-alph1.5-no-ss, iteration 350
+    - goes from iterations 0 to 4950. transition point to abducting or not is 350 and 360
+  - explosive limit optimization directory: production-sep0.2-eps11-alph1.5-no-ss
+    - goes from iteratio 0 to 1700. 
+    - note that there is no explicit transition point -- one could say thtat the transition point is when it stops blowing up after X steps (where x >> 1000). However, we found that this is only really the case towards 1700. This is interesting, as it shows that those last few decimals int he loss can actually matter for the long term behavior
+    - also note that thes free energy diagrams would be a compelte pain in the ass to get, so we ignore for now.
+  - the "releasing the particle" case can just be simulated as needed because it doesn't require any optimizations.
+- Figure 3 will show similarity of FE energy diagram (OP as the extraction distance) w/ partial solutions. Need those partial solutions and those free energy diagrams. Kinetics matter!
+  - we are only donig this for the diffusive limit. that's because this tarnsition is only "well defined" for this limit (see explanation above)
+  - iteration 0: wham-eps5.5-alpha1.5-iter0-min2.75-tol0.1
+  - iteration 350: wham-eps5.5-alpha1.5-iter350-min2.75-tol0.001, wham-eps5.5-alpha1.5-iter350-min2.75-tol0.01, wham-eps5.5-alpha1.5-iter350-min2.75-tol0.05 all converged, but look quite different. we could just fix a tolerance for all calculations and report it, but we could also run with more bins total. We are doing this now to check.
+    - we could also plot both th epotentials and th FE diagrams on top of each other
+  - iteration 360: wham-eps5.5-alpha1.5-iter360-min2.75-tol0.01, wham-eps5.5-alpha1.5-iter360-min2.75-tol0.001 both work but also look quite different. but, the differences between them are analogous to the differences for the same tolerances and other parameters for 350. Maybe would have to plot the potenteail to see that it's semi-long-ranged but if we had to choose today we would just do the lower tolerance
+  - iteration 4950: still trying to do the custom one with stitching together
+- Fig 4 wlil show the bneefit of flexibility. Compare FE diagrams with OP as release distance. Need those free energy diagams. Both tagged in this case. Compute entropy differences.
+- Fig 5 will show how one can add/change terms to the loss function to affect the optimized free energy diagram in an informed way. E.g. for flexibile version, add realeas term, show how this pushes FE towards release.
+
+
 # June 7, 2024
 
 - for WHAM, do:
