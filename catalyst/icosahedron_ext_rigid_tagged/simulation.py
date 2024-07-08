@@ -98,7 +98,7 @@ class TestSimulate(unittest.TestCase):
             # spider_point_mass=0.5, spider_mass_err=1e-6,
             spider_bond_idxs=spider_bond_idxs, spider_leg_radius=0.25
         )
-        energy_fn = complex_info.get_energy_fn(
+        energy_fn, _ = complex_info.get_energy_fn(
             morse_attr_eps=jnp.exp(self.sim_params["log_morse_attr_eps"]),
             morse_attr_alpha=self.sim_params["morse_attr_alpha"]
         )

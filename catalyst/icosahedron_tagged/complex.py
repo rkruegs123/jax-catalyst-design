@@ -20,22 +20,6 @@ from jax.config import config
 config.update('jax_enable_x64', True)
 
 
-# Define options for leg pairs. Note that indices are w.r.t. the spider body pos
-# NO_LEGS = jnp.array([], dtype=jnp.int32)
-PENTAPOD_LEGS = jnp.array([
-    [0, 5],
-    [1, 5],
-    [2, 5],
-    [3, 5],
-    [4, 5]
-], dtype=jnp.int32)
-BASE_LEGS = jnp.array([
-    [0, 1],
-    [1, 2],
-    [2, 3],
-    [3, 4],
-    [4, 0]
-], dtype=jnp.int32)
 
 class Complex:
     def __init__(self,
@@ -45,7 +29,8 @@ class Complex:
 
                  # spider-specific arguments arguments
                  spider_base_radius, spider_head_height,
-                 spider_base_particle_radius, spider_attr_particle_radius, spider_head_particle_radius,
+                 spider_base_particle_radius,
+                 spider_attr_particle_radius, spider_head_particle_radius,
                  spider_point_mass, spider_mass_err=1e-6,
 
                  # misc.
@@ -231,11 +216,11 @@ class Complex:
             rep_val += single_leg_rep(3, spider_space_frame_pos, shell_vertex_centers)
             rep_val += single_leg_rep(4, spider_space_frame_pos, shell_vertex_centers)
             rep_val += base_bond_rep(jnp.array([0, 1]), spider_space_frame_pos, shell_vertex_centers)
-            rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, shell_vertex_centers)
-            #rep_val += base_bond_rep(jnp.array([3, 4]), spider_space_frame_pos, shell_vertex_centers)
             rep_val += base_bond_rep(jnp.array([1, 2]), spider_space_frame_pos, shell_vertex_centers)
+            # rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, shell_vertex_centers)
+            rep_val += base_bond_rep(jnp.array([3, 4]), spider_space_frame_pos, shell_vertex_centers)
+            
             return rep_val
-            # return single_leg_rep(0, spider_space_frame_pos, shell_vertex_centers)
 
         return rep_bond_energy_fn
 

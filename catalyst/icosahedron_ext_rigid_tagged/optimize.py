@@ -32,6 +32,7 @@ def optimize(args):
     initial_separation_coefficient = args['init_separate']
     gamma = args['gamma']
     vertex_to_bind_idx = args['vertex_to_bind']
+    release_coeff = args['release_coeff']
 
     n_iters = args['n_iters']
     lr = args['lr']
@@ -39,6 +40,7 @@ def optimize(args):
     init_log_head_eps = args['init_log_head_eps']
     init_alpha = args['init_alpha']
     init_head_height = args['init_head_height']
+    init_rel_attr_pos = args['init_rel_attr_pos']
     vis_frame_rate = args['vis_frame_rate']
 
     output_basedir = args['output_basedir']
@@ -97,15 +99,19 @@ def optimize(args):
             spider_bond_idxs=spider_bond_idxs
         )
 
-        complex_energy_fn = complex_info.get_energy_fn(
+        complex_energy_fn, vertex_energy_fn = complex_info.get_energy_fn(
             morse_attr_eps=jnp.exp(params['log_morse_attr_eps']),
             morse_attr_alpha=params['morse_attr_alpha'],
             morse_r_onset=params['morse_r_onset'], morse_r_cutoff=params['morse_r_cutoff']
         )
         fin_state, traj = simulation(complex_info, complex_energy_fn, n_steps, gamma, kT, shift_fn, dt, key)
-        loss = state_loss_fn(fin_state, params, complex_info)
+        extract_loss = state_loss_fn(fin_state, params, complex_info)
 
-        return loss, traj
+        release_loss = -vertex_energy_fn(traj[-1]) * release_coeff
+
+        loss = release_loss + extract_loss
+
+        return loss, (traj, extract_loss, release_loss)
     grad_fn = value_and_grad(loss_fn, has_aux=True)
     batched_grad_fn = jit(vmap(grad_fn, in_axes=(None, 0)))
 
@@ -117,7 +123,7 @@ def optimize(args):
         'spider_head_height': init_head_height,
         'spider_base_particle_radius': 0.5,
         'spider_head_particle_radius': 0.5,
-        'spider_attr_particle_pos_norm': 0.5,
+        'spider_attr_particle_pos_norm': spider_attr_site_radius,
         'spider_attr_site_radius': 0.3,
 
         # catalyst energy
@@ -129,6 +135,8 @@ def optimize(args):
     opt_state = optimizer.init(params)
 
     loss_path = run_dir / "loss.txt"
+    extract_loss_path = run_dir / "extract_loss.txt"
+    release_loss_path = run_dir / "release_loss.txt"
     loss_terms_path = run_dir / "loss_terms.txt"
     losses_path = run_dir / "losses.txt"
     std_path = run_dir / "std.txt"
@@ -144,7 +152,7 @@ def optimize(args):
         iter_key = keys[i]
         batch_keys = random.split(iter_key, batch_size)
         start = time.time()
-        (losses, (trajs)), grads = batched_grad_fn(params, batch_keys)
+        (losses, (trajs, extract_losses, release_losses)), grads = batched_grad_fn(params, batch_keys)
         end = time.time()
 
         avg_grads = {k: jnp.mean(grads[k], axis=0) for k in grads}
@@ -158,6 +166,10 @@ def optimize(args):
         all_avg_losses.append(avg_loss)
         with open(loss_path, "a") as f:
             f.write(f"{avg_loss}\n")
+        with open(extract_loss_path, "a") as f:
+            f.write(f"{onp.mean(extract_losses)}\n")
+        with open(release_loss_path, "a") as f:
+            f.write(f"{onp.mean(release_losses)}\n")
         with open(grad_path, "a") as f:
             f.write(str(grads) + '\n')
 
@@ -254,6 +266,11 @@ def get_argparse():
                         help="Initial value for spider head height")
 
     parser.add_argument('--perturb-init-head-eps', action='store_true')
+
+    parser.add_argument('--release-coeff', type=float, default=1.5,
+                        help="Coefficient for release")
+    parser.add_argument('--init-rel-attr-pos', type=float, default=0.5,
+                        help="Initial value for rel. attr pos")
 
     return parser
 

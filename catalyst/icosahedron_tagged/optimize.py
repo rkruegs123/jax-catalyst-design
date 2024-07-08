@@ -27,6 +27,7 @@ def optimize(args):
     n_steps = args['n_steps']
     init_log_head_eps = args['init_log_head_eps']
     init_alpha = args['init_alpha']
+    init_head_height = args['init_head_height']
     data_dir = args['data_dir']
     lr = args['lr']
     dt = args['dt']
@@ -36,6 +37,8 @@ def optimize(args):
     gamma = args['gamma']
     vertex_to_bind_idx = args['vertex_to_bind']
     release_coeff = args['release_coeff']
+    init_rel_attr_pos = args['init_rel_attr_pos']
+    min_head_radius = args['min_head_radius']
 
     displacement_fn, shift_fn = space.free()
     state_loss_fn, state_loss_terms_fn = get_loss_fn(displacement_fn, vertex_to_bind_idx)
@@ -70,6 +73,8 @@ def optimize(args):
     # Dummy loss function for now
     def loss_fn(params, key):
 
+        clipped_head_radius = jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']]))
+
         complex_ = Complex(
             initial_separation_coeff=initial_separation_coefficient,
             vertex_to_bind_idx=vertex_to_bind_idx,
@@ -78,8 +83,9 @@ def optimize(args):
             spider_head_height=params['spider_head_height'],
             spider_base_particle_radius=params['spider_base_particle_radius'],
             spider_attr_particle_radius=params['spider_attr_particle_radius'],
-            spider_head_particle_radius=params['spider_head_particle_radius'],
-            spider_point_mass=1.0, spider_mass_err=1e-6
+            spider_head_particle_radius=clipped_head_radius,
+            spider_point_mass=1.0, spider_mass_err=1e-6,
+            rel_attr_particle_pos=jnp.clip(params['rel_attr_pos'], 0.0, 1.0)
         )
 
         complex_energy_fn, pointwise_interaction_energy_fn = complex_.get_energy_fn(
@@ -91,13 +97,14 @@ def optimize(args):
         fin_state, traj = simulation(complex_, complex_energy_fn,
                                      n_steps, gamma, kT, shift_fn, dt, key)
 
-        loss = state_loss_fn(fin_state, params, complex_)
+        extract_loss = state_loss_fn(fin_state, params, complex_)
 
         # Note: hopefully promotes "release"
         fin_pointwise_energy = pointwise_interaction_energy_fn(traj[-1])
-        loss += release_coeff*(-fin_pointwise_energy)
+        release_loss = release_coeff*(-fin_pointwise_energy)
+        loss = release_loss + extract_loss
         
-        return loss, traj
+        return loss, (traj, release_loss, extract_loss)
         # return traj[-1].center.sum(), traj
 
     grad_fn = value_and_grad(loss_fn, has_aux=True)
@@ -108,7 +115,7 @@ def optimize(args):
     params = {
         # catalyst shape
         'spider_base_radius': 5.0,
-        'spider_head_height': 5.0,
+        'spider_head_height': init_head_height,
         'spider_base_particle_radius': 0.5,
         'spider_attr_particle_radius': 0.5,
         'spider_head_particle_radius': 0.5,
@@ -117,11 +124,15 @@ def optimize(args):
         'log_morse_attr_eps': init_log_head_eps,
         'morse_attr_alpha': init_alpha,
         'morse_r_onset': 10.0,
-        'morse_r_cutoff': 12.0
+        'morse_r_cutoff': 12.0,
+
+        'rel_attr_pos': init_rel_attr_pos
     }
     opt_state = optimizer.init(params)
 
     loss_path = run_dir / "loss.txt"
+    extract_loss_path = run_dir / "extract_loss.txt"
+    release_loss_path = run_dir / "release_loss.txt"
     grads_path = run_dir / "grads.txt"
     losses_path = run_dir / "losses.txt"
     times_path = run_dir / "times.txt"
@@ -133,7 +144,7 @@ def optimize(args):
         iter_key = keys[i]
         batch_keys = random.split(iter_key, batch_size)
         start = time.time()
-        (vals, trajs), grads = batched_grad_fn(params, batch_keys)
+        (vals, (trajs, release_losses, extract_losses)), grads = batched_grad_fn(params, batch_keys)
         end = time.time()
 
         avg_grads = {k: jnp.mean(grads[k], axis=0) for k in grads}
@@ -144,6 +155,10 @@ def optimize(args):
         avg_loss = onp.mean(vals)
         with open(loss_path, "a") as f:
             f.write(f"{avg_loss}\n")
+        with open(extract_loss_path, "a") as f:
+            f.write(f"{onp.mean(extract_losses)}\n")
+        with open(release_loss_path, "a") as f:
+            f.write(f"{onp.mean(release_losses)}\n")
         with open(times_path, "a") as f:
             f.write(f"{end - start}\n")
         with open(iter_params_path, "a") as f:
@@ -158,6 +173,7 @@ def optimize(args):
         n_vis_freq = 50
         vis_traj_idxs = jnp.arange(0, n_steps+1, n_vis_freq)
         n_vis_states = len(vis_traj_idxs)
+        clipped_head_radius = jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']]))
         rep_complex_ = Complex(
             initial_separation_coeff=initial_separation_coefficient,
             vertex_to_bind_idx=vertex_to_bind_idx,
@@ -166,8 +182,9 @@ def optimize(args):
             spider_head_height=params['spider_head_height'],
             spider_base_particle_radius=params['spider_base_particle_radius'],
             spider_attr_particle_radius=params['spider_attr_particle_radius'],
-            spider_head_particle_radius=params['spider_head_particle_radius'],
-            spider_point_mass=1.0, spider_mass_err=1e-6
+            spider_head_particle_radius=min_head_radius,
+            spider_point_mass=1.0, spider_mass_err=1e-6,
+            rel_attr_particle_pos=jnp.clip(params['rel_attr_pos'], 0.0, 1.0)
         )
         for i in tqdm(vis_traj_idxs, desc="Generating injavis output"):
             s = trajs[0][i]
@@ -210,6 +227,11 @@ def get_argparse():
 
     parser.add_argument('--release-coeff', type=float, default=1.5,
                         help="Coefficient for release")
+    parser.add_argument('--init-head-height', type=float, default=5.0,
+                        help="Initial value for spider head height")
+    parser.add_argument('--init-rel-attr-pos', type=float, default=0.5,
+                        help="Initial value for rel. attr pos")
+    parser.add_argument('--min-head-radius', type=float, default=0.1, help="Minimum radius for spider head")
 
 
     return parser

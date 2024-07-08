@@ -268,8 +268,8 @@ class Complex:
 
             energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
 
-            return energy_fn
-        return base_energy_fn
+            return energy_fn, base_energy_fn
+        return base_energy_fn, base_energy_fn
 
 
     def get_energy_components_fn(
@@ -292,7 +292,7 @@ class Complex:
         shell_energy_fn = self.shell_info.get_energy_fn(
             morse_ii_eps, morse_ii_alpha, soft_eps)
         spider_energy_fn = self.spider_info.get_energy_fn()
-        shell_spider_interaction_energy_fn = self.get_interaction_energy_fn(
+        shell_spider_interaction_energy_fn, vertex_energy_fn = self.get_interaction_energy_fn(
             morse_attr_eps, morse_attr_alpha,
             morse_r_onset, morse_r_cutoff,
             soft_eps,
@@ -305,7 +305,7 @@ class Complex:
             spider_energy = spider_energy_fn(spider_body, **kwargs)
             interaction_energy = shell_spider_interaction_energy_fn(body, **kwargs)
             return shell_energy, spider_energy, interaction_energy
-        return energy_components_fn
+        return energy_components_fn, vertex_energy_fn
 
     def get_energy_fn(
             self,
@@ -324,7 +324,7 @@ class Complex:
             ss_shell_center_spider_leg_alpha=2.0
 
     ):
-        energy_components_fn = self.get_energy_components_fn(
+        energy_components_fn, vertex_energy_fn = self.get_energy_components_fn(
             morse_attr_eps, morse_attr_alpha,
             morse_r_onset, morse_r_cutoff,
             morse_ii_eps, morse_ii_alpha,
@@ -335,7 +335,7 @@ class Complex:
             shell_energy, spider_energy, interaction_energy = energy_components_fn(body, **kwargs)
             return shell_energy + spider_energy + interaction_energy
 
-        return complex_energy_fn
+        return complex_energy_fn, vertex_energy_fn
 
     def get_body_frame_positions(self, body):
         raise NotImplementedError
@@ -396,7 +396,7 @@ class TestComplex(unittest.TestCase):
             spider_point_mass=1.0, spider_mass_err=1e-6
         )
 
-        energy_fn = complex_info.get_energy_fn(
+        energy_fn, _ = complex_info.get_energy_fn(
             morse_attr_eps=jnp.exp(9.21) / 5, morse_attr_alpha=1.5,
         )
         init_energy = energy_fn(complex_info.rigid_body)
