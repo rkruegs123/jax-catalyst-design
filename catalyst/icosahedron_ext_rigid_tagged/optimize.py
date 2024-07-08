@@ -123,14 +123,15 @@ def run(args):
         'spider_head_height': init_head_height,
         'spider_base_particle_radius': 0.5,
         'spider_head_particle_radius': 0.5,
-        'spider_attr_particle_pos_norm': spider_attr_site_radius,
-        'spider_attr_site_radius': 0.3,
+        'spider_attr_site_radius': 0.5,
 
         # catalyst energy
         'log_morse_attr_eps': init_log_head_eps,
         'morse_attr_alpha': init_alpha,
         'morse_r_onset': 10.0,
-        'morse_r_cutoff': 12.0
+        'morse_r_cutoff': 12.0,
+
+        'spider_attr_particle_pos_norm': init_rel_attr_pos
     }
     opt_state = optimizer.init(params)
 

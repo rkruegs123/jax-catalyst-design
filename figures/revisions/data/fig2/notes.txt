@@ -1,0 +1,2 @@
+difffusive is: production-sep0.2-eps5.5-alph1.5-no-ss
+explosive is: production-sep0.2-eps11-alph1.5-no-ss
