@@ -12,9 +12,7 @@ from jax.config import config
 config.update('jax_enable_x64', True)
 
 
-def get_loss_fn(displacement_fn, vertex_to_bind
-):
-
+def get_loss_fn(displacement_fn, vertex_to_bind):
 
     d = vmap(displacement_fn, (0, None))
 

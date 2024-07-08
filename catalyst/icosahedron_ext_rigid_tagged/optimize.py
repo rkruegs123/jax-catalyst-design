@@ -22,7 +22,7 @@ config.update('jax_enable_x64', True)
 
 
 
-def optimize(args):
+def run(args):
 
     batch_size = args['batch_size']
     n_steps = args['n_steps']
@@ -230,7 +230,6 @@ def optimize(args):
         f.write(f"Best iteration loss: {best_iter_loss}\n")
         f.write(f"Best iteration params: {best_iter_params}\n")
 
-
     return params
 
 
@@ -267,7 +266,7 @@ def get_argparse():
 
     parser.add_argument('--perturb-init-head-eps', action='store_true')
 
-    parser.add_argument('--release-coeff', type=float, default=1.5,
+    parser.add_argument('--release-coeff', type=float, default=0.0,
                         help="Coefficient for release")
     parser.add_argument('--init-rel-attr-pos', type=float, default=0.5,
                         help="Initial value for rel. attr pos")
@@ -279,4 +278,4 @@ if __name__ == "__main__":
     parser = get_argparse()
     args = vars(parser.parse_args())
 
-    optimize(args)
+    run(args)
