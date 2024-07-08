@@ -6,7 +6,7 @@ import numpy as onp
 from jax_md import space
 
 from catalyst.octahedron import shell_getter
-from figures.utils import shell_patch_color, shell_vertex_color
+from figures.preprint.utils import shell_patch_color, shell_vertex_color
 
 
 # mode = "entire-shell"

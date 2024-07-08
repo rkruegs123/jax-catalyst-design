@@ -5,8 +5,8 @@ import numpy as onp
 from pathlib import Path
 
 from catalyst.octahedron import complex_getter
-from figures.utils import shell_patch_color, shell_vertex_color
-from figures.utils import spider_base_color, spider_leg_color, spider_head_color
+from figures.preprint.utils import shell_patch_color, shell_vertex_color
+from figures.preprint.utils import spider_base_color, spider_leg_color, spider_head_color
 
 
 

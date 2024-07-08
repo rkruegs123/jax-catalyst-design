@@ -6,7 +6,7 @@ import numpy as onp
 from jax_md import space
 
 from catalyst.octahedron import complex_getter
-from figures.utils import spider_base_color, spider_leg_color, spider_head_color
+from figures.preprint.utils import spider_base_color, spider_leg_color, spider_head_color
 
 
 shell_vertex_color = (0.9254901960784314, 0.9411764705882353, 0.9450980392156862, 1.0)
