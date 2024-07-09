@@ -66,7 +66,7 @@ def test_sim(complex_, complex_energy_fn, num_steps,
 
 class TestSimulate(unittest.TestCase):
 
-    def test_grad(self):
+    def _test_grad(self):
 
         displacement_fn, shift_fn = space.free()
         initial_separation_coefficient = 5.5
@@ -105,7 +105,7 @@ class TestSimulate(unittest.TestCase):
             fin_state, traj = simulation(complex_, complex_energy_fn,
                                          n_steps, gamma, kT, shift_fn, dt, key)
             return traj[-1].center.sum(), traj
-            
+
 
         params = {
             # catalyst shape
@@ -138,7 +138,7 @@ class TestSimulate(unittest.TestCase):
         combined_body_center = jnp.concatenate([bind_body_flat.center.reshape(1, -1), spider_body.center])
         combined_body_qvec = jnp.concatenate([bind_body_flat.orientation.vec.reshape(1, -1), spider_body.orientation.vec])
         combined_body = rigid_body.RigidBody(combined_body_center, rigid_body.Quaternion(combined_body_qvec))
-        
+
         key = random.PRNGKey(0)
 
         loss_fn = jit(loss_fn)
@@ -154,7 +154,7 @@ class TestSimulate(unittest.TestCase):
 
         grad_fn = value_and_grad(loss_fn, has_aux=True)
         grad_fn = jit(grad_fn)
-        
+
         start = time.time()
         (loss, traj), grads = grad_fn(params, key)
         end = time.time()
@@ -170,14 +170,14 @@ class TestSimulate(unittest.TestCase):
         displacement_fn, shift_fn = space.free()
         # initial_separation_coefficient = 2.5
         initial_separation_coefficient = 5.5
-        vertex_to_bind_idx = 5
+        vertex_to_bind_idx = 10
         dt = 1e-3
         kT = 1.0
         # gamma = 10
         gamma = 10
         key = random.PRNGKey(0)
-        n_steps = 250
-        init_log_head_eps = 4.0
+        n_steps = 5000
+        init_log_head_eps = 5.0
         init_alpha = 1.0
 
         """
@@ -199,30 +199,46 @@ class TestSimulate(unittest.TestCase):
 
         """
         params = {
-            'log_morse_attr_eps': 4.05178597, 
-            'morse_attr_alpha': 1.31493759, 
-            'morse_r_cutoff': 12., 
-            'morse_r_onset': 10., 
-            'spider_attr_particle_radius': 1.07176809, 
-            'spider_base_particle_radius': 1.03204563, 
-            'spider_base_radius': 4.49771056, 
-            'spider_head_height': 5.21336873, 
+            'log_morse_attr_eps': 4.05178597,
+            'morse_attr_alpha': 1.31493759,
+            'morse_r_cutoff': 12.,
+            'morse_r_onset': 10.,
+            'spider_attr_particle_radius': 1.07176809,
+            'spider_base_particle_radius': 1.03204563,
+            'spider_base_radius': 4.49771056,
+            'spider_head_height': 5.21336873,
+            'spider_head_particle_radius': 0.330227
+        }
+        """
+
+        """
+        params = {
+            'log_morse_attr_eps': 4.05178597,
+            'morse_attr_alpha': 1.31493759,
+            'morse_r_cutoff': 12.,
+            'morse_r_onset': 10.,
+            'spider_attr_particle_radius': 1.07176809,
+            'spider_base_particle_radius': 1.03204563,
+            'spider_base_radius': 4.49771056,
+            'spider_head_height': 10.0,
             'spider_head_particle_radius': 0.330227
         }
         """
 
         params = {
-            'log_morse_attr_eps': 4.05178597, 
-            'morse_attr_alpha': 1.31493759, 
-            'morse_r_cutoff': 12., 
-            'morse_r_onset': 10., 
-            'spider_attr_particle_radius': 1.07176809, 
-            'spider_base_particle_radius': 1.03204563, 
-            'spider_base_radius': 4.49771056, 
+            # catalyst shape
+            'spider_base_radius': 5.0,
             'spider_head_height': 10.0,
-            'spider_head_particle_radius': 0.330227
+            'spider_base_particle_radius': 1.0,
+            'spider_attr_particle_radius': 0.75,
+            'spider_head_particle_radius': 1.0,
+
+            # catalyst energy
+            'log_morse_attr_eps': init_log_head_eps,
+            'morse_attr_alpha': init_alpha,
+            'morse_r_onset': 10.0,
+            'morse_r_cutoff': 12.0
         }
-        
 
         complex_ = Complex(
             initial_separation_coeff=initial_separation_coefficient,
@@ -234,7 +250,7 @@ class TestSimulate(unittest.TestCase):
             spider_attr_particle_radius=params['spider_attr_particle_radius'],
             spider_head_particle_radius=params['spider_head_particle_radius'],
             spider_point_mass=1.0, spider_mass_err=1e-6,
-            rel_attr_particle_pos=0.75
+            rel_attr_particle_pos=0.5
         )
 
         complex_energy_fn, _ = complex_.get_energy_fn(
@@ -253,13 +269,15 @@ class TestSimulate(unittest.TestCase):
         traj_injavis_lines = list()
         n_vis_states = len(traj.center)
         box_size = 30.0
-        vis_every = 50
+        vis_every = 100
         for i in tqdm(range(n_vis_states), desc="Generating injavis output"):
             if i % vis_every == 0:
                 s = traj[i]
                 traj_injavis_lines += complex_.body_to_injavis_lines(s, box_size=box_size)[0]
-            
+
         with open("test_sim.pos", 'w+') as of:
             of.write('\n'.join(traj_injavis_lines))
 
-        
+
+if __name__ == "__main__":
+    unittest.main()

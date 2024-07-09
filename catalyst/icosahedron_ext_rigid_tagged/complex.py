@@ -338,7 +338,10 @@ class Complex:
         return complex_energy_fn, vertex_energy_fn
 
     def get_body_frame_positions(self, body):
-        raise NotImplementedError
+        spider_body_pos = self.spider_info.get_body_frame_positions(spider_body)
+        shell_body_pos = self.shell_info.get_body_frame_positions(shell_body)
+        return jnp.concatenate([spider_body_pos, shell_body_posp])
+        # raise NotImplementedError
         # return utils.get_body_frame_positions(body, self.shape)
 
     def body_to_injavis_lines(
@@ -367,7 +370,7 @@ class TestComplex(unittest.TestCase):
     def test_injavis(self):
         displacement_fn, shift_fn = space.free()
         complex_info = Complex(
-            initial_separation_coeff=0.1, vertex_to_bind_idx=5,
+            initial_separation_coeff=0.0, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=5.0, spider_head_height=4.0,
             spider_base_particle_radius=0.5,

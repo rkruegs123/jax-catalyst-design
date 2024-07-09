@@ -33,7 +33,7 @@ class Leg:
 
 
         head_pos = [0.0, 0.0, 0.0]
-        attr_pos = [self.leg_length * self.attr_particle_pos_norm, 0.0, 0.0]
+        attr_pos = [self.leg_length * (1 - self.attr_particle_pos_norm), 0.0, 0.0]
         base_pos = [self.leg_length, 0.0, 0.0]
         leg_positions = jnp.array([head_pos, attr_pos, base_pos])
 

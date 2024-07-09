@@ -89,7 +89,7 @@ class TestSimulate(unittest.TestCase):
     }
     """
 
-    
+
     # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 4950
     """
     sim_params = {
@@ -104,8 +104,53 @@ class TestSimulate(unittest.TestCase):
     }
     """
 
+    # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 0
+    """
+    init_sep_coeff = 0.2
+    sim_params = {
+        "spider_base_radius": 5.0,
+        "spider_head_height": 5.0,
+        "spider_base_particle_radius": 0.5,
+        "spider_head_particle_radius": 0.5,
+        "log_morse_shell_center_spider_head_eps": 5.5,
+        "morse_shell_center_spider_head_alpha": 1.5,
+        "morse_r_onset": 10.0,
+        "morse_r_cutoff": 12.0
+    }
+    """
+
+    # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 2500
+    """
+    init_sep_coeff = 0.2
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 7.07010915780864,
+        "morse_r_cutoff": 10.446287469377683,
+        "morse_r_onset": 9.286000948885864,
+        "morse_shell_center_spider_head_alpha": 2.009179455510144,
+        "spider_base_particle_radius": 0.5,
+        "spider_base_radius": 5.04261216365621,
+        "spider_head_height": 4.92472225940584,
+        "spider_head_particle_radius": 1.1673952824606546
+    }
+    """
+
+    # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 4750
+    """
+    init_sep_coeff = 0.2
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 9.11817907909598,
+        "morse_r_cutoff": 10.546210091935214,
+        "morse_r_onset": 10.513544408974829,
+        "morse_shell_center_spider_head_alpha": 1.8899509179640157,
+        "spider_base_particle_radius": 0.5,
+        "spider_base_radius": 4.767557802985431,
+        "spider_head_height": 5.62326990937787,
+        "spider_head_particle_radius": 0.8048606609317089
+    }
+    """
 
     # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 350
+    """
     init_sep_coeff = 0.2
     sim_params = {
         "log_morse_shell_center_spider_head_eps": 5.856055409600398,
@@ -117,6 +162,7 @@ class TestSimulate(unittest.TestCase):
         "spider_head_height": 4.5071973539472046,
         "spider_head_particle_radius": 0.9053049966101149
     }
+    """
 
     # production-sep0.2-eps11-alph1.5-no-ss, iteration 0
     """
@@ -192,8 +238,8 @@ class TestSimulate(unittest.TestCase):
         "spider_head_particle_radius": 0.17426078866532183
     }
     """
-    
-    
+
+
     # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 360
     """
     sim_params = {
@@ -207,7 +253,7 @@ class TestSimulate(unittest.TestCase):
         "spider_head_particle_radius": 0.9097058678968004,
     }
     """
-    
+
     """
     sim_params = {
         # catalyst shape

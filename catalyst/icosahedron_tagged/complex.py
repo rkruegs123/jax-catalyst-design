@@ -219,7 +219,7 @@ class Complex:
             rep_val += base_bond_rep(jnp.array([1, 2]), spider_space_frame_pos, shell_vertex_centers)
             # rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, shell_vertex_centers)
             rep_val += base_bond_rep(jnp.array([3, 4]), spider_space_frame_pos, shell_vertex_centers)
-            
+
             return rep_val
 
         return rep_bond_energy_fn
@@ -527,7 +527,7 @@ def combined_body_to_injavis_lines(
     all_lines = [box_def] + type_defs + positions + ["eof"]
     return all_lines, box_def, type_defs, positions
 
-    
+
 class TestComplex(unittest.TestCase):
 
     def test_init(self):
