@@ -1,0 +1,3 @@
+Best iteration index: 4850
+Best iteration loss: -9.439974579896871
+Best iteration params: {'log_morse_shell_center_spider_head_eps': Array(10.24439692, dtype=float64), 'morse_r_cutoff': Array(11.78584171, dtype=float64), 'morse_r_onset': Array(9.84250857, dtype=float64), 'morse_shell_center_spider_head_alpha': Array(1.87917703, dtype=float64), 'spider_base_particle_radius': Array(0.91253816, dtype=float64), 'spider_base_radius': Array(4.23087296, dtype=float64), 'spider_head_height': Array(5.82102385, dtype=float64), 'spider_head_particle_radius': Array(0.20783434, dtype=float64)}
