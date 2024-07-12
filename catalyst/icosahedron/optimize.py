@@ -22,7 +22,7 @@ config.update('jax_enable_x64', True)
 
 
 
-def optimize(args):
+def run(args):
     batch_size = args['batch_size']
     n_iters = args['n_iters']
     n_steps = args['n_steps']
@@ -47,6 +47,8 @@ def optimize(args):
     spider_leg_radius = args['spider_leg_radius']
 
     perturb_init_head_eps = args['perturb_init_head_eps']
+
+    init_particle_radii = args['init_particle_radii']
 
     if perturb_init_head_eps:
         init_log_head_eps += onp.random.normal(0.0, 0.1)
@@ -143,8 +145,8 @@ def optimize(args):
         # catalyst shape
         'spider_base_radius': 5.0,
         'spider_head_height': 5.0,
-        'spider_base_particle_radius': 0.5,
-        'spider_head_particle_radius': 0.5,
+        'spider_base_particle_radius': init_particle_radii,
+        'spider_head_particle_radius': init_particle_radii,
 
         # catalyst energy
         # 'log_morse_shell_center_spider_head_eps': 9.2, # ln(10000.0)
@@ -291,6 +293,9 @@ def get_argparse():
     parser.add_argument('--init-alpha', type=float, default=1.5,
                         help="Initial value for parameter: morse_shell_center_spider_head_alpha")
 
+    parser.add_argument('--init-particle-radii', type=float, default=0.5,
+                        help="Initial value for base particle and head radii")
+
     parser.add_argument('--perturb-init-head-eps', action='store_true')
 
     return parser
@@ -300,4 +305,4 @@ if __name__ == "__main__":
     parser = get_argparse()
     args = vars(parser.parse_args())
 
-    optimize(args)
+    run(args)

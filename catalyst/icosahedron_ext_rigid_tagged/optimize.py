@@ -34,6 +34,11 @@ def run(args):
     vertex_to_bind_idx = args['vertex_to_bind']
     release_coeff = args['release_coeff']
 
+    init_base_particle_radius = args['init_base_particle_radius']
+    init_spider_head_radius = args['init_spider_head_radius']
+    init_attr_site_radius = args['init_attr_site_radius']
+    leg_radius = args['leg_radius']
+
     n_iters = args['n_iters']
     lr = args['lr']
 
@@ -96,7 +101,8 @@ def run(args):
             params['spider_attr_site_radius'],
             jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']])),
             spider_point_mass=1.0, spider_mass_err=1e-6,
-            spider_bond_idxs=spider_bond_idxs
+            spider_bond_idxs=spider_bond_idxs,
+            spider_leg_radius=leg_radius
         )
 
         complex_energy_fn, vertex_energy_fn = complex_info.get_energy_fn(
@@ -121,9 +127,9 @@ def run(args):
         # catalyst shape
         'spider_base_radius': 5.0,
         'spider_head_height': init_head_height,
-        'spider_base_particle_radius': 0.5,
-        'spider_head_particle_radius': 0.5,
-        'spider_attr_site_radius': 0.5,
+        'spider_base_particle_radius': init_base_particle_radius,
+        'spider_head_particle_radius': init_spider_head_radius,
+        'spider_attr_site_radius': init_attr_site_radius,
 
         # catalyst energy
         'log_morse_attr_eps': init_log_head_eps,
@@ -205,7 +211,8 @@ def run(args):
             params['spider_attr_site_radius'],
             jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']])),
             spider_point_mass=1.0, spider_mass_err=1e-6,
-            spider_bond_idxs=spider_bond_idxs
+            spider_bond_idxs=spider_bond_idxs,
+            spider_leg_radius=leg_radius
         )
         rep_traj_fname = traj_dir / f"traj_i{i}_b{min_loss_sample_idx}.pos"
         rep_traj_fname_bad = traj_dir / f"traj_i{i}_maxloss_b{max_loss_sample_idx}.pos"
@@ -271,6 +278,17 @@ def get_argparse():
                         help="Coefficient for release")
     parser.add_argument('--init-rel-attr-pos', type=float, default=0.5,
                         help="Initial value for rel. attr pos")
+
+    parser.add_argument('--init-base-particle-radius', type=float, default=1.0,
+                        help="Initial value for base particle radius")
+    parser.add_argument('--init-spider-head-radius', type=float, default=1.0,
+                        help="Initial value for spider head particle radius")
+    parser.add_argument('--init-attr-site-radius', type=float, default=0.75,
+                        help="Initial value for attractive site particle radius")
+
+    parser.add_argument('--leg-radius', type=float, default=0.25,
+                        help="The leg radius")
+    
 
     return parser
 
