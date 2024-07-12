@@ -15,14 +15,14 @@ plt.rcParams.update({'font.size': 24})
 mode = "diffusive"
 # mode = "explosive"
 if mode == "diffusive":
-    terms_fpath = "figures/revisions/data/fig2/diffusive_loss_terms.txt"
-    loss_fpath = "figures/revisions/data/fig2/diffusive_loss.txt"
-    max_iter = 4750
-    # max_iter = 1500
+    terms_fpath = "figures/revisions/data/fig2/diffusive-run/loss_terms.txt"
+    loss_fpath = "figures/revisions/data/fig2/diffusive-run/loss.txt"
+    # max_iter = 3000
+    max_iter = 500
 elif mode == "explosive":
-    terms_fpath = "figures/revisions/data/fig2/explosive_loss_terms.txt"
-    loss_fpath = "figures/revisions/data/fig2/explosive_loss.txt"
-    max_iter = 1700
+    terms_fpath = "figures/revisions/data/fig2/explosive-run/loss_terms.txt"
+    loss_fpath = "figures/revisions/data/fig2/explosive-run/loss.txt"
+    max_iter = 5000
 else:
     raise RuntimeError(f"Invalid mode: {mode}")
 
