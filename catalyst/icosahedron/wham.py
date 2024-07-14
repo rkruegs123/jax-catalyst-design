@@ -95,6 +95,7 @@ def run(args, sim_params):
     assert(wham_exec_path.exists())
     wham_tol = args['wham_tol']
     min_head_radius = args['min_head_radius']
+    spider_leg_radius = args['spider_leg_radius']
     init_sep_coeff = args['init_sep_coeff']
     n_bins = args['n_bins']
 
@@ -142,7 +143,8 @@ def run(args, sim_params):
         spider_base_particle_radius=sim_params['spider_base_particle_radius'],
         spider_head_particle_radius=jnp.max(jnp.array([min_head_radius, sim_params["spider_head_particle_radius"]])),
         spider_point_mass=1.0, spider_mass_err=1e-6,
-        spider_bond_idxs=spider_bond_idxs
+        spider_bond_idxs=spider_bond_idxs,
+        spider_leg_radius=spider_leg_radius
     )
 
 
@@ -255,7 +257,7 @@ def run(args, sim_params):
     dist_string += f"\n\nBad Distances:\n"
     for bad_dist in bad_dists:
         dist_string += f"- {bad_dist}\n"
-        
+
     with open(run_dir / "dist_info.txt", 'w+') as of:
         of.write(dist_string)
 
@@ -404,9 +406,9 @@ def run(args, sim_params):
 
 
     plot_fe(wham_out_path, n_bins, run_dir / "fe.png")
-    
+
     """
-    ## Read in the free energies (per R) and free energies (per bin)    
+    ## Read in the free energies (per R) and free energies (per bin)
     with open(wham_out_path, "r") as f:
         wham_lines = f.readlines()
     pmf_lines = wham_lines[:n_bins+1] # really free energies
@@ -499,6 +501,8 @@ def get_parser():
 
     parser.add_argument('--dt', type=float, default=1e-3,
                         help="Timestep for simulation.")
+
+    parser.add_argument('--spider-leg-radius', type=float, default=0.25, help="Spider leg radius")
 
     return parser
 

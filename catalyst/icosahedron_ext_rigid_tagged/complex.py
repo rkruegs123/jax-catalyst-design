@@ -53,6 +53,10 @@ class Complex:
                  spider_bond_idxs=None, spider_leg_radius=0.25
 
     ):
+
+        if spider_bond_idxs is None:
+            raise RuntimeError(f"Dont do this!")
+
         self.initial_separation_coeff = initial_separation_coeff
         self.vertex_to_bind_idx = vertex_to_bind_idx
         self.displacement_fn = displacement_fn
@@ -143,18 +147,30 @@ class Complex:
         self.rigid_body = complex_rigid_body
         self.shape = complex_shape
         self.shape_species = onp.array(list(onp.zeros(12)) + [1], dtype=onp.int32).flatten()
+        self.shape_species_single_vertex = onp.array([0, 1])
 
 
-    def get_leg_energy_fn(self, soft_eps, bond_diameter, leg_alpha):
+    def get_leg_energy_fn(self, soft_eps, bond_diameter, leg_alpha, single_vertex=False):
+
 
         def leg_energy_fn(body):
-            spider_body, shell_body = self.split_body(body)
-            spider_body_pos = self.spider_info.get_body_frame_positions(spider_body)
-            shell_body_pos = self.shell_info.get_body_frame_positions(shell_body)
+
+
+            if single_vertex:
+                vertex_body = body[0]
+                vertex_body_expanded = rigid_body.RigidBody(vertex_body.center.reshape(1, -1), rigid_body.Quaternion(vertex_body.orientation.vec.reshape(1, -1)))
+                shell_body_pos = self.shell_info.get_body_frame_positions(vertex_body_expanded)
+
+                spider_body = body[-1]
+
+            else:
+                spider_body, shell_body = self.split_body(body)
+                shell_body_pos = self.shell_info.get_body_frame_positions(shell_body)
 
             shell_vertex_centers = shell_body_pos[::6]
-            spider_bond_positions = spider_body_pos[self.spider_bond_idxs]
 
+            spider_body_pos = self.spider_info.get_body_frame_positions(spider_body)
+            spider_bond_positions = spider_body_pos[self.spider_bond_idxs]
 
             all_dists = utils.mapped_dist_point_to_line(
                 spider_bond_positions, shell_vertex_centers,
@@ -174,8 +190,13 @@ class Complex:
     def get_attr_site_shell_energy_fn(
             self, morse_attr_eps, morse_attr_alpha,
             morse_r_onset, morse_r_cutoff,
-            soft_eps
+            soft_eps, single_vertex=False
     ):
+
+        if single_vertex:
+            shape_species = self.shape_species_single_vertex
+        else:
+            shape_species = self.shape_species
 
         zero_interaction = jnp.zeros((5, 5))
         spider_pt_species = jnp.array([2, 3, 4])
@@ -192,7 +213,7 @@ class Complex:
             # species=self.n_point_species
             species=5,
             sigma=sigma, epsilon=soft_sphere_eps)
-        soft_energy_fn = rigid_body.point_energy(pair_energy_soft, self.shape, self.shape_species)
+        soft_energy_fn = rigid_body.point_energy(pair_energy_soft, self.shape, shape_species)
 
         morse_eps = zero_interaction.at[0, 3].set(morse_attr_eps)
         morse_eps = morse_eps.at[3, 0].set(morse_attr_eps)
@@ -213,13 +234,16 @@ class Complex:
 
         def attr_site_shell_energy_fn(body, **kwargs):
 
-            spider_body, shell_body = self.split_body(body)
-            bind_body_flat = shell_body[self.vertex_to_bind_idx]
-            combined_body_center = jnp.concatenate([bind_body_flat.center.reshape(1, -1),
-                                                    spider_body.center.reshape(1, -1)])
-            combined_body_qvec = jnp.concatenate([bind_body_flat.orientation.vec.reshape(1, -1),
-                                                  spider_body.orientation.vec.reshape(1, -1)])
-            combined_body = rigid_body.RigidBody(combined_body_center, rigid_body.Quaternion(combined_body_qvec))
+            if single_vertex:
+                combined_body = body
+            else:
+                spider_body, shell_body = self.split_body(body)
+                bind_body_flat = shell_body[self.vertex_to_bind_idx]
+                combined_body_center = jnp.concatenate([bind_body_flat.center.reshape(1, -1),
+                                                        spider_body.center.reshape(1, -1)])
+                combined_body_qvec = jnp.concatenate([bind_body_flat.orientation.vec.reshape(1, -1),
+                                                      spider_body.orientation.vec.reshape(1, -1)])
+                combined_body = rigid_body.RigidBody(combined_body_center, rigid_body.Quaternion(combined_body_qvec))
             pointwise_morse = morse_energy_fn(combined_body, **kwargs)
 
             pointwise_interaction_energy = soft_energy_fn(body, **kwargs) + pointwise_morse # morse_energy_fn(body, **kwargs)
@@ -233,8 +257,14 @@ class Complex:
             self, morse_attr_eps, morse_attr_alpha,
             morse_r_onset, morse_r_cutoff,
             soft_eps,
-            ss_shell_center_spider_leg_alpha
+            ss_shell_center_spider_leg_alpha,
+            single_vertex=False
     ):
+        if single_vertex:
+            shape_species = self.shape_species_single_vertex
+        else:
+            shape_species = self.shape_species
+
         zero_interaction = jnp.zeros((5, 5))
         spider_pt_species = jnp.array([2, 3, 4])
 
@@ -250,13 +280,15 @@ class Complex:
             self.displacement_fn,
             species=5,
             sigma=soft_sphere_sigma, epsilon=soft_sphere_eps)
-        soft_energy_fn = rigid_body.point_energy(pair_energy_soft, self.shape, self.shape_species)
+        soft_energy_fn = rigid_body.point_energy(pair_energy_soft, self.shape, shape_species)
 
         # Construct morse interaction between attractive sites and vertices
         morse_energy_fn = self.get_attr_site_shell_energy_fn(
             morse_attr_eps, morse_attr_alpha,
             morse_r_onset, morse_r_cutoff,
-            soft_eps)
+            soft_eps,
+            single_vertex
+        )
 
         # Combine into a base energy function
         base_energy_fn = lambda body, **kwargs: soft_energy_fn(body, **kwargs) + morse_energy_fn(body, **kwargs)
@@ -264,7 +296,7 @@ class Complex:
         # Construct the leg energy function
         if self.spider_bond_idxs is not None:
             leg_energy_fn = self.get_leg_energy_fn(
-                soft_eps, self.shell_info.vertex_radius + self.spider_leg_radius, ss_shell_center_spider_leg_alpha)
+                soft_eps, self.shell_info.vertex_radius + self.spider_leg_radius, ss_shell_center_spider_leg_alpha, single_vertex)
 
             energy_fn = lambda body: base_energy_fn(body) + leg_energy_fn(body)
 
@@ -362,7 +394,69 @@ class Complex:
         all_lines = [box_def] + type_defs + positions + ["eof"]
         return all_lines, box_def, type_defs, positions
 
+    def get_extracted_rb_info(
+            self,
 
+            # Shell-spider interaction energy parameters
+            morse_attr_eps, morse_attr_alpha,
+            morse_r_onset=10.0, morse_r_cutoff=12.0,
+
+            # Shell-shell interaction energy parameters
+            morse_ii_eps=10.0, morse_ii_alpha=5.0,
+
+            # Misc. parameters
+            soft_eps=10000.0,
+
+            # Leg parameters
+            ss_shell_center_spider_leg_alpha=2.0
+    ):
+
+        spider_body, shell_body = self.split_body(self.rigid_body)
+        vertex_to_bind = shell_body[self.vertex_to_bind_idx]
+
+        combined_center = jnp.concatenate([onp.array([vertex_to_bind.center]),
+                                           onp.array([spider_body.center])])
+        combined_quat_vec = jnp.concatenate([
+            onp.array([vertex_to_bind.orientation.vec]),
+            onp.array([spider_body.orientation.vec])])
+        combined_body = rigid_body.RigidBody(combined_center, rigid_body.Quaternion(combined_quat_vec))
+        combined_shape_species = onp.array([0, 1])
+
+        energy_fn, _ = self.get_interaction_energy_fn(
+            morse_attr_eps, morse_attr_alpha,
+            morse_r_onset, morse_r_cutoff,
+            soft_eps,
+            ss_shell_center_spider_leg_alpha,
+            single_vertex=True
+        )
+
+        leg_energy_fn = self.get_leg_energy_fn(
+            soft_eps, self.shell_info.vertex_radius + self.spider_leg_radius, ss_shell_center_spider_leg_alpha, True)
+
+        return combined_body, energy_fn, leg_energy_fn
+
+
+def combined_body_to_injavis_lines(
+        complex_, body, box_size,
+        shell_patch_radius=0.5, shell_vertex_color="43a5be", shell_patch_color="4fb06d",
+        spider_head_color="ff0000", spider_attr_color="5eff33", spider_base_color="1c1c1c"):
+
+    spider_body = body[-1]
+    vertex_body = body[0]
+    vertex_body = rigid_body.RigidBody(
+        center=jnp.expand_dims(vertex_body.center, 0),
+        orientation=rigid_body.Quaternion(jnp.expand_dims(vertex_body.orientation.vec, 0)))
+    _, spider_box_def, spider_type_defs, spider_pos = complex_.spider_info.body_to_injavis_lines(
+        spider_body, box_size, spider_head_color, spider_attr_color, spider_base_color)
+    _, shell_box_def, shell_type_defs, shell_pos = complex_.shell_info.body_to_injavis_lines(
+        vertex_body, box_size, shell_patch_radius, shell_vertex_color, shell_patch_color)
+
+    assert(spider_box_def == shell_box_def)
+    box_def = spider_box_def
+    type_defs = shell_type_defs + spider_type_defs
+    positions = shell_pos + spider_pos
+    all_lines = [box_def] + type_defs + positions + ["eof"]
+    return all_lines, box_def, type_defs, positions
 
 class TestComplex(unittest.TestCase):
 
@@ -412,6 +506,73 @@ class TestComplex(unittest.TestCase):
         print(f"Initial shell energy: {shell_energy}")
         print(f"Initial spider energy: {spider_energy}")
         print(f"Initial interaction energy: {interaction_energy}")
+
+    def test_sim_combined(self):
+        displacement_fn, shift_fn = space.free()
+        spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
+        spider_leg_radius = 0.25
+        complex_ = Complex(
+            initial_separation_coeff=0.1, vertex_to_bind_idx=5,
+            displacement_fn=displacement_fn, shift_fn=shift_fn,
+            spider_base_radius=5.0, spider_head_height=10.0,
+            spider_base_particle_radius=0.5,
+            spider_attr_particle_pos_norm=0.5,
+            spider_attr_site_radius=0.3,
+            spider_head_particle_radius=0.5,
+            spider_point_mass=1.0, spider_mass_err=1e-6,
+            spider_bond_idxs=spider_bond_idxs,
+            spider_leg_radius=spider_leg_radius
+        )
+
+        init_body, energy_fn, leg_energy_fn = complex_.get_extracted_rb_info(
+            jnp.exp(7.21) / 5, 1.5)
+        init_energy = energy_fn(init_body)
+        init_leg_energy = leg_energy_fn(init_body)
+        energy_fn = jit(energy_fn)
+        leg_energy_fn = jit(leg_energy_fn)
+
+        dt = 1e-3
+        kT = 1.0
+        gamma = 10.0
+        gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
+
+        init_fn, step_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt, kT, gamma=gamma_rb)
+        step_fn = jit(step_fn)
+        key = random.PRNGKey(0)
+        mass = complex_.shape.mass(onp.array([0, 1]))
+        state = init_fn(key, init_body, mass=mass)
+
+        trajectory = list()
+        n_steps = 20000
+        energies = list()
+        leg_energies = list()
+        for _ in tqdm(range(n_steps)):
+            state = step_fn(state)
+            trajectory.append(state.position)
+            energies.append(energy_fn(state.position))
+            leg_energy = leg_energy_fn(state.position)
+            leg_energies.append(leg_energy)
+
+
+        # plt.plot(energies)
+        # plt.show()
+        # plt.clf()
+
+        plt.plot(leg_energies)
+        plt.show()
+        plt.clf()
+
+        traj_injavis_lines = list()
+        n_vis_states = len(trajectory)
+        box_size = 30.0
+        vis_every = 250
+        for i in tqdm(range(n_vis_states), desc="Generating injavis output"):
+            if i % vis_every == 0:
+                s = trajectory[i]
+                traj_injavis_lines += combined_body_to_injavis_lines(complex_, s, box_size=box_size)[0]
+
+        with open("test_combined_sim.pos", 'w+') as of:
+            of.write('\n'.join(traj_injavis_lines))
 
 
 
