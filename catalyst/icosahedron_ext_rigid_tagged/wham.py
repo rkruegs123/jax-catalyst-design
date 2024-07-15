@@ -144,9 +144,9 @@ def run(args, sim_params):
         displacement_fn=displacement_fn, shift_fn=shift_fn,
         spider_base_radius=sim_params['spider_base_radius'], spider_head_height=sim_params['spider_head_height'],
         spider_base_particle_radius=sim_params['spider_base_particle_radius'],
-        jnp.clip(sim_params['spider_attr_particle_pos_norm'], 0.0, 1.0),
-        sim_params['spider_attr_site_radius'],
-        jnp.max(jnp.array([min_head_radius, sim_params['spider_head_particle_radius']])),
+        spider_attr_particle_pos_norm=jnp.clip(sim_params['spider_attr_particle_pos_norm'], 0.0, 1.0),
+        spider_attr_site_radius=sim_params['spider_attr_site_radius'],
+        spider_head_particle_radius=jnp.max(jnp.array([min_head_radius, sim_params['spider_head_particle_radius']])),
         spider_point_mass=1.0, spider_mass_err=1e-6,
         spider_bond_idxs=spider_bond_idxs,
         spider_leg_radius=spider_leg_radius
@@ -154,8 +154,8 @@ def run(args, sim_params):
 
 
     combined_body, base_energy_fn, _ = complex_.get_extracted_rb_info(
-        morse_shell_center_spider_head_eps=jnp.exp(sim_params['log_morse_attr_eps']),
-        morse_shell_center_spider_head_alpha=sim_params['morse_attr_alpha'],
+        morse_attr_eps=jnp.exp(sim_params['log_morse_attr_eps']),
+        morse_attr_alpha=sim_params['morse_attr_alpha'],
         morse_r_onset=sim_params['morse_r_onset'],
         morse_r_cutoff=sim_params['morse_r_cutoff']
     )
@@ -413,64 +413,6 @@ def run(args, sim_params):
     plot_fe(wham_out_path, n_bins, run_dir / "fe.png")
 
 
-    """
-    ## Read in the free energies (per R) and free energies (per bin)
-    with open(wham_out_path, "r") as f:
-        wham_lines = f.readlines()
-    pmf_lines = wham_lines[:n_bins+1] # really free energies
-    hist_fe_lines = wham_lines[n_bins+1:]
-
-
-    ### pmf data (really free energies)
-    assert(pmf_lines[0][:5] == "#Coor")
-    header = pmf_lines[0][1:].split()
-    assert(header == ["Coor", "Free", "+/-", "Prob", "+/-"])
-    all_ex_ops = list()
-    all_ex_fes = list()
-    all_ex_probs = list()
-    for line in pmf_lines[1:]:
-        assert(line[0] != "#")
-        tokens = line.split()
-
-        op = float(tokens[0])
-        all_ex_ops.append(op)
-
-        fe = float(tokens[1])
-        all_ex_fes.append(fe)
-
-        prob = float(tokens[3])
-        all_ex_probs.append(prob)
-    all_ex_ops = onp.array(all_ex_ops)
-    all_ex_fes = onp.array(all_ex_fes)
-    all_ex_probs = onp.array(all_ex_probs)
-
-    assert(hist_fe_lines[0][:7] == "#Window")
-    header = hist_fe_lines[0][1:].split()
-    assert(header == ["Window", "Free", "+/-"])
-    bin_idxs = list()
-    bin_fes = list()
-    for line in hist_fe_lines[1:]:
-        assert(line[0] == "#")
-        tokens = line[1:].split()
-
-        bin_idx = int(tokens[0])
-        bin_idxs.append(bin_idx)
-
-        bin_fe = float(tokens[1])
-        bin_fes.append(bin_fe)
-    bin_idx = onp.array(bin_idxs)
-    bin_fes = onp.array(bin_fes)
-
-
-    plt.plot(all_ex_ops, all_ex_fes)
-    plt.xlabel("OP")
-    plt.ylabel("Free Energy (kT)")
-    plt.tight_layout()
-    plt.savefig(run_dir / "fe.png")
-    plt.clf()
-    """
-
-
 def get_parser():
     parser = argparse.ArgumentParser(description="Do WHAM for a rigid spider")
 
@@ -521,6 +463,7 @@ if __name__ == "__main__":
     parser = get_parser()
     args = vars(parser.parse_args())
 
+    """
     init_head_height = 10.0
     init_log_head_eps = 4.0
     init_alpha = 1.0
@@ -538,6 +481,21 @@ if __name__ == "__main__":
         'morse_attr_alpha': init_alpha,
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0
+    }
+    """
+
+    # ext-rigid-tagged-test-eps3-bigger-radius-start, iteration 350
+    params = {
+        "log_morse_attr_eps": 4.445757112690842,
+        "morse_attr_alpha": 1.228711252063668,
+        "morse_r_cutoff": 12.0,
+        "morse_r_onset": 10.0,
+        "spider_attr_particle_pos_norm": 0.31171913270018414,
+        "spider_attr_site_radius": 1.4059036817138681,
+        "spider_base_particle_radius": 1.0949878258735661,
+        "spider_base_radius": 5.018836622251073,
+        "spider_head_height": 9.462070953473482,
+        "spider_head_particle_radius": 1.0
     }
 
     run(args, params)

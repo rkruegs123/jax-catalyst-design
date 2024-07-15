@@ -141,7 +141,7 @@ def run(args, sim_params):
         spider_base_radius=sim_params['spider_base_radius'],
         spider_head_height=sim_params['spider_head_height'],
         spider_base_particle_radius=sim_params['spider_base_particle_radius'],
-        spider_attr_particle_radius=sim_params['spider_attr_particle_radius'],
+        spider_attr_particle_radius=sim_params['spider_attr_site_radius'],
         spider_head_particle_radius=sim_params['spider_head_particle_radius'],
         spider_point_mass=1.0, spider_mass_err=1e-6,
         bond_radius=spider_leg_radius,
@@ -360,7 +360,7 @@ def run(args, sim_params):
 
     # plt.legend()
     plt.tight_layout()
-    plt.savefig(run_diri / "all_kde.png")
+    plt.savefig(run_dir / "all_kde.png")
     plt.clf()
 
     for t_idx in range(num_centers-1):
@@ -474,6 +474,7 @@ if __name__ == "__main__":
     parser = get_parser()
     args = vars(parser.parse_args())
 
+    """
     params = {
         'log_morse_attr_eps': 4.05178597,
         'morse_attr_alpha': 1.31493759,
@@ -484,6 +485,21 @@ if __name__ == "__main__":
         'spider_base_radius': 4.49771056,
         'spider_head_height': 10.0,
         'spider_head_particle_radius': 0.330227
+    }
+    """
+
+    # ext-rigid-tagged-test-eps3-bigger-radius-start, iteration 350
+    params = {
+        "log_morse_attr_eps": 4.445757112690842,
+        "morse_attr_alpha": 1.228711252063668,
+        "morse_r_cutoff": 12.0,
+        "morse_r_onset": 10.0,
+        "spider_attr_particle_pos_norm": 0.31171913270018414,
+        "spider_attr_site_radius": 1.4059036817138681,
+        "spider_base_particle_radius": 1.0949878258735661,
+        "spider_base_radius": 5.018836622251073,
+        "spider_head_height": 9.462070953473482,
+        "spider_head_particle_radius": 1.0
     }
 
     run(args, params)
