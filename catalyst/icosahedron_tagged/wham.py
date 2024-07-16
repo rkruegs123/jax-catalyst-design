@@ -166,7 +166,7 @@ def run(args, sim_params):
         step_fn = jit(step_fn)
 
         state = init_fn(key, combined_body, mass=mass)
-        n_steps = args['n_sample_states_per_sim']
+        n_steps = args['n_sample_states_per_sim'] * args['sample_every']
         traj = list()
         sample_every = args['sample_every']
         n_vis_states = 0
