@@ -25,7 +25,6 @@ def plot_fe(wham_out_path, n_bins, savepath):
     pmf_lines = wham_lines[:n_bins+1] # really free energies
     hist_fe_lines = wham_lines[n_bins+1:]
 
-
     ### pmf data (really free energies)
     assert(pmf_lines[0][:5] == "#Coor")
     header = pmf_lines[0][1:].split()
@@ -156,7 +155,7 @@ def run(args, sim_params):
         avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
 
         a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
-        b = onp.sqrt(dist**2 - a**2) # pythag
+        b = jnp.sqrt(dist**2 - a**2) # pythag
 
         vertex_com = R[0].center
         avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
@@ -175,6 +174,11 @@ def run(args, sim_params):
         morse_attr_alpha=sim_params['morse_attr_alpha'],
         morse_r_onset=sim_params['morse_r_onset'],
         morse_r_cutoff=sim_params['morse_r_cutoff'])
+    init_energy = base_energy_fn(combined_energy_fn)
+    base_energy_fn = jit(base_energy_fn)
+
+    with open(run_dir / "energy.txt", 'w+') as of:
+        of.write(f"Init base energy: {init_energy}\n")
 
     combined_shape_species = onp.array([0, 1, 1, 1, 1, 1])
     mass = complex_.shape.mass(combined_shape_species)
@@ -269,7 +273,7 @@ def run(args, sim_params):
     R_eq_inits = list()
     for c_idx in jnp.arange(num_centers):
         dist = bin_centers[c_idx]
-        c_body = get_init_body(R, dist)
+        c_body = get_init_body(combined_body, dist)
         R_eq_inits.append(c_body)
     R_eq_inits = utils.tree_stack(R_eq_inits)
 
@@ -314,6 +318,9 @@ def run(args, sim_params):
     dist_string += f"\n\nBad Distances:\n"
     for bad_dist in bad_dists:
         dist_string += f"- {bad_dist}\n"
+
+    with open(run_dir / "dist_info.txt", 'w+') as of:
+        of.write(dist_string)
 
     with open(run_dir / "wham_eq_states.pos", 'w+') as of:
         of.write('\n'.join(traj_injavis_lines))
@@ -500,6 +507,12 @@ def get_parser():
 
 
 if __name__ == "__main__":
+
+    plot_fe("analysis-ext-smaller.txt", n_bins=100, savepath="ex_fe_ext.png")
+    plot_fe("analysis-tagged-smaller.txt", n_bins=100, savepath="ex_fe_tagged.png")
+    pdb.set_trace()
+
+    
     parser = get_parser()
     args = vars(parser.parse_args())
 

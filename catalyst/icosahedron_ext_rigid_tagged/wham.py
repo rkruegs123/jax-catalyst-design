@@ -163,6 +163,9 @@ def run(args, sim_params):
     init_energy = base_energy_fn(combined_body)
     base_energy_fn = jit(base_energy_fn)
 
+    with open(run_dir / "energy.txt", 'w+') as of:
+        of.write(f"Init base energy: {init_energy}\n")
+
     mass = complex_.shape.mass(onp.array([0, 1]))
 
 
@@ -233,7 +236,7 @@ def run(args, sim_params):
         avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
 
         a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
-        b = onp.sqrt(dist**2 - a**2) # pythag
+        b = jnp.sqrt(dist**2 - a**2) # pythag
 
         vertex_com = vertex_body.center
         avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
@@ -250,7 +253,7 @@ def run(args, sim_params):
     R_eq_inits = list()
     for c_idx in jnp.arange(num_centers):
         dist = bin_centers[c_idx]
-        c_body = get_init_body(R, dist)
+        c_body = get_init_body(combined_body, dist)
         R_eq_inits.append(c_body)
     R_eq_inits = utils.tree_stack(R_eq_inits)
 
