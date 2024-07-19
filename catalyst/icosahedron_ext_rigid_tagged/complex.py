@@ -508,28 +508,99 @@ class TestComplex(unittest.TestCase):
         print(f"Initial interaction energy: {interaction_energy}")
 
     def test_sim_combined(self):
+
+        sim_params = {
+            "log_morse_attr_eps": 4.445757112690842,
+            "morse_attr_alpha": 1.228711252063668,
+            "morse_r_cutoff": 12.0,
+            "morse_r_onset": 10.0,
+            "spider_attr_particle_pos_norm": 0.31171913270018414,
+            "spider_attr_site_radius": 1.4059036817138681,
+            "spider_base_particle_radius": 1.0949878258735661,
+            "spider_base_radius": 5.018836622251073,
+            "spider_head_height": 9.462070953473482,
+            "spider_head_particle_radius": 1.0
+        }
+
         displacement_fn, shift_fn = space.free()
         spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
         spider_leg_radius = 0.25
+        min_head_radius = 0.1
         complex_ = Complex(
             initial_separation_coeff=0.1, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
-            spider_base_radius=5.0, spider_head_height=10.0,
-            spider_base_particle_radius=0.5,
-            spider_attr_particle_pos_norm=0.5,
-            spider_attr_site_radius=0.3,
-            spider_head_particle_radius=0.5,
+            spider_base_radius=sim_params["spider_base_radius"],
+            spider_head_height=sim_params["spider_head_height"],
+            spider_base_particle_radius=sim_params["spider_base_particle_radius"],
+            spider_attr_particle_pos_norm=jnp.clip(sim_params["spider_attr_particle_pos_norm"], 0.0, 1.0),
+            spider_attr_site_radius=sim_params["spider_attr_site_radius"],
+            spider_head_particle_radius=jnp.max(jnp.array([min_head_radius, sim_params['spider_head_particle_radius']])),
             spider_point_mass=1.0, spider_mass_err=1e-6,
             spider_bond_idxs=spider_bond_idxs,
             spider_leg_radius=spider_leg_radius
         )
 
-        init_body, energy_fn, leg_energy_fn = complex_.get_extracted_rb_info(
-            jnp.exp(7.21) / 5, 1.5)
-        init_energy = energy_fn(init_body)
+
+        init_body, base_energy_fn, leg_energy_fn = complex_.get_extracted_rb_info(
+            jnp.exp(sim_params['log_morse_attr_eps']), sim_params['morse_attr_alpha'],
+            morse_r_onset=sim_params['morse_r_onset'],
+            morse_r_cutoff=sim_params['morse_r_cutoff'])
+        init_energy = base_energy_fn(init_body)
         init_leg_energy = leg_energy_fn(init_body)
-        energy_fn = jit(energy_fn)
+        base_energy_fn = jit(base_energy_fn)
         leg_energy_fn = jit(leg_energy_fn)
+
+        @jit
+        def order_param_fn(R):
+            spider_body = R[-1]
+            vertex_body = R[0]
+            spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+
+            attr_site_pos = spider_body_pos[5:10]
+            vertex_com = vertex_body.center
+
+            disps = vmap(displacement_fn, (None, 0))(vertex_com, attr_site_pos)
+            drs = vmap(space.distance)(disps)
+            return jnp.mean(drs)
+
+        def get_new_vertex_com(R, dist):
+            spider_body = R[-1]
+            vertex_body = R[0]
+            spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+            attr_site_pos = spider_body_pos[5:10]
+            avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+
+            a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
+            b = onp.sqrt(dist**2 - a**2) # pythag
+
+            vertex_com = vertex_body.center
+            avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
+            dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
+            new_vertex_pos = avg_attr_site_pos - dir_*b
+            return new_vertex_pos
+
+        def get_init_body(R, dist):
+            new_vertex_pos = get_new_vertex_com(R, dist)
+            new_center = R.center.at[0].set(new_vertex_pos)
+            return rigid_body.RigidBody(new_center, R.orientation)
+
+        k_bias = 500000
+        # k_bias = 50000
+        # target_op = 5.0
+        target_op = 3.5
+        init_body = get_init_body(init_body, target_op)
+        def _harmonic_bias(op):
+            return 1/2*k_bias * (target_op - op)**2
+
+        def harmonic_bias(R):
+            op = order_param_fn(R)
+            return _harmonic_bias(op)
+
+        def energy_fn(R):
+            bias_val = harmonic_bias(R)
+            base_val = base_energy_fn(R)
+            return bias_val + base_val
+        energy_fn = jit(energy_fn)
 
         dt = 1e-3
         kT = 1.0
@@ -542,34 +613,43 @@ class TestComplex(unittest.TestCase):
         mass = complex_.shape.mass(onp.array([0, 1]))
         state = init_fn(key, init_body, mass=mass)
 
-        trajectory = list()
         n_steps = 20000
+        sample_every = 1000
+        trajectory = list()
         energies = list()
         leg_energies = list()
-        for _ in tqdm(range(n_steps)):
+        ops = list()
+        for i in tqdm(range(n_steps)):
             state = step_fn(state)
-            trajectory.append(state.position)
-            energies.append(energy_fn(state.position))
-            leg_energy = leg_energy_fn(state.position)
-            leg_energies.append(leg_energy)
+            if i % sample_every == 0:
+                trajectory.append(state.position)
+                energies.append(base_energy_fn(state.position))
+                leg_energies.append(leg_energy_fn(state.position))
+                ops.append(order_param_fn(state.position))
 
+        plt.plot(ops)
+        plt.axhline(y=target_op, linestyle="--", color="red", label="target")
+        plt.title("Order parameter")
+        plt.legend()
+        plt.show()
+        plt.close()
 
-        # plt.plot(energies)
-        # plt.show()
-        # plt.clf()
+        plt.plot(energies)
+        plt.title("Base energy")
+        plt.show()
+        plt.close()
 
         plt.plot(leg_energies)
+        plt.title("Leg energy")
         plt.show()
         plt.clf()
 
         traj_injavis_lines = list()
         n_vis_states = len(trajectory)
         box_size = 30.0
-        vis_every = 250
         for i in tqdm(range(n_vis_states), desc="Generating injavis output"):
-            if i % vis_every == 0:
-                s = trajectory[i]
-                traj_injavis_lines += combined_body_to_injavis_lines(complex_, s, box_size=box_size)[0]
+            s = trajectory[i]
+            traj_injavis_lines += combined_body_to_injavis_lines(complex_, s, box_size=box_size)[0]
 
         with open("test_combined_sim.pos", 'w+') as of:
             of.write('\n'.join(traj_injavis_lines))

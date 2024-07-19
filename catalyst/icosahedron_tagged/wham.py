@@ -15,6 +15,7 @@ from jax import random, jit, vmap, lax
 import jax.numpy as jnp
 
 from catalyst.icosahedron_tagged.complex import Complex, combined_body_to_injavis_lines
+from catalyst.icosahedron_tagged import utils
 
 
 def plot_fe(wham_out_path, n_bins, savepath):
@@ -142,11 +143,32 @@ def run(args, sim_params):
         spider_head_height=sim_params['spider_head_height'],
         spider_base_particle_radius=sim_params['spider_base_particle_radius'],
         spider_attr_particle_radius=sim_params['spider_attr_site_radius'],
-        spider_head_particle_radius=sim_params['spider_head_particle_radius'],
+        spider_head_particle_radius=jnp.max(jnp.array([min_head_radius, sim_params['spider_head_particle_radius']])),
         spider_point_mass=1.0, spider_mass_err=1e-6,
         bond_radius=spider_leg_radius,
         rel_attr_particle_pos=jnp.clip(sim_params['spider_attr_particle_pos_norm'], 0.0, 1.0)
     )
+
+    def get_new_vertex_com(R, dist):
+        leg_rbs = R[-5:] # the spider
+        spider_space_frame_pos = vmap(complex_.spider.legs[0].get_body_frame_positions)(leg_rbs).reshape(-1, 3)
+        attr_site_pos = spider_space_frame_pos[1::3]
+        avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+
+        a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
+        b = onp.sqrt(dist**2 - a**2) # pythag
+
+        vertex_com = R[0].center
+        avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
+        dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
+        new_vertex_pos = avg_attr_site_pos - dir_*b
+        return new_vertex_pos
+
+    @jit
+    def get_init_body(R, dist):
+        new_vertex_pos = get_new_vertex_com(R, dist)
+        new_center = R.center.at[0].set(new_vertex_pos)
+        return rigid_body.RigidBody(new_center, R.orientation)
 
     combined_body, base_energy_fn = complex_.get_extracted_rb_info(
         morse_attr_eps=jnp.exp(sim_params['log_morse_attr_eps']),
@@ -244,11 +266,19 @@ def run(args, sim_params):
         return eq_state.position
 
 
+    R_eq_inits = list()
+    for c_idx in jnp.arange(num_centers):
+        dist = bin_centers[c_idx]
+        c_body = get_init_body(R, dist)
+        R_eq_inits.append(c_body)
+    R_eq_inits = utils.tree_stack(R_eq_inits)
+
     key, eq_key = random.split(key)
     eq_keys = random.split(eq_key, num_centers)
     start = time.time()
     # R_eq = vmap(eq_fn, (None, 0, 0))(combined_body, bin_centers, eq_keys)
-    R_eq = vmap(eq_fn, (None, 0, 0))(combined_body, jnp.arange(num_centers), eq_keys)
+    # R_eq = vmap(eq_fn, (None, 0, 0))(combined_body, jnp.arange(num_centers), eq_keys)
+    R_eq = vmap(eq_fn, (0, 0, 0))(R_eq_inits, jnp.arange(num_centers), eq_keys)
     end = time.time()
     eq_time = end - start
 
@@ -317,7 +347,6 @@ def run(args, sim_params):
     key, sim_key = random.split(key)
     sim_keys = random.split(sim_key, num_centers)
     start = time.time()
-    # all_traj = vmap(sim_fn, (0, 0, 0))(R_eq, bin_centers, sim_keys)
     all_traj = vmap(sim_fn, (0, 0, 0))(R_eq, jnp.arange(num_centers), sim_keys)
     end = time.time()
     sim_time = end - start

@@ -69,6 +69,7 @@ class Spider:
 
         self.target_positions = target_positions
         self.target_position_dx = space.distance(displacement_fn(target_positions[0], target_positions[1]))
+        self.target_position_dx_two_away = space.distance(displacement_fn(target_positions[0], target_positions[2]))
 
 
         start_base_pos = jnp.array([leg_length, 0.0, 0.0])
@@ -116,7 +117,7 @@ class Spider:
         ## note: add weak repulsion between attractive sites by treating scaling their effective radii
         # attr_radius_prefactor = 1.2
         attr_radius_prefactor = 1.0
-        
+
         soft_sphere_eps = 1000.0
         soft_sphere_eps_mat = soft_sphere_eps * jnp.array([[0.0, 1.0, 1.0],
                                                            [1.0, 1.0, 1.0],
@@ -139,8 +140,12 @@ class Spider:
                                # [flattened_base_idxs[2], flattened_base_idxs[3]],
                                [flattened_base_idxs[3], flattened_base_idxs[4]]
             ])
-            pair_energy_bond = energy.simple_spring_bond(self.displacement_fn, bonds, length=self.target_position_dx, epsilon=10000.)
-            pair_energy_fn_with_bonds = lambda R, **kwargs: pair_energy_fn(R, **kwargs) + pair_energy_bond(R, **kwargs)
+            pair_energy_bond = energy.simple_spring_bond(self.displacement_fn, bonds, length=self.target_position_dx, epsilon=100000.)
+            bonds_two_away = jnp.array([
+                [flattened_base_idxs[0], flattened_base_idxs[2]]
+            ])
+            pair_energy_bond_two_away = energy.simple_spring_bond(self.displacement_fn, bonds_two_away, length=self.target_position_dx_two_away, epsilon=100000.)
+            pair_energy_fn_with_bonds = lambda R, **kwargs: pair_energy_fn(R, **kwargs) + pair_energy_bond(R, **kwargs) + pair_energy_bond_two_away(R, **kwargs)
             energy_fn = rigid_body.point_energy(pair_energy_fn_with_bonds, self.shape)
         else:
             energy_fn = rigid_body.point_energy(pair_energy_fn, self.shape)

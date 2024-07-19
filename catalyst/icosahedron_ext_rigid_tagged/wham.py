@@ -16,6 +16,7 @@ import jax.numpy as jnp
 
 
 from catalyst.icosahedron_ext_rigid_tagged.complex import Complex, PENTAPOD_LEGS, BASE_LEGS, combined_body_to_injavis_lines
+from catalyst.icosahedron_ext_rigid_tagged import utils
 
 
 
@@ -224,11 +225,41 @@ def run(args, sim_params):
         return eq_state.position
 
 
+    def get_new_vertex_com(R, dist):
+        spider_body = R[-1]
+        vertex_body = R[0]
+        spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+        attr_site_pos = spider_body_pos[5:10]
+        avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+
+        a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
+        b = onp.sqrt(dist**2 - a**2) # pythag
+
+        vertex_com = vertex_body.center
+        avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
+        dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
+        new_vertex_pos = avg_attr_site_pos - dir_*b
+        return new_vertex_pos
+
+    @jit
+    def get_init_body(R, dist):
+        new_vertex_pos = get_new_vertex_com(R, dist)
+        new_center = R.center.at[0].set(new_vertex_pos)
+        return rigid_body.RigidBody(new_center, R.orientation)
+
+    R_eq_inits = list()
+    for c_idx in jnp.arange(num_centers):
+        dist = bin_centers[c_idx]
+        c_body = get_init_body(R, dist)
+        R_eq_inits.append(c_body)
+    R_eq_inits = utils.tree_stack(R_eq_inits)
+
     key, eq_key = random.split(key)
     eq_keys = random.split(eq_key, num_centers)
     start = time.time()
     # R_eq = vmap(eq_fn, (None, 0, 0))(combined_body, bin_centers, eq_keys)
-    R_eq = vmap(eq_fn, (None, 0, 0))(combined_body, jnp.arange(num_centers), eq_keys)
+    # R_eq = vmap(eq_fn, (None, 0, 0))(combined_body, jnp.arange(num_centers), eq_keys)
+    R_eq = vmap(eq_fn, (0, 0, 0))(R_eq_inits, jnp.arange(num_centers), eq_keys)
     end = time.time()
     eq_time = end - start
 
