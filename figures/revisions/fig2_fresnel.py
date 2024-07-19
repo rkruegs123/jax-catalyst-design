@@ -2,6 +2,7 @@ import fresnel
 import PIL
 import pdb
 import numpy as onp
+from pathlib import Path
 
 from jax_md import space
 
@@ -10,17 +11,23 @@ from figures.revisions.utils import shell_patch_color, shell_vertex_color
 from figures.revisions.utils import spider_base_color, spider_leg_color, spider_head_color
 
 
-mode = "diffusive-init"
-# mode = "diffusive-fin"
-# mode = "abduction-mid"
-# mode = "abduction-fin"
+# mode = "diffusive-iter0"
+# mode = "diffusive-iter625"
+# mode = "diffusive-iter1250"
+# mode = "diffusive-iter2500"
+# mode = "explosive-iter625"
+# mode = "explosive-iter1250"
+mode = "explosive-iter2500"
+
 
 num_vertices = 12
 num_patches = 5
 
+output_basedir = Path("figures/revisions/output/fig2/")
+assert(output_basedir.exists())
 
-if mode == "diffusive-init":
-    image_path = "diffusive-init.png"
+if mode == "diffusive-iter0":
+    image_name = "diffusive_iter0.png"
 
     init_sep_coeff = 3.5
 
@@ -35,58 +42,107 @@ if mode == "diffusive-init":
     spider_base_radius = 5.0
 
     target_bound = False
-elif mode == "diffusive-fin":
-    image_path = "diffusive-fin.png"
+elif mode == "diffusive-iter625":
+    image_name = "diffusive_iter625.png"
 
-    init_sep_coeff = 3.5
+    init_sep_coeff = 2.5
 
-    spider_head_radius = 1.585585329339908
-    spider_base_particle_radius = 1.8063836054758438
+    spider_head_radius = 1.860629165698884
+    spider_base_particle_radius = 1.037655549912664
 
     patch_radius = 0.5
     vertex_radius = 2.0
     leg_radius = 0.25
 
-    spider_head_height = 3.9005051204550534
-    spider_base_radius = 3.731331462052045
+    spider_head_height = 4.1470396411829755
+    spider_base_radius = 4.66054602488968
+
+    move_coeff = 1.0
+    target_bound = True
+elif mode == "diffusive-iter1250":
+    image_name = "diffusive_iter1250.png"
+
+    init_sep_coeff = 3.5
+
+    spider_head_radius = 1.562486817715836
+    spider_base_particle_radius = 0.9953469539862306
+
+    patch_radius = 0.5
+    vertex_radius = 2.0
+    leg_radius = 0.25
+
+    spider_head_height = 4.46539377809863
+    spider_base_radius = 4.608224556875475
 
     move_coeff = 1.1
     target_bound = True
-elif mode == "abduction-mid":
-    image_path = "abduction-mid.png"
-
-    init_sep_coeff = 0.5
-
-    # spider_head_radius = 0.16020497320706556 # true value
-    spider_head_radius = 0.16020497320706556*3 # for visualization
-    spider_base_particle_radius = 1.3808429165344556
-
-    patch_radius = 0.5
-    vertex_radius = 2.0
-    leg_radius = 0.25
-
-    spider_head_height = 5.339756092469683
-    spider_base_radius = 4.273203766405066
-
-    move_coeff = 2.5
-    target_bound = True
-elif mode == "abduction-fin":
-    image_path = "abduction-fin.png"
+elif mode == "diffusive-iter2500":
+    image_name = "diffusive_iter2500.png"
 
     init_sep_coeff = 3.5
 
-    # spider_head_radius = 0.19001464409956886 # true value
-    spider_head_radius = 0.19001464409956886*3 # for visualization
-    spider_base_particle_radius = 1.9033441902705621
+    spider_head_radius = 1.2594821525722162
+    spider_base_particle_radius = 0.952295152322053
 
     patch_radius = 0.5
     vertex_radius = 2.0
     leg_radius = 0.25
 
-    spider_head_height = 5.302795963030974
-    spider_base_radius = 3.8489440283911924
+    spider_head_height = 4.914202511358603
+    spider_base_radius = 4.603617310300306
 
-    move_coeff = 1.2
+    move_coeff = 1.1
+    target_bound = True
+elif mode == "explosive-iter625":
+    image_name = "explositve_iter625.png"
+
+    init_sep_coeff = 0.5
+
+    spider_head_radius = 0.6057113604025651
+    spider_base_particle_radius = 0.906171639485045
+
+    patch_radius = 0.5
+    vertex_radius = 2.0
+    leg_radius = 0.25
+
+    spider_head_height = 5.3963949115948475
+    spider_base_radius = 4.98488275170156
+
+    move_coeff = 2.5
+    target_bound = True
+elif mode == "explosive-iter1250":
+    image_name = "explositve_iter1250.png"
+
+    init_sep_coeff = 0.5
+
+    spider_head_radius = 0.5261052681119952
+    spider_base_particle_radius = 0.9178163555826525
+
+    patch_radius = 0.5
+    vertex_radius = 2.0
+    leg_radius = 0.25
+
+    spider_head_height = 5.479316347694025
+    spider_base_radius = 4.885368173360221
+
+    move_coeff = 2.5
+    target_bound = True
+elif mode == "explosive-iter2500":
+    image_name = "explositve_iter2500.png"
+
+    init_sep_coeff = 3.5
+
+    spider_head_radius = 0.3766722753497847
+    spider_base_particle_radius = 1.0932485394595859
+
+    patch_radius = 0.5
+    vertex_radius = 2.0
+    leg_radius = 0.25
+
+    spider_head_height = 5.639956719373849
+    spider_base_radius = 4.6024671547308165
+
+    move_coeff = 1.25
     target_bound = True
 else:
     raise RuntimeError(f"Invalid mode: {mode}")
@@ -125,8 +181,8 @@ if target_bound:
     # move_vtx_vec = vtx_to_spider_head * (1 - head_radius/vtx_to_spider_head_dist)
     move_vtx_vec = vtx_to_spider_head * move_coeff
 
-    start_bind_idx = vertex_to_bind_idx * 5
-    end_bind_idx = start_bind_idx + 5
+    start_bind_idx = vertex_to_bind_idx * (num_patches+1)
+    end_bind_idx = start_bind_idx + (num_patches+1)
     shell_body_pos[start_bind_idx:end_bind_idx] -= move_vtx_vec
 
 
@@ -207,5 +263,6 @@ out = fresnel.preview(scene, h=370*2, w=600*2)
 image = PIL.Image.fromarray(out[:], mode='RGBA')
 
 
-image.show()
-# image.save(image_path)
+image_path = str(output_basedir / image_name)
+# image.show()
+image.save(image_path)

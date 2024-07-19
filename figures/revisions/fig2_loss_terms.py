@@ -11,18 +11,20 @@ rc('text', usetex=True)
 
 plt.rcParams.update({'font.size': 24})
 
+output_basedir = Path("figures/revisions/output/fig2/")
+assert(output_basedir.exists())
 
 mode = "diffusive"
 # mode = "explosive"
 if mode == "diffusive":
     terms_fpath = "figures/revisions/data/fig2/diffusive-run/loss_terms.txt"
     loss_fpath = "figures/revisions/data/fig2/diffusive-run/loss.txt"
-    # max_iter = 3000
-    max_iter = 500
+    max_iter = 3000
+    # max_iter = 500
 elif mode == "explosive":
     terms_fpath = "figures/revisions/data/fig2/explosive-run/loss_terms.txt"
     loss_fpath = "figures/revisions/data/fig2/explosive-run/loss.txt"
-    max_iter = 5000
+    max_iter = 3000
 else:
     raise RuntimeError(f"Invalid mode: {mode}")
 
@@ -125,9 +127,10 @@ elif mode == "explosive":
 plt.tight_layout()
 
 if mode == "diffusive":
-    fpath = "diffusive_loss.svg"
+    fname = "diffusive_loss.svg"
 elif mode == "explosive":
-    fpath = "explosive_loss.svg"
+    fname = "explosive_loss.svg"
+fpath = str(output_basedir / fname)
 
-plt.show()
-# plt.savefig(fpath)
+# plt.show()
+plt.savefig(fpath)
