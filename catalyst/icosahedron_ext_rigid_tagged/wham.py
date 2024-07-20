@@ -96,6 +96,7 @@ def run(args, sim_params):
     spider_leg_radius = args['spider_leg_radius']
     initial_separation_coeff = args['init_sep_coeff']
     n_bins = args['n_bins']
+    op_name = args['op_name']
 
     wham_basedir = Path(args['wham_basedir'])
     assert(wham_basedir.exists() and wham_basedir.is_dir())
@@ -183,19 +184,32 @@ def run(args, sim_params):
         k_biases.append(k_bias)
     k_biases = jnp.array(k_biases)
 
+    if op_name == "attr":
+        def order_param_fn(R):
+            spider_body = R[-1]
+            vertex_body = R[0]
+            spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+            # head_pos = spider_body_pos[-1]
 
-    def order_param_fn(R):
-        spider_body = R[-1]
-        vertex_body = R[0]
-        spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
-        # head_pos = spider_body_pos[-1]
+            attr_site_pos = spider_body_pos[5:10]
+            vertex_com = vertex_body.center
 
-        attr_site_pos = spider_body_pos[5:10]
-        vertex_com = vertex_body.center
+            disps = vmap(displacement_fn, (None, 0))(vertex_com, attr_site_pos)
+            drs = vmap(space.distance)(disps)
+            return jnp.mean(drs)
+    elif op_name == "head":
+        def order_param_fn(R):
+            spider_body = R[-1]
+            vertex_body = R[0]
+            spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
 
-        disps = vmap(displacement_fn, (None, 0))(vertex_com, attr_site_pos)
-        drs = vmap(space.distance)(disps)
-        return jnp.mean(drs)
+            head_pos = spider_body_pos[-1]
+            vertex_com = vertex_body.center
+
+            r = space.distance(displacement_fn(vertex_com, head_pos))
+            return r
+    else:
+        raise RuntimeError(f"Invalid op_name: {op_name}")
     get_traj_order_params = vmap(order_param_fn)
 
 
@@ -228,21 +242,37 @@ def run(args, sim_params):
         return eq_state.position
 
 
-    def get_new_vertex_com(R, dist):
-        spider_body = R[-1]
-        vertex_body = R[0]
-        spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
-        attr_site_pos = spider_body_pos[5:10]
-        avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+    if op_name == "attr":
+        def get_new_vertex_com(R, dist):
+            spider_body = R[-1]
+            vertex_body = R[0]
+            spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+            attr_site_pos = spider_body_pos[5:10]
+            avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
 
-        a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
-        b = jnp.sqrt(dist**2 - a**2) # pythag
+            a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
+            b = jnp.sqrt(dist**2 - a**2) # pythag
 
-        vertex_com = vertex_body.center
-        avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
-        dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
-        new_vertex_pos = avg_attr_site_pos - dir_*b
-        return new_vertex_pos
+            vertex_com = vertex_body.center
+            avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
+            dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
+            new_vertex_pos = avg_attr_site_pos - dir_*b
+            return new_vertex_pos
+    elif op_name == "head":
+        def get_new_vertex_com(R, dist):
+            spider_body = R[-1]
+            vertex_body = R[0]
+            vertex_com = vertex_body.center
+            spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+            head_pos = spider_body_pos[-1]
+
+            head_to_vertex = displacement_fn(head_pos, vertex_com)
+            dir_ = head_to_vertex / jnp.linalg.norm(head_to_vertex)
+
+            new_vertex_pos = head_pos - dir_*dist
+            return new_vertex_pos
+    else:
+        raise RuntimeError(f"Invalid op_name: {op_name}")
 
     @jit
     def get_init_body(R, dist):
@@ -488,6 +518,9 @@ def get_parser():
                         help="Timestep for simulation.")
 
     parser.add_argument('--spider-leg-radius', type=float, default=0.25, help="Spider leg radius")
+    parser.add_argument('--op-name', type=str, help='Name of order parameter',
+                        choices=["attr", "head"],
+                        default="attr")
 
     return parser
 

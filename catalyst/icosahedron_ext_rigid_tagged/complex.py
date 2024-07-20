@@ -509,6 +509,7 @@ class TestComplex(unittest.TestCase):
 
     def test_sim_combined(self):
 
+        """
         sim_params = {
             "log_morse_attr_eps": 4.445757112690842,
             "morse_attr_alpha": 1.228711252063668,
@@ -521,6 +522,22 @@ class TestComplex(unittest.TestCase):
             "spider_head_height": 9.462070953473482,
             "spider_head_particle_radius": 1.0
         }
+        """
+
+
+        sim_params = {
+            "log_morse_attr_eps": 4.275334020854834,
+            "morse_attr_alpha": 1.3971025451840409,
+            "morse_r_cutoff": 12.0,
+            "morse_r_onset": 10.0,
+            "spider_attr_particle_pos_norm": 0.44239971184892546,
+            "spider_attr_site_radius": 1.4675338440244141,
+            "spider_base_particle_radius": 1.5751986352547531,
+            "spider_base_radius": 4.583438597138465,
+            "spider_head_height": 9.37450471182466,
+            "spider_head_particle_radius": 1.0
+        }
+
 
         displacement_fn, shift_fn = space.free()
         spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
@@ -550,44 +567,77 @@ class TestComplex(unittest.TestCase):
         base_energy_fn = jit(base_energy_fn)
         leg_energy_fn = jit(leg_energy_fn)
 
-        @jit
-        def order_param_fn(R):
-            spider_body = R[-1]
-            vertex_body = R[0]
-            spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+        # op_dist_name = "attr"
+        op_dist_name = "head"
 
-            attr_site_pos = spider_body_pos[5:10]
-            vertex_com = vertex_body.center
+        if op_dist_name == "attr":
 
-            disps = vmap(displacement_fn, (None, 0))(vertex_com, attr_site_pos)
-            drs = vmap(space.distance)(disps)
-            return jnp.mean(drs)
+            @jit
+            def order_param_fn(R):
+                spider_body = R[-1]
+                vertex_body = R[0]
+                spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
 
-        def get_new_vertex_com(R, dist):
-            spider_body = R[-1]
-            vertex_body = R[0]
-            spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
-            attr_site_pos = spider_body_pos[5:10]
-            avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+                attr_site_pos = spider_body_pos[5:10]
+                vertex_com = vertex_body.center
 
-            a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
-            b = onp.sqrt(dist**2 - a**2) # pythag
+                disps = vmap(displacement_fn, (None, 0))(vertex_com, attr_site_pos)
+                drs = vmap(space.distance)(disps)
+                return jnp.mean(drs)
 
-            vertex_com = vertex_body.center
-            avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
-            dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
-            new_vertex_pos = avg_attr_site_pos - dir_*b
-            return new_vertex_pos
+            def get_new_vertex_com(R, dist):
+                spider_body = R[-1]
+                vertex_body = R[0]
+                spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+                attr_site_pos = spider_body_pos[5:10]
+                avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+
+                a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
+                b = onp.sqrt(dist**2 - a**2) # pythag
+
+                vertex_com = vertex_body.center
+                avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
+                dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
+                new_vertex_pos = avg_attr_site_pos - dir_*b
+                return new_vertex_pos
+        elif op_dist_name == "head":
+            @jit
+            def order_param_fn(R):
+                spider_body = R[-1]
+                vertex_body = R[0]
+                spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+
+                head_pos = spider_body_pos[-1]
+                vertex_com = vertex_body.center
+
+                r = space.distance(displacement_fn(vertex_com, head_pos))
+                return r
+
+            def get_new_vertex_com(R, dist):
+                spider_body = R[-1]
+                vertex_body = R[0]
+                vertex_com = vertex_body.center
+                spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+                head_pos = spider_body_pos[-1]
+
+                head_to_vertex = displacement_fn(head_pos, vertex_com)
+                dir_ = head_to_vertex / jnp.linalg.norm(head_to_vertex)
+
+                new_vertex_pos = head_pos - dir_*dist
+                return new_vertex_pos
+        else:
+            raise NotImplementedError
 
         def get_init_body(R, dist):
             new_vertex_pos = get_new_vertex_com(R, dist)
             new_center = R.center.at[0].set(new_vertex_pos)
             return rigid_body.RigidBody(new_center, R.orientation)
 
-        k_bias = 500000
+        # k_bias = 500000
+        k_bias = 0.0
         # k_bias = 50000
         # target_op = 5.0
-        target_op = 3.5
+        target_op = 6.0
         init_body = get_init_body(init_body, target_op)
         def _harmonic_bias(op):
             return 1/2*k_bias * (target_op - op)**2
@@ -602,7 +652,7 @@ class TestComplex(unittest.TestCase):
             return bias_val + base_val
         energy_fn = jit(energy_fn)
 
-        dt = 1e-3
+        dt = 1e-4
         kT = 1.0
         gamma = 10.0
         gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
