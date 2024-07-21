@@ -616,6 +616,7 @@ class TestComplex(unittest.TestCase):
 
 
         # ext-rigid-tagged-test-eps3-bigger-radius-start, iteration 350
+        """
         sim_params = {
             "log_morse_attr_eps": 4.445757112690842,
             "morse_attr_alpha": 1.228711252063668,
@@ -628,6 +629,22 @@ class TestComplex(unittest.TestCase):
             "spider_head_height": 9.462070953473482,
             "spider_head_particle_radius": 1.0
         }
+        """
+
+        # ext-rigid-tagged-test-eps3-bigger-radius-start-rc0.001,
+        sim_params = {
+            "log_morse_attr_eps": 4.286391530030283,
+            "morse_attr_alpha": 1.4193355362346702,
+            "morse_r_cutoff": 12.0,
+            "morse_r_onset": 10.0,
+            "spider_attr_particle_pos_norm": 0.3632382047051499,
+            "spider_attr_site_radius": 1.4752831792315242,
+            "spider_base_particle_radius": 1.4979135216810637,
+            "spider_base_radius": 4.642459866397608,
+            "spider_head_height": 9.355803312442202,
+            "spider_head_particle_radius": 1.0
+        }
+
         init_sep_coeff = 5.5
         vertex_to_bind_idx = 5
         spider_leg_radius = 0.25
@@ -648,16 +665,16 @@ class TestComplex(unittest.TestCase):
         )
 
 
-        init_body, base_energy_fn = complex_.get_extracted_rb_info(
+        combined_body, base_energy_fn = complex_.get_extracted_rb_info(
             morse_attr_eps=jnp.exp(sim_params['log_morse_attr_eps']),
             morse_attr_alpha=sim_params['morse_attr_alpha'],
             morse_r_onset=sim_params['morse_r_onset'],
             morse_r_cutoff=sim_params['morse_r_cutoff'])
-        init_energy = base_energy_fn(init_body)
+        init_energy = base_energy_fn(combined_body)
         base_energy_fn = jit(base_energy_fn)
 
         op_name = "attr"
-        op_name = "head"
+        # op_name = "head"
         if op_name == "attr":
             @jit
             def order_param_fn(R):
@@ -720,8 +737,13 @@ class TestComplex(unittest.TestCase):
         k_bias = 0.0
         # k_bias = 50000
         # target_op = 5.0
-        target_op = 3.0
-        init_body = get_init_body(init_body, target_op)
+        target_op = 4.0
+        init_body = get_init_body(combined_body, target_op)
+        box_size = 30.0
+        init_body_injavis_lines = combined_body_to_injavis_lines(complex_, init_body, box_size=box_size)[0]
+        with open("init_body.pos", 'w+') as of:
+            of.write('\n'.join(init_body_injavis_lines))
+
         def _harmonic_bias(op):
             return 1/2*k_bias * (target_op - op)**2
 
@@ -750,7 +772,7 @@ class TestComplex(unittest.TestCase):
         state = init_fn(key, init_body, mass=mass)
 
 
-        n_steps = 20000
+        n_steps = 5000
         sample_every = 1000
         trajectory = list()
         ops = list()
@@ -773,7 +795,6 @@ class TestComplex(unittest.TestCase):
 
         traj_injavis_lines = list()
         n_vis_states = len(trajectory)
-        box_size = 30.0
 
         for i in tqdm(range(n_vis_states), desc="Generating injavis output"):
             s = trajectory[i]

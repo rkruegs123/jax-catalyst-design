@@ -649,9 +649,9 @@ class TestComplex(unittest.TestCase):
             return rigid_body.RigidBody(new_center, R.orientation)
 
         # k_bias = 500000
-        # k_bias = 0.0
-        k_bias = 5000
-        target_op = 3.3
+        k_bias = 0.0
+        # k_bias = 5000
+        target_op = 4.0
         init_body = get_init_body(init_body, target_op)
         def _harmonic_bias(op):
             return 1/2*k_bias * (target_op - op)**2
@@ -677,7 +677,7 @@ class TestComplex(unittest.TestCase):
         mass = complex_.shape.mass(onp.array([0, 1]))
         state = init_fn(key, init_body, mass=mass)
 
-        n_steps = 20000
+        n_steps = 5000
         sample_every = 1000
         trajectory = list()
         energies = list()

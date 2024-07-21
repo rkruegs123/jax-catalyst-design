@@ -167,6 +167,16 @@ def run(args, sim_params):
             dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
             new_vertex_pos = avg_attr_site_pos - dir_*b
             return new_vertex_pos
+
+        def order_param_fn(R):
+            leg_rbs = R[-5:] # the spider
+            spider_space_frame_pos = vmap(complex_.spider.legs[0].get_body_frame_positions)(leg_rbs).reshape(-1, 3)
+            attr_site_pos = spider_space_frame_pos[1::3]
+
+            vertex_com = R[0].center
+            disps = vmap(displacement_fn, (None, 0))(vertex_com, attr_site_pos)
+            drs = vmap(space.distance)(disps)
+            return jnp.mean(drs)
     elif op_name == "head":
         def get_new_vertex_com(R, dist):
             leg_rbs = R[-5:] # the spider
@@ -180,8 +190,19 @@ def run(args, sim_params):
             dir_ = head_site_to_vertex / jnp.linalg.norm(head_site_to_vertex)
             new_vertex_pos = avg_head_site_pos - dir_*dist
             return new_vertex_pos
+
+        def order_param_fn(R):
+            leg_rbs = R[-5:] # the spider
+            spider_space_frame_pos = vmap(complex_.spider.legs[0].get_body_frame_positions)(leg_rbs).reshape(-1, 3)
+            head_site_pos = spider_space_frame_pos[0::3]
+
+            vertex_com = R[0].center
+            disps = vmap(displacement_fn, (None, 0))(vertex_com, head_site_pos)
+            drs = vmap(space.distance)(disps)
+            return jnp.mean(drs)
     else:
         raise RuntimeError(f"Invalid op_name: {op_name}")
+    get_traj_order_params = vmap(order_param_fn)
 
     @jit
     def get_init_body(R, dist):
@@ -197,7 +218,7 @@ def run(args, sim_params):
     spider_energy_fn = complex_.spider.get_energy_fn()
     eval_dist = 4.0
     eval_body = get_init_body(combined_body, eval_dist)
-    eval_spider_body, eval_shell_body = complex_.split_body(eval_body)
+    eval_spider_body, _ = complex_.split_body(eval_body)
     init_energy = base_energy_fn(eval_body)
     init_spider_energy = spider_energy_fn(eval_spider_body)
     base_energy_fn = jit(base_energy_fn)
@@ -206,6 +227,7 @@ def run(args, sim_params):
     eval_body_injavis_lines = combined_body_to_injavis_lines(complex_, eval_body, box_size=box_size)[0]
     with open(run_dir / "eval_body.pos", 'w+') as of:
         of.write('\n'.join(eval_body_injavis_lines))
+
 
     with open(run_dir / "energy.txt", 'w+') as of:
         of.write(f"Init base energy: {init_energy}\n")
@@ -273,31 +295,6 @@ def run(args, sim_params):
         k_biases = jnp.array(k_biases_lo + k_biases_hi)
         num_centers = len(bin_centers)
         n_bins *= 2
-
-
-    if op_name == "attr":
-        def order_param_fn(R):
-            leg_rbs = R[-5:] # the spider
-            spider_space_frame_pos = vmap(complex_.spider.legs[0].get_body_frame_positions)(leg_rbs).reshape(-1, 3)
-            attr_site_pos = spider_space_frame_pos[1::3]
-
-            vertex_com = R[0].center
-            disps = vmap(displacement_fn, (None, 0))(vertex_com, attr_site_pos)
-            drs = vmap(space.distance)(disps)
-            return jnp.mean(drs)
-    elif op_name == "head":
-        def order_param_fn(R):
-            leg_rbs = R[-5:] # the spider
-            spider_space_frame_pos = vmap(complex_.spider.legs[0].get_body_frame_positions)(leg_rbs).reshape(-1, 3)
-            head_site_pos = spider_space_frame_pos[0::3]
-
-            vertex_com = R[0].center
-            disps = vmap(displacement_fn, (None, 0))(vertex_com, head_site_pos)
-            drs = vmap(space.distance)(disps)
-            return jnp.mean(drs)
-    else:
-        raise RuntimeError(f"Invalid op_name: {op_name}")
-    get_traj_order_params = vmap(order_param_fn)
 
 
     def _harmonic_bias(op, center_idx):
