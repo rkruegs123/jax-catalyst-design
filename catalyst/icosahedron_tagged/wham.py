@@ -195,9 +195,11 @@ def run(args, sim_params):
         morse_r_onset=sim_params['morse_r_onset'],
         morse_r_cutoff=sim_params['morse_r_cutoff'])
     spider_energy_fn = complex_.spider.get_energy_fn()
-    init_spider_body, init_shell_body = complex_.split_body(combined_body)
-    init_energy = base_energy_fn(combined_body)
-    init_spider_energy = spider_energy_fn(init_spider_body)
+    eval_dist = 4.0
+    eval_body = get_init_body(combined_body, eval_dist)
+    eval_spider_body, eval_shell_body = complex_.split_body(eval_body)
+    init_energy = base_energy_fn(eval_body)
+    init_spider_energy = spider_energy_fn(eval_spider_body)
     base_energy_fn = jit(base_energy_fn)
 
     with open(run_dir / "energy.txt", 'w+') as of:
