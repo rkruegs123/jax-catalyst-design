@@ -9,7 +9,7 @@ import argparse
 from pathlib import Path
 import subprocess
 
-from jax_md import space, simulate
+from jax_md import space, simulate, minimize
 import catalyst.icosahedron_tagged.rigid_body as rigid_body
 from jax import random, jit, vmap, lax
 import jax.numpy as jnp
@@ -105,6 +105,8 @@ def run(args, sim_params):
 
     run_name = args['run_name']
     output_basedir = Path(args['output_basedir'])
+
+    minimize_for_eq = args['minimize_for_eq']
 
 
     # Setup the run directory
@@ -310,30 +312,48 @@ def run(args, sim_params):
 
     # n_eq_steps = 5000
     n_eq_steps = args['n_eq_steps']
-    def eq_fn(R_init, center_idx, eq_key):
+    if not minimize_for_eq:
+        def eq_fn(R_init, center_idx, eq_key):
 
-        @jit
-        def energy_fn(R):
-            bias_val = harmonic_bias(R, center_idx)
-            base_val = base_energy_fn(R)
-            return bias_val + base_val
+            @jit
+            def energy_fn(R):
+                bias_val = harmonic_bias(R, center_idx)
+                base_val = base_energy_fn(R)
+                return bias_val + base_val
 
-        init_fn, step_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt,
-                                                 kT, gamma=gamma_rb)
-        step_fn = jit(step_fn)
-        init_state = init_fn(eq_key, R_init, mass=mass)
+            init_fn, step_fn = simulate.nvt_langevin(energy_fn, shift_fn, dt,
+                                                     kT, gamma=gamma_rb)
+            step_fn = jit(step_fn)
+            init_state = init_fn(eq_key, R_init, mass=mass)
 
-        eq_state = lax.fori_loop(0, n_eq_steps, lambda i, state: step_fn(state), init_state)
-        return eq_state.position
+            eq_state = lax.fori_loop(0, n_eq_steps, lambda i, state: step_fn(state), init_state)
+            return eq_state.position
+    else:
+        def eq_fn(R_init, center_idx, eq_key):
 
+            @jit
+            def energy_fn(R):
+                bias_val = harmonic_bias(R, center_idx)
+                base_val = base_energy_fn(R)
+                return bias_val + base_val
 
-    R_eq_inits = list()
-    r_eq_init_injavis_lines = list()
-    for c_idx in jnp.arange(num_centers):
-        dist = bin_centers[c_idx]
-        c_body = get_init_body(combined_body, dist)
-        R_eq_inits.append(c_body)
-        r_eq_init_injavis_lines += combined_body_to_injavis_lines(complex_, c_body, box_size=box_size)[0]
+            init_fn, step_fn = minimize.fire_descent(energy_fn, shift_fn)
+            step_fn = jit(step_fn)
+            init_state = init_fn(R_init)
+
+            eq_state = lax.fori_loop(0, n_eq_steps, lambda i, state: step_fn(state), init_state)
+            return eq_state.position
+
+    if not minimize_for_eq:
+        R_eq_inits = list()
+        r_eq_init_injavis_lines = list()
+        for c_idx in jnp.arange(num_centers):
+            dist = bin_centers[c_idx]
+            c_body = get_init_body(combined_body, dist)
+            R_eq_inits.append(c_body)
+            r_eq_init_injavis_lines += combined_body_to_injavis_lines(complex_, c_body, box_size=box_size)[0]
+    else:
+        R_eq_inits = [eval_body for _ in range(num_centers)]
     R_eq_inits = utils.tree_stack(R_eq_inits)
     with open(run_dir / "r_eq_init_states.pos", 'w+') as of:
         of.write('\n'.join(r_eq_init_injavis_lines))
@@ -572,6 +592,8 @@ def get_parser():
                         help="Point for splitting the centers.")
     parser.add_argument('--k-bias-split-point', type=float, default=50000.0,
                         help="Spring constant for centers between min_center and split_point.")
+
+    parser.add_argument('--minimize-for-eq', action='store_true')
 
     return parser
 
