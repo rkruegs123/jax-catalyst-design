@@ -195,8 +195,8 @@ def run(args, sim_params):
         bin_centers_hi = list(onp.linspace(split_point, max_center, n_bins))
         k_biases_hi = [k_bias for _ in range(n_bins)]
 
-        bin_centers = jnp.array(bin_centers_lo + bin_centers_lo)
-        k_biases = jnp.array(k_biases_lo + k_biases_lo)
+        bin_centers = jnp.array(bin_centers_lo + bin_centers_hi)
+        k_biases = jnp.array(k_biases_lo + k_biases_hi)
         num_centers = len(bin_centers)
         n_bins *= 2
 

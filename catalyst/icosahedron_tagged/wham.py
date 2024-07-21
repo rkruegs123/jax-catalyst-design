@@ -194,11 +194,15 @@ def run(args, sim_params):
         morse_attr_alpha=sim_params['morse_attr_alpha'],
         morse_r_onset=sim_params['morse_r_onset'],
         morse_r_cutoff=sim_params['morse_r_cutoff'])
-    init_energy = base_energy_fn(combined_energy_fn)
+    spider_energy_fn = complex_.spider.get_energy_fn()
+    init_spider_body, init_shell_body = complex_.split_body(combined_body)
+    init_energy = base_energy_fn(combined_body)
+    init_spider_energy = spider_energy_fn(init_spider_body)
     base_energy_fn = jit(base_energy_fn)
 
     with open(run_dir / "energy.txt", 'w+') as of:
         of.write(f"Init base energy: {init_energy}\n")
+        of.write(f"Init spider energy: {init_spider_energy}\n")
 
     combined_shape_species = onp.array([0, 1, 1, 1, 1, 1])
     mass = complex_.shape.mass(combined_shape_species)
@@ -257,8 +261,8 @@ def run(args, sim_params):
         bin_centers_hi = list(onp.linspace(split_point, max_center, n_bins))
         k_biases_hi = [k_bias for _ in range(n_bins)]
 
-        bin_centers = jnp.array(bin_centers_lo + bin_centers_lo)
-        k_biases = jnp.array(k_biases_lo + k_biases_lo)
+        bin_centers = jnp.array(bin_centers_lo + bin_centers_hi)
+        k_biases = jnp.array(k_biases_lo + k_biases_hi)
         num_centers = len(bin_centers)
         n_bins *= 2
 
@@ -587,6 +591,7 @@ if __name__ == "__main__":
     """
 
     # ext-rigid-tagged-test-eps3-bigger-radius-start, iteration 350
+    """
     params = {
         "log_morse_attr_eps": 4.445757112690842,
         "morse_attr_alpha": 1.228711252063668,
@@ -597,6 +602,21 @@ if __name__ == "__main__":
         "spider_base_particle_radius": 1.0949878258735661,
         "spider_base_radius": 5.018836622251073,
         "spider_head_height": 9.462070953473482,
+        "spider_head_particle_radius": 1.0
+    }
+    """
+
+    # ext-rigid-tagged-test-eps3-bigger-radius-start-rc0.001,
+    params = {
+        "log_morse_attr_eps": 4.286391530030283,
+        "morse_attr_alpha": 1.4193355362346702,
+        "morse_r_cutoff": 12.0,
+        "morse_r_onset": 10.0,
+        "spider_attr_particle_pos_norm": 0.3632382047051499,
+        "spider_attr_site_radius": 1.4752831792315242,
+        "spider_base_particle_radius": 1.4979135216810637,
+        "spider_base_radius": 4.642459866397608,
+        "spider_head_height": 9.355803312442202,
         "spider_head_particle_radius": 1.0
     }
 
