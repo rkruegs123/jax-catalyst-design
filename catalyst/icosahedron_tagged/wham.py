@@ -202,9 +202,15 @@ def run(args, sim_params):
     init_spider_energy = spider_energy_fn(eval_spider_body)
     base_energy_fn = jit(base_energy_fn)
 
+    box_size = 30.0
+    eval_body_injavis_lines = combined_body_to_injavis_lines(complex_, eval_body, box_size=box_size)[0]
+    with open(run_dir / "eval_body.pos", 'w+') as of:
+        of.write('\n'.join(eval_body_injavis_lines))
+
     with open(run_dir / "energy.txt", 'w+') as of:
         of.write(f"Init base energy: {init_energy}\n")
         of.write(f"Init spider energy: {init_spider_energy}\n")
+        of.write(f"Remaining energy: {init_energy - init_spider_energy}\n")
 
     combined_shape_species = onp.array([0, 1, 1, 1, 1, 1])
     mass = complex_.shape.mass(combined_shape_species)
@@ -573,6 +579,10 @@ if __name__ == "__main__":
 
     # plot_fe("analysis-ext-smaller.txt", n_bins=100, savepath="ex_fe_ext.png")
     # plot_fe("analysis-tagged-smaller.txt", n_bins=100, savepath="ex_fe_tagged.png")
+    # pdb.set_trace()
+
+    # plot_fe("analysis-tagged-v4.txt", n_bins=500, savepath="test_fe_tagged.png")
+    # plot_fe("analysis-v4.txt", n_bins=500, savepath="test_fe.png")
     # pdb.set_trace()
 
     parser = get_parser()

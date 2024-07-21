@@ -158,23 +158,6 @@ def run(args, sim_params):
     )
 
 
-    combined_body, base_energy_fn, _ = complex_.get_extracted_rb_info(
-        morse_attr_eps=jnp.exp(sim_params['log_morse_attr_eps']),
-        morse_attr_alpha=sim_params['morse_attr_alpha'],
-        morse_r_onset=sim_params['morse_r_onset'],
-        morse_r_cutoff=sim_params['morse_r_cutoff']
-    )
-    eval_dist = 4.0
-    eval_body = get_init_body(combined_body, eval_dist)
-    init_energy = base_energy_fn(eval_body)
-    base_energy_fn = jit(base_energy_fn)
-
-    with open(run_dir / "energy.txt", 'w+') as of:
-        of.write(f"Init base energy: {init_energy}\n")
-
-    mass = complex_.shape.mass(onp.array([0, 1]))
-
-
     # Do WHAM
     min_center = args['min_center']
     max_center = args['max_center']
@@ -298,6 +281,27 @@ def run(args, sim_params):
         new_vertex_pos = get_new_vertex_com(R, dist)
         new_center = R.center.at[0].set(new_vertex_pos)
         return rigid_body.RigidBody(new_center, R.orientation)
+
+    combined_body, base_energy_fn, _ = complex_.get_extracted_rb_info(
+        morse_attr_eps=jnp.exp(sim_params['log_morse_attr_eps']),
+        morse_attr_alpha=sim_params['morse_attr_alpha'],
+        morse_r_onset=sim_params['morse_r_onset'],
+        morse_r_cutoff=sim_params['morse_r_cutoff']
+    )
+    eval_dist = 4.0
+    eval_body = get_init_body(combined_body, eval_dist)
+    init_energy = base_energy_fn(eval_body)
+    base_energy_fn = jit(base_energy_fn)
+
+    with open(run_dir / "energy.txt", 'w+') as of:
+        of.write(f"Init base energy: {init_energy}\n")
+
+    box_size = 30.0
+    eval_body_injavis_lines = combined_body_to_injavis_lines(complex_, eval_body, box_size=box_size)[0]
+    with open(run_dir / "eval_body.pos", 'w+') as of:
+        of.write('\n'.join(eval_body_injavis_lines))
+
+    mass = complex_.shape.mass(onp.array([0, 1]))
 
     R_eq_inits = list()
     for c_idx in jnp.arange(num_centers):
