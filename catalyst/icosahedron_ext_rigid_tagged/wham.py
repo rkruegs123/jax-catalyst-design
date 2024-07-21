@@ -312,7 +312,7 @@ def run(args, sim_params):
         r_eq_init_injavis_lines += combined_body_to_injavis_lines(complex_, c_body, box_size=box_size)[0]
     R_eq_inits = utils.tree_stack(R_eq_inits)
     with open(run_dir / "r_eq_init_states.pos", 'w+') as of:
-        of.write('\n'.join(traj_injavis_lines))
+        of.write('\n'.join(r_eq_init_injavis_lines))
 
     key, eq_key = random.split(key)
     eq_keys = random.split(eq_key, num_centers)
