@@ -328,11 +328,15 @@ def run(args, sim_params):
 
 
     R_eq_inits = list()
+    r_eq_init_injavis_lines = list()
     for c_idx in jnp.arange(num_centers):
         dist = bin_centers[c_idx]
         c_body = get_init_body(combined_body, dist)
         R_eq_inits.append(c_body)
+        r_eq_init_injavis_lines += combined_body_to_injavis_lines(complex_, c_body, box_size=box_size)[0]
     R_eq_inits = utils.tree_stack(R_eq_inits)
+    with open(run_dir / "r_eq_init_states.pos", 'w+') as of:
+        of.write('\n'.join(traj_injavis_lines))
 
     key, eq_key = random.split(key)
     eq_keys = random.split(eq_key, num_centers)
@@ -531,7 +535,7 @@ def get_parser():
     parser.add_argument('--wham-basedir', type=str, help='Base directory for WHAM executable',
                         default="/n/home10/rkrueger/wham")
 
-    parser.add_argument('--init-sep-coeff', type=float, default=0.2,
+    parser.add_argument('--init-sep-coeff', type=float, default=5.5,
                         help="Initial separation coefficient")
     parser.add_argument('--min-head-radius', type=float, default=0.1,
                         help="Tolerance for free energy convergence.")
