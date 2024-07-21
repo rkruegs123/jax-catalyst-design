@@ -339,21 +339,21 @@ def run(args, sim_params):
 
             init_fn, step_fn = minimize.fire_descent(energy_fn, shift_fn)
             step_fn = jit(step_fn)
-            init_state = init_fn(R_init)
+            init_state = init_fn(R_init, mass=mass)
 
             eq_state = lax.fori_loop(0, n_eq_steps, lambda i, state: step_fn(state), init_state)
             return eq_state.position
 
-    if not minimize_for_eq:
-        R_eq_inits = list()
-        r_eq_init_injavis_lines = list()
-        for c_idx in jnp.arange(num_centers):
+    R_eq_inits = list()
+    r_eq_init_injavis_lines = list()
+    for c_idx in jnp.arange(num_centers):
+        if not minimize_for_eq:
             dist = bin_centers[c_idx]
-            c_body = get_init_body(combined_body, dist)
-            R_eq_inits.append(c_body)
-            r_eq_init_injavis_lines += combined_body_to_injavis_lines(complex_, c_body, box_size=box_size)[0]
-    else:
-        R_eq_inits = [eval_body for _ in range(num_centers)]
+        else:
+            dist = eval_dist
+        c_body = get_init_body(combined_body, dist)
+        R_eq_inits.append(c_body)
+        r_eq_init_injavis_lines += combined_body_to_injavis_lines(complex_, c_body, box_size=box_size)[0]
     R_eq_inits = utils.tree_stack(R_eq_inits)
     with open(run_dir / "r_eq_init_states.pos", 'w+') as of:
         of.write('\n'.join(r_eq_init_injavis_lines))
@@ -606,6 +606,9 @@ if __name__ == "__main__":
 
     # plot_fe("analysis-tagged-v4.txt", n_bins=500, savepath="test_fe_tagged.png")
     # plot_fe("analysis-v4.txt", n_bins=500, savepath="test_fe.png")
+    # pdb.set_trace()
+
+    # plot_fe("check-flex.txt", n_bins=1000, savepath="flex.png")
     # pdb.set_trace()
 
     parser = get_parser()

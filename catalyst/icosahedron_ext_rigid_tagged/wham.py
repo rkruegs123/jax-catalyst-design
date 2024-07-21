@@ -321,16 +321,16 @@ def run(args, sim_params):
 
     mass = complex_.shape.mass(onp.array([0, 1]))
 
-    if not minimize_for_eq:
-        R_eq_inits = list()
-        r_eq_init_injavis_lines = list()
-        for c_idx in jnp.arange(num_centers):
+    R_eq_inits = list()
+    r_eq_init_injavis_lines = list()
+    for c_idx in jnp.arange(num_centers):
+        if not minimize_for_eq:
             dist = bin_centers[c_idx]
-            c_body = get_init_body(combined_body, dist)
-            R_eq_inits.append(c_body)
-            r_eq_init_injavis_lines += combined_body_to_injavis_lines(complex_, c_body, box_size=box_size)[0]
-    else:
-        R_eq_inits = [eval_body for _ in range(num_centers)]
+        else:
+            dist = eval_dist
+        c_body = get_init_body(combined_body, dist)
+        R_eq_inits.append(c_body)
+        r_eq_init_injavis_lines += combined_body_to_injavis_lines(complex_, c_body, box_size=box_size)[0]
     R_eq_inits = utils.tree_stack(R_eq_inits)
     with open(run_dir / "r_eq_init_states.pos", 'w+') as of:
         of.write('\n'.join(r_eq_init_injavis_lines))
