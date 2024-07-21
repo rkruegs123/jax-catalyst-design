@@ -38,9 +38,11 @@ class Complex:
 
                  # legs
                  bond_radius=0.25, bond_alpha=2.0,
-                 rel_attr_particle_pos=0.5
+                 rel_attr_particle_pos=0.5,
+                 add_spider_bonds=True
     ):
         self.n_legs = 5
+        self.add_spider_bonds = add_spider_bonds
 
         self.initial_separation_coeff = initial_separation_coeff
         self.vertex_to_bind_idx = vertex_to_bind_idx
@@ -215,10 +217,11 @@ class Complex:
             rep_val += single_leg_rep(2, spider_space_frame_pos, shell_vertex_centers)
             rep_val += single_leg_rep(3, spider_space_frame_pos, shell_vertex_centers)
             rep_val += single_leg_rep(4, spider_space_frame_pos, shell_vertex_centers)
-            rep_val += base_bond_rep(jnp.array([0, 1]), spider_space_frame_pos, shell_vertex_centers)
-            rep_val += base_bond_rep(jnp.array([1, 2]), spider_space_frame_pos, shell_vertex_centers)
-            # rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, shell_vertex_centers)
-            rep_val += base_bond_rep(jnp.array([3, 4]), spider_space_frame_pos, shell_vertex_centers)
+            if self.add_spider_bonds:
+                rep_val += base_bond_rep(jnp.array([0, 1]), spider_space_frame_pos, shell_vertex_centers)
+                rep_val += base_bond_rep(jnp.array([1, 2]), spider_space_frame_pos, shell_vertex_centers)
+                # rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, shell_vertex_centers)
+                rep_val += base_bond_rep(jnp.array([3, 4]), spider_space_frame_pos, shell_vertex_centers)
 
             return rep_val
 
@@ -241,7 +244,7 @@ class Complex:
         shell_energy_fn = self.shell.get_energy_fn(
             morse_ii_eps, morse_ii_alpha, soft_eps)
 
-        spider_energy_fn = self.spider.get_energy_fn()
+        spider_energy_fn = self.spider.get_energy_fn(add_bonds=self.add_spider_bonds)
 
 	## soft sphere repulsion between spider and shell
 
@@ -311,8 +314,6 @@ class Complex:
             bond_interaction_energy = rep_bond_energy_fn(body)
 
             return pointwise_interaction_energy + bond_interaction_energy
-            # return bond_interaction_energy
-            # return pointwise_interaction_energy
 
 
         def energy_fn(body: rigid_body.RigidBody, **kwargs):
@@ -321,10 +322,6 @@ class Complex:
             spider_energy = spider_energy_fn(spider_body, **kwargs)
             interaction_energy = interaction_energy_fn(body, **kwargs)
             return shell_energy + spider_energy + interaction_energy
-            # return spider_energy
-            # return interaction_energy
-
-        # FIXME: have to add interaction energy. Could add a repulsive interaction between the head and the vertices that has a cutoff slightly lesss than the head height to mitigate off target of a single attractive site wanting to bind the vertex itself. Also, weak attraction between base sites and vertices. Of course attraction between attractive sites and vertices. Maybe or maybe not weak repulsion between attractive sites.
 
         return energy_fn, pointwise_interaction_energy_fn
 
@@ -379,7 +376,7 @@ class Complex:
         ## Construct the energy function
 
         ### Get the contribution from the spider
-        spider_energy_fn = self.spider.get_energy_fn()
+        spider_energy_fn = self.spider.get_energy_fn(add_bonds=self.add_spider_bonds)
 
         ### Note: no contribution from just the vertex
 
@@ -479,9 +476,10 @@ class Complex:
             rep_val += single_leg_rep(2, spider_space_frame_pos, vertex_to_bind_center)
             rep_val += single_leg_rep(3, spider_space_frame_pos, vertex_to_bind_center)
             rep_val += single_leg_rep(4, spider_space_frame_pos, vertex_to_bind_center)
-            rep_val += base_bond_rep(jnp.array([0, 1]), spider_space_frame_pos, vertex_to_bind_center)
-            rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, vertex_to_bind_center)
-            rep_val += base_bond_rep(jnp.array([1, 2]), spider_space_frame_pos, vertex_to_bind_center)
+            if self.add_spider_bonds:
+                rep_val += base_bond_rep(jnp.array([0, 1]), spider_space_frame_pos, vertex_to_bind_center)
+                rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, vertex_to_bind_center)
+                rep_val += base_bond_rep(jnp.array([1, 2]), spider_space_frame_pos, vertex_to_bind_center)
             return rep_val
 
         def pointwise_interaction_energy_fn(body: rigid_body.RigidBody, **kwargs):

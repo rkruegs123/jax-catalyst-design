@@ -93,6 +93,7 @@ def run(args, sim_params):
     initial_separation_coeff = args['init_sep_coeff']
     n_bins = args['n_bins']
     op_name = args['op_name']
+    no_spider_bonds = args['no_spider_bonds']
 
     use_split_point = args['use_split_point']
     split_point = args['split_point']
@@ -151,7 +152,8 @@ def run(args, sim_params):
         spider_head_particle_radius=jnp.max(jnp.array([min_head_radius, sim_params['spider_head_particle_radius']])),
         spider_point_mass=1.0, spider_mass_err=1e-6,
         bond_radius=spider_leg_radius,
-        rel_attr_particle_pos=jnp.clip(sim_params['spider_attr_particle_pos_norm'], 0.0, 1.0)
+        rel_attr_particle_pos=jnp.clip(sim_params['spider_attr_particle_pos_norm'], 0.0, 1.0),
+        add_spider_bonds=(not no_spider_bonds)
     )
 
     if op_name == "attr":
@@ -594,6 +596,7 @@ def get_parser():
                         help="Spring constant for centers between min_center and split_point.")
 
     parser.add_argument('--minimize-for-eq', action='store_true')
+    parser.add_argument('--no-spider-bonds', action='store_true')
 
     return parser
 
