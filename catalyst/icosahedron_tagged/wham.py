@@ -463,7 +463,7 @@ def run(args, sim_params):
     for t_idx in range(num_centers):
         fpath = fpaths[t_idx]
         center = bin_centers[t_idx]
-        t_line = f"{fpath}\t{center}\t{k_bias}\n"
+        t_line = f"{fpath}\t{center}\t{k_biases[t_idx]}\n"
         metadata_lines.append(t_line)
 
     metadata_path = wham_dir / "metadata.txt"

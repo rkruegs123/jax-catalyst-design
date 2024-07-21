@@ -98,6 +98,9 @@ def run(args, sim_params):
     n_bins = args['n_bins']
     op_name = args['op_name']
 
+    use_split_point = args['use_split_point']
+    split_point = args['split_point']
+
     wham_basedir = Path(args['wham_basedir'])
     assert(wham_basedir.exists() and wham_basedir.is_dir())
     wham_exec_path = wham_basedir / "wham" / "wham"
@@ -173,16 +176,30 @@ def run(args, sim_params):
     # Do WHAM
     min_center = args['min_center']
     max_center = args['max_center']
-    bin_centers = list(onp.linspace(min_center, max_center, n_bins))
-    num_centers = len(bin_centers)
-    bin_centers = jnp.array(bin_centers)
+    if not use_split_point:
+        bin_centers = list(onp.linspace(min_center, max_center, n_bins))
+        num_centers = len(bin_centers)
+        bin_centers = jnp.array(bin_centers)
 
-    k_biases = list()
-    # k_bias = 5e4
-    k_bias = args['k_bias']
-    for center in bin_centers:
-        k_biases.append(k_bias)
-    k_biases = jnp.array(k_biases)
+        k_biases = list()
+        k_bias = args['k_bias']
+        for center in bin_centers:
+            k_biases.append(k_bias)
+        k_biases = jnp.array(k_biases)
+    else:
+        assert(split_point > min_center and split_point < max_center)
+        k_bias_split_point = args['k_bias_split_point']
+        bin_centers_lo = list(onp.linspace(min_center, split_point, n_bins))
+        k_biases_lo = [k_bias_split_point for _ in range(n_bins)]
+
+        bin_centers_hi = list(onp.linspace(split_point, max_center, n_bins))
+        k_biases_hi = [k_bias for _ in range(n_bins)]
+
+        bin_centers = jnp.array(bin_centers_lo + bin_centers_lo)
+        k_biases = jnp.array(k_biases_lo + k_biases_lo)
+        num_centers = len(bin_centers)
+        n_bins *= 2
+
 
     if op_name == "attr":
         def order_param_fn(R):
@@ -415,9 +432,6 @@ def run(args, sim_params):
             print(f"WARNING: no overlap between windows {t_idx} and {t_idx+1}")
 
 
-    # pdb.set_trace()
-
-
     def write_wham_timeseries(times, ops, fpath):
         lines = list()
         for t, op in zip(times, ops):
@@ -449,7 +463,7 @@ def run(args, sim_params):
     for t_idx in range(num_centers):
         fpath = fpaths[t_idx]
         center = bin_centers[t_idx]
-        t_line = f"{fpath}\t{center}\t{k_bias}\n"
+        t_line = f"{fpath}\t{center}\t{k_biases[t_idx]}\n"
         metadata_lines.append(t_line)
 
     metadata_path = wham_dir / "metadata.txt"
@@ -521,6 +535,12 @@ def get_parser():
     parser.add_argument('--op-name', type=str, help='Name of order parameter',
                         choices=["attr", "head"],
                         default="attr")
+
+    parser.add_argument('--use-split-point', action='store_true')
+    parser.add_argument('--split-point', type=float, default=4.0,
+                        help="Point for splitting the centers.")
+    parser.add_argument('--k-bias-split-point', type=float, default=50000.0,
+                        help="Spring constant for centers between min_center and split_point.")
 
     return parser
 
