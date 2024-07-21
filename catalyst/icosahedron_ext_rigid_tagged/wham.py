@@ -176,13 +176,13 @@ def run(args, sim_params):
     # Do WHAM
     min_center = args['min_center']
     max_center = args['max_center']
+    k_bias = args['k_bias']
     if not use_split_point:
         bin_centers = list(onp.linspace(min_center, max_center, n_bins))
         num_centers = len(bin_centers)
         bin_centers = jnp.array(bin_centers)
 
         k_biases = list()
-        k_bias = args['k_bias']
         for center in bin_centers:
             k_biases.append(k_bias)
         k_biases = jnp.array(k_biases)
