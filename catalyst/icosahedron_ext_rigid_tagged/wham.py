@@ -552,6 +552,7 @@ if __name__ == "__main__":
     """
 
     # ext-rigid-tagged-test-eps3-bigger-radius-start, iteration 350
+    """
     params = {
         "log_morse_attr_eps": 4.445757112690842,
         "morse_attr_alpha": 1.228711252063668,
@@ -562,6 +563,21 @@ if __name__ == "__main__":
         "spider_base_particle_radius": 1.0949878258735661,
         "spider_base_radius": 5.018836622251073,
         "spider_head_height": 9.462070953473482,
+        "spider_head_particle_radius": 1.0
+    }
+    """
+
+    # ext-rigid-tagged-test-eps3-bigger-radius-start-rc0.001,
+    params = {
+        "log_morse_attr_eps": 4.286391530030283,
+        "morse_attr_alpha": 1.4193355362346702,
+        "morse_r_cutoff": 12.0,
+        "morse_r_onset": 10.0,
+        "spider_attr_particle_pos_norm": 0.3632382047051499,
+        "spider_attr_site_radius": 1.4752831792315242,
+        "spider_base_particle_radius": 1.4979135216810637,
+        "spider_base_radius": 4.642459866397608,
+        "spider_head_height": 9.355803312442202,
         "spider_head_particle_radius": 1.0
     }
 

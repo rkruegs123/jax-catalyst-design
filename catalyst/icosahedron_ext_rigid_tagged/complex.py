@@ -524,7 +524,7 @@ class TestComplex(unittest.TestCase):
         }
         """
 
-
+        """
         sim_params = {
             "log_morse_attr_eps": 4.275334020854834,
             "morse_attr_alpha": 1.3971025451840409,
@@ -535,6 +535,21 @@ class TestComplex(unittest.TestCase):
             "spider_base_particle_radius": 1.5751986352547531,
             "spider_base_radius": 4.583438597138465,
             "spider_head_height": 9.37450471182466,
+            "spider_head_particle_radius": 1.0
+        }
+        """
+
+        # ext-rigid-tagged-test-eps3-bigger-radius-start-rc0.001,
+        sim_params = {
+            "log_morse_attr_eps": 4.286391530030283,
+            "morse_attr_alpha": 1.4193355362346702,
+            "morse_r_cutoff": 12.0,
+            "morse_r_onset": 10.0,
+            "spider_attr_particle_pos_norm": 0.3632382047051499,
+            "spider_attr_site_radius": 1.4752831792315242,
+            "spider_base_particle_radius": 1.4979135216810637,
+            "spider_base_radius": 4.642459866397608,
+            "spider_head_height": 9.355803312442202,
             "spider_head_particle_radius": 1.0
         }
 
@@ -567,8 +582,8 @@ class TestComplex(unittest.TestCase):
         base_energy_fn = jit(base_energy_fn)
         leg_energy_fn = jit(leg_energy_fn)
 
-        # op_dist_name = "attr"
-        op_dist_name = "head"
+        op_dist_name = "attr"
+        # op_dist_name = "head"
 
         if op_dist_name == "attr":
 
@@ -634,10 +649,9 @@ class TestComplex(unittest.TestCase):
             return rigid_body.RigidBody(new_center, R.orientation)
 
         # k_bias = 500000
-        k_bias = 0.0
-        # k_bias = 50000
-        # target_op = 5.0
-        target_op = 6.0
+        # k_bias = 0.0
+        k_bias = 5000
+        target_op = 3.3
         init_body = get_init_body(init_body, target_op)
         def _harmonic_bias(op):
             return 1/2*k_bias * (target_op - op)**2
