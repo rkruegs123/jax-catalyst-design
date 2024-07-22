@@ -5,8 +5,8 @@ import numpy as onp
 from pathlib import Path
 
 from catalyst.icosahedron import complex_getter
-from figures.preprint.utils import shell_patch_color, shell_vertex_color
-from figures.preprint.utils import spider_base_color, spider_leg_color, spider_head_color
+from figures.revisions.utils import shell_patch_color, shell_vertex_color
+from figures.revisions.utils import spider_base_color, spider_leg_color, spider_head_color
 
 
 
@@ -15,12 +15,14 @@ from figures.preprint.utils import spider_base_color, spider_leg_color, spider_h
 patch_radius = 0.5
 vertex_radius = 2.0
 
+explosive_states_basedir = Path("figures/revisions/data/fig2/explosive-states")
 
 spider_leg_radius = 0.25
 spider_base_radius = 1.0
 spider_head_radius = 1.0
-# fpath = "frame26.pos"
-fpath = "frame23.pos"
+# fname = "frame26.pos"
+fname = "frame23.pos"
+fpath = explosive_states_basedir / fname
 
 output_basedir = Path("figures/revisions/output/fig2/")
 assert(output_basedir.exists())

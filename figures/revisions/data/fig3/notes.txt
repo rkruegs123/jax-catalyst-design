@@ -6,5 +6,5 @@ wham-op1/flexible-23 -- split-point-test-k500-tagged-v12
 wham-op1/flexible-all -- split-point-test-k500-tagged-v12-no-bonds
 
 wham-op2/flexible-23 -- split-point-test-k500-tagged-head-v2
-wham-op2/flexible-all -- split-point-test-k500-tagged-v12-no-bonds
-wham-op2/rigid -- split-point-test-k500-tagged-v2
+wham-op2/flexible-all -- split-point-test-k500-tagged-head-v2-no-bonds
+wham-op2/rigid -- split-point-test-k500-head-v2
