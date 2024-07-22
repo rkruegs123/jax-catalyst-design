@@ -80,29 +80,42 @@ def read_fes(wham_out_path, n_bins):
 op1_basedir = Path(f"figures/revisions/data/fig3/wham-op1")
 op2_basedir = Path(f"figures/revisions/data/fig3/wham-op2")
 
-for mode in ["rigid", "flexible-23", "flexible-all"]:
+for figsize_x, figsize_y in [(12, 10), (12, 12), (10, 12)]:
 
-    ops_op1, fes_op1 = read_fes(op1_basedir / f"{mode}/wham/analysis.txt", 500)
-    ops_op2, fes_op2 = read_fes(op2_basedir / f"{mode}/wham/analysis.txt", 500)
+    for mode in ["rigid", "flexible-23", "flexible-all"]:
 
-    if mode == "rigid":
-        n_skip = 20
-        ops_op2 = ops_op2[n_skip:]
-        fes_op2 = fes_op2[n_skip:]
+        ops_op1, fes_op1 = read_fes(op1_basedir / f"{mode}/wham/analysis.txt", 500)
+        ops_op2, fes_op2 = read_fes(op2_basedir / f"{mode}/wham/analysis.txt", 500)
 
-    fig, ax = plt.subplots(figsize=(12, 10))
-    ax.plot(ops_op1, fes_op1, label=r"$r_{v,\bar{a}}$")
-    ax.plot(ops_op2, fes_op2, label=r"$r_{v,h}$")
-    ax.set_xlabel("Order Parameter")
-    ax.set_ylabel("Free Energy (kT)")
-    # plt.tight_layout()
-    # plt.savefig(savepath)
-    # plt.clf()
+        if mode == "rigid":
+            n_skip = 20
+            ops_op2 = ops_op2[n_skip:]
+            fes_op2 = fes_op2[n_skip:]
 
-    # y_ticks = [0, 50, 100, 150, 200, 250, 300, 350, 400]
-    y_ticks = [0, 100, 200, 300, 400]
-    ax.set_yticks(y_ticks)
-    ax.legend()
+        if mode == "rigid":
+            output_basedir = Path("figures/revisions/output/fig3/c")
+        elif mode == "flexible-23":
+            output_basedir = Path("figures/revisions/output/fig3/d")
+        elif mode == "flexible-all":
+            output_basedir = Path("figures/revisions/output/fig3/e")
+        assert(output_basedir.exists())
 
-    plt.show()
-    plt.close()
+
+        save_fname = f"fes_{figsize_x}_{figsize_y}.pdf"
+        save_fpath = str(output_basedir / save_fname)
+        fig, ax = plt.subplots(figsize=(figsize_x, figsize_y))
+        ax.plot(ops_op1, fes_op1, label=r"$r_{v,\bar{a}}$")
+        ax.plot(ops_op2, fes_op2, label=r"$r_{v,h}$")
+        ax.set_xlabel("Order Parameter")
+        ax.set_ylabel("Free Energy (kT)")
+        y_ticks = [0, 100, 200, 300, 400]
+        ax.set_yticks(y_ticks)
+        ax.legend()
+
+        # plt.tight_layout()
+
+        plt.savefig(save_fpath)
+        plt.clf()
+
+        # plt.show()
+        # plt.close()
