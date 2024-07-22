@@ -3,6 +3,7 @@ import PIL
 import pdb
 import numpy as onp
 from pathlib import Path
+from tqdm import tqdm
 
 from figures.revisions.utils import shell_patch_color, shell_vertex_color
 from figures.revisions.utils import spider_base_color, spider_leg_color, spider_head_color
@@ -19,7 +20,8 @@ assert(output_basedir.exists())
 
 fig3_data_basedir = Path("figures/revisions/data/fig3/")
 
-for op in [1, 2]:
+
+for op in tqdm([1, 2], desc="OP"):
 
     eq_states_path = fig3_data_basedir / f"wham-op{op}" / "flexible-23" / "wham_eq_states.pos"
 
@@ -27,7 +29,17 @@ for op in [1, 2]:
         eq_states_lines = f.readlines()
     lines_per_state = 29
 
-    for state_idx in [15, 25, 150, 250]:
+    if op == 1:
+        state_idxs = [19, 22, 30, 35, 185, 225, 245, 265, 300, 310, 320, 339, 351]
+        distances = list(onp.linspace(3.2, 5.0, 250)) + list(onp.linspace(5.0, 15.0, 250))
+    elif op == 2:
+        state_idxs = [15, 30, 50, 100, 150, 260, 350, 375, 495]
+        distances = list(onp.linspace(7.0, 12.0, 250)) + list(onp.linspace(12.0, 18.0, 250))
+
+    for state_idx in tqdm(state_idxs, desc="State"):
+
+        distance = onp.round(distances[state_idx], 1)
+        print(f"Distance: {distance}")
 
         """
         spider_leg_radius = 0.25
@@ -178,9 +190,9 @@ for op in [1, 2]:
         image = PIL.Image.fromarray(out[:], mode='RGBA')
 
 
-        image.show()
-        pdb.set_trace()
+        # image.show()
+        # pdb.set_trace()
 
-        # save_fname = f"eq_state{state_idx}_op{op}.png"
-        # save_fpath = str(output_basedir / save_fname)
-        # image.save(save_fpath)
+        save_fname = f"eq_state{state_idx}_op{op}_dist{distance}.png"
+        save_fpath = str(output_basedir / save_fname)
+        image.save(save_fpath)
