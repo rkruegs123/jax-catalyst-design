@@ -3,9 +3,10 @@ import PIL
 import pdb
 import numpy as onp
 
+import jax.numpy as jnp
 from jax_md import space
 
-from catalyst.icosahedron_ext_rigid_tagged.complex import Complex
+from catalyst.icosahedron_ext_rigid_tagged.complex import Complex, PENTAPOD_LEGS, BASE_LEGS
 from figures.revisions.utils import shell_patch_color, shell_vertex_color
 from figures.revisions.utils import spider_base_color, spider_leg_color, spider_head_color
 
@@ -14,6 +15,8 @@ from figures.revisions.utils import spider_base_color, spider_leg_color, spider_
 grey_vertex_color = (1.0, 1.0, 1.0)
 # grey_vertex_color = (0.9254901960784314, 0.1411764705882353, 0.1450980392156862, 1.0)
 grey_patch_color = (0.8941176470588236, 0.9137254901960784, 0.9294117647058824, 1.0)
+
+spider_bond_idxs = jnp.concatenate([PENTAPOD_LEGS, BASE_LEGS])
 
 
 mode = "diffusive-init"
@@ -53,7 +56,8 @@ complex_info = Complex(
     spider_attr_particle_pos_norm=spider_attr_particle_pos_norm,
     spider_attr_site_radius=spider_attr_site_radius,
     spider_head_particle_radius=spider_head_particle_radius,
-    spider_point_mass=1.0, spider_mass_err=1e-6
+    spider_point_mass=1.0, spider_mass_err=1e-6,
+    spider_bond_idxs=spider_bond_idxs
 )
 
 
