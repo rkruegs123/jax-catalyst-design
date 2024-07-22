@@ -30,7 +30,7 @@ for panel in ["c", "d", "e"]:
 
 
     spider_base_radius = 5.0
-    spider_head_height = 8.0
+    spider_head_height = 10.0
     # spider_base_particle_radius = 1.0
     spider_base_particle_radius = 0.8
     spider_attr_particle_pos_norm = 0.5
@@ -110,6 +110,7 @@ for panel in ["c", "d", "e"]:
     spider_body_pos = spider_info.get_body_frame_positions(spider_rb)[0]
 
 
+    shell_body_pos, spider_body_pos = rotate("z", onp.pi / 22, shell_body_pos, spider_body_pos)
     # shell_body_pos, spider_body_pos = rotate("z", onp.pi / 19, shell_body_pos, spider_body_pos)
     # shell_body_pos, spider_body_pos = rotate("x", onp.pi / 24, shell_body_pos, spider_body_pos)
     # shell_body_pos, spider_body_pos = rotate("z", onp.pi / 16, shell_body_pos, spider_body_pos)
@@ -176,6 +177,7 @@ for panel in ["c", "d", "e"]:
         geometry2.material = fresnel.material.Material(color=fresnel.color.linear(spider_leg_color),
                                                        roughness=0.8)
 
+        """
         geometry2.points[:] = [
             # [base_particle_positions[0], base_particle_positions[1]],
             [base_particle_positions[1], base_particle_positions[2]],
@@ -188,6 +190,21 @@ for panel in ["c", "d", "e"]:
             [base_particle_positions[3], head_pos],
             [base_particle_positions[4], head_pos],
         ]
+        """
+
+        geometry2.points[:] = [
+            # [base_particle_positions[0], base_particle_positions[1]],
+            [base_particle_positions[1], base_particle_positions[2]],
+            [base_particle_positions[2], base_particle_positions[3]],
+            # [base_particle_positions[3], base_particle_positions[4]],
+            [base_particle_positions[4], base_particle_positions[0]],
+            [base_particle_positions[0], head_pos],
+            [base_particle_positions[1], head_pos],
+            [base_particle_positions[2], head_pos],
+            [base_particle_positions[3], head_pos],
+            [base_particle_positions[4], head_pos],
+        ]
+
         geometry2.radius[:] = [leg_radius] * 8
     else:
         geometry2 = fresnel.geometry.Cylinder(scene, N=5)
