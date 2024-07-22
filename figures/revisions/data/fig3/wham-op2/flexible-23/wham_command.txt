@@ -1,0 +1,1 @@
+/n/home10/rkrueger/wham/wham/wham 7.0 18.0 500 0.001 1.0 0 output/split-point-test-k500-tagged-head-v2/wham/metadata.txt output/split-point-test-k500-tagged-head-v2/wham/analysis.txt
