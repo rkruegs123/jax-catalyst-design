@@ -101,15 +101,15 @@ class Spider:
         self.shape = spider_shape
 
 
-    def get_energy_fn(self, add_bonds=True, opt_leg_springs=False, leg_spring_eps=None):
+    def get_energy_fn(self, add_bonds=True, opt_leg_springs=False, leg_spring_eps=None, head_particle_eps=100000.0):
         # Morse attraction between heads
         morse_alpha = 4.0
         # morse_eps = 100.0
         # morse_eps = 10000.0
-        morse_eps = 100000.0
-        morse_eps_mat = morse_eps * jnp.array([[1.0, 0.0, 0.0],
-                                               [0.0, 0.0, 0.0],
-                                               [0.0, 0.0, 0.0]]) # only heads attract
+        # morse_eps = 100000.0
+        morse_eps_mat = head_particle_eps * jnp.array([[1.0, 0.0, 0.0],
+                                                       [0.0, 0.0, 0.0],
+                                                       [0.0, 0.0, 0.0]]) # only heads attract
         pair_energy_morse = energy.morse_pair(self.displacement_fn, species=3, sigma=0.0,
                                               epsilon=morse_eps_mat, alpha=morse_alpha)
 

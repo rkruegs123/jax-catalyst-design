@@ -41,12 +41,15 @@ class Complex:
                  rel_attr_particle_pos=0.5,
                  add_spider_bonds=True,
                  opt_leg_springs=False,
-                 leg_spring_eps=None
+                 leg_spring_eps=None,
+
+                 head_particle_eps=100000.0
     ):
         self.n_legs = 5
         self.add_spider_bonds = add_spider_bonds
         self.opt_leg_springs = opt_leg_springs
         self.leg_spring_eps = leg_spring_eps
+        self.head_particle_eps = head_particle_eps
 
         self.initial_separation_coeff = initial_separation_coeff
         self.vertex_to_bind_idx = vertex_to_bind_idx
@@ -255,7 +258,8 @@ class Complex:
         spider_energy_fn = self.spider.get_energy_fn(
             add_bonds=self.add_spider_bonds,
             opt_leg_springs=self.opt_leg_springs,
-            leg_spring_eps=self.leg_spring_eps
+            leg_spring_eps=self.leg_spring_eps,
+            head_particle_eps=self.head_particle_eps
         )
 
 	## soft sphere repulsion between spider and shell
@@ -391,7 +395,8 @@ class Complex:
         spider_energy_fn = self.spider.get_energy_fn(
             add_bonds=self.add_spider_bonds,
             opt_leg_springs=self.opt_leg_springs,
-            leg_spring_eps=self.leg_spring_eps
+            leg_spring_eps=self.leg_spring_eps,
+            head_particle_eps=self.head_particle_eps
         )
 
         ### Note: no contribution from just the vertex
@@ -583,13 +588,15 @@ class TestComplex(unittest.TestCase):
             spider_base_radius=5.0, spider_head_height=10.0,
             spider_base_particle_radius=0.5, spider_attr_particle_radius=0.5,
             spider_head_particle_radius=0.25,
-            spider_point_mass=1.0, spider_mass_err=1e-6
+            spider_point_mass=1.0, spider_mass_err=1e-6,
+            head_particle_eps=100000.0
+            # head_particle_eps=10000.0
         )
 
-        energy_fn = complex_.get_energy_fn()
+        energy_fn, _ = complex_.get_energy_fn()
         energy_fn = jit(energy_fn)
 
-        dt = 1e-3
+        dt = 1e-4
         kT = 1.0
         gamma = 10.0
         gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))
@@ -601,7 +608,8 @@ class TestComplex(unittest.TestCase):
         state = init_fn(key, complex_.rigid_body, mass=mass)
 
         trajectory = list()
-        n_steps = 25000 # 50000
+        # n_steps = 25000 # 50000
+        n_steps = 2500
         energies = list()
         for _ in tqdm(range(n_steps)):
             state = step_fn(state)
@@ -613,7 +621,7 @@ class TestComplex(unittest.TestCase):
         plt.clf()
 
         trajectory = utils.tree_stack(trajectory)
-        n_vis_freq = 1000
+        n_vis_freq = 250
         vis_traj_idxs = jnp.arange(0, n_steps+1, n_vis_freq)
         n_vis_states = len(vis_traj_idxs)
         trajectory = trajectory[vis_traj_idxs]
@@ -679,7 +687,9 @@ class TestComplex(unittest.TestCase):
             spider_head_particle_radius=jnp.max(jnp.array([min_head_radius, sim_params['spider_head_particle_radius']])),
             spider_point_mass=1.0, spider_mass_err=1e-6,
             bond_radius=spider_leg_radius,
-            rel_attr_particle_pos=jnp.clip(sim_params['spider_attr_particle_pos_norm'], 0.0, 1.0)
+            rel_attr_particle_pos=jnp.clip(sim_params['spider_attr_particle_pos_norm'], 0.0, 1.0),
+            # head_particle_eps=100000.0
+            head_particle_eps=10000.0
         )
 
 
@@ -752,7 +762,8 @@ class TestComplex(unittest.TestCase):
             return rigid_body.RigidBody(new_center, R.orientation)
 
         # k_bias = 500000
-        k_bias = 0.0
+        # k_bias = 0.0
+        k_bias = 10000.
         # k_bias = 50000
         # target_op = 5.0
         target_op = 4.0
@@ -776,7 +787,8 @@ class TestComplex(unittest.TestCase):
         energy_fn = jit(energy_fn)
 
 
-        dt = 1e-4
+        # dt = 1e-4
+        dt = 1e-3
         # dt = 1e-5
         # dt = 1e-6
         kT = 1.0
@@ -790,8 +802,8 @@ class TestComplex(unittest.TestCase):
         state = init_fn(key, init_body, mass=mass)
 
 
-        n_steps = 5000
-        sample_every = 1000
+        n_steps = 10000
+        sample_every = 250
         trajectory = list()
         ops = list()
         energies = list()

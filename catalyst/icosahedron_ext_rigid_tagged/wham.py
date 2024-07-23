@@ -417,6 +417,18 @@ def run(args, sim_params):
     end = time.time()
     sim_time = end - start
 
+    traj_injavis_lines = list()
+    num_repr_points = 2
+    every_n = n_sample_states_per_sim // num_repr_points
+    s_idxs = [(every_n - 1) + every_n*i for i in range(num_repr_points)]
+    for t_idx in range(num_centers):
+        traj = all_traj[t_idx]
+        for s_idx in s_idxs:
+            s = traj[s_idx]
+            traj_injavis_lines += combined_body_to_injavis_lines(complex_, s, box_size=box_size)[0]
+    with open(run_dir / "repr_traj.pos", 'w+') as of:
+        of.write('\n'.join(traj_injavis_lines))
+
 
     all_traj_order_params = list()
     all_traj_bias_vals = list()

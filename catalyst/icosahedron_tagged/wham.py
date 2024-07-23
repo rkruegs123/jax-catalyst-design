@@ -94,6 +94,7 @@ def run(args, sim_params):
     n_bins = args['n_bins']
     op_name = args['op_name']
     no_spider_bonds = args['no_spider_bonds']
+    head_particle_eps = args['head_particle_eps']
 
     use_split_point = args['use_split_point']
     split_point = args['split_point']
@@ -153,7 +154,8 @@ def run(args, sim_params):
         spider_point_mass=1.0, spider_mass_err=1e-6,
         bond_radius=spider_leg_radius,
         rel_attr_particle_pos=jnp.clip(sim_params['spider_attr_particle_pos_norm'], 0.0, 1.0),
-        add_spider_bonds=(not no_spider_bonds)
+        add_spider_bonds=(not no_spider_bonds),
+        head_particle_eps=head_particle_eps
     )
 
     if op_name == "attr":
@@ -240,34 +242,6 @@ def run(args, sim_params):
 
     combined_shape_species = onp.array([0, 1, 1, 1, 1, 1])
     mass = complex_.shape.mass(combined_shape_species)
-
-
-    # Dummy simulation
-    run_dummy = False
-    if run_dummy:
-        init_fn, step_fn = simulate.nvt_langevin(base_energy_fn, shift_fn, dt,
-                                                 kT, gamma=gamma_rb)
-        step_fn = jit(step_fn)
-
-        state = init_fn(key, combined_body, mass=mass)
-        n_steps = args['n_sample_states_per_sim'] * args['sample_every']
-        traj = list()
-        sample_every = args['sample_every']
-        n_vis_states = 0
-        for i in tqdm(range(n_steps)):
-            state = step_fn(state)
-            if i % sample_every == 0:
-                traj.append(state.position)
-                n_vis_states += 1
-
-        traj_injavis_lines = list()
-        box_size = 30.0
-        for i in tqdm(range(n_vis_states), desc="Generating injavis output"):
-            s = traj[i]
-            traj_injavis_lines += combined_body_to_injavis_lines(complex_, s, box_size=box_size)[0]
-
-        with open(run_dir / "test_wham_combined_sim.pos", 'w+') as of:
-            of.write('\n'.join(traj_injavis_lines))
 
 
     # Start stuff for WHAM
@@ -442,6 +416,17 @@ def run(args, sim_params):
     sim_time = end - start
 
 
+    traj_injavis_lines = list()
+    num_repr_points = 2
+    every_n = n_sample_states_per_sim // num_repr_points
+    s_idxs = [(every_n - 1) + every_n*i for i in range(num_repr_points)]
+    for t_idx in range(num_centers):
+        traj = all_traj[t_idx]
+        for s_idx in s_idxs:
+            s = traj[s_idx]
+            traj_injavis_lines += combined_body_to_injavis_lines(complex_, s, box_size=box_size)[0]
+    with open(run_dir / "repr_traj.pos", 'w+') as of:
+        of.write('\n'.join(traj_injavis_lines))
 
     # Compute order parameters and plot histograms
     all_traj_order_params = list()
@@ -597,6 +582,9 @@ def get_parser():
 
     parser.add_argument('--minimize-for-eq', action='store_true')
     parser.add_argument('--no-spider-bonds', action='store_true')
+
+    parser.add_argument('--head-particle-eps', type=float, default=100000.0,
+                        help="Epsilon to hold head particles together")
 
     return parser
 
