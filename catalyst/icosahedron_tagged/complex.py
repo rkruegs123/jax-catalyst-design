@@ -39,10 +39,14 @@ class Complex:
                  # legs
                  bond_radius=0.25, bond_alpha=2.0,
                  rel_attr_particle_pos=0.5,
-                 add_spider_bonds=True
+                 add_spider_bonds=True,
+                 opt_leg_springs=False,
+                 leg_spring_eps=None
     ):
         self.n_legs = 5
         self.add_spider_bonds = add_spider_bonds
+        self.opt_leg_springs = opt_leg_springs
+        self.leg_spring_eps = leg_spring_eps
 
         self.initial_separation_coeff = initial_separation_coeff
         self.vertex_to_bind_idx = vertex_to_bind_idx
@@ -223,6 +227,10 @@ class Complex:
                 # rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, shell_vertex_centers)
                 rep_val += base_bond_rep(jnp.array([3, 4]), spider_space_frame_pos, shell_vertex_centers)
 
+                if self.opt_leg_springs:
+                    rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, shell_vertex_centers)
+                    rep_val += base_bond_rep(jnp.array([4, 0]), spider_space_frame_pos, shell_vertex_centers)
+
             return rep_val
 
         return rep_bond_energy_fn
@@ -244,7 +252,11 @@ class Complex:
         shell_energy_fn = self.shell.get_energy_fn(
             morse_ii_eps, morse_ii_alpha, soft_eps)
 
-        spider_energy_fn = self.spider.get_energy_fn(add_bonds=self.add_spider_bonds)
+        spider_energy_fn = self.spider.get_energy_fn(
+            add_bonds=self.add_spider_bonds,
+            opt_leg_springs=self.opt_leg_springs,
+            leg_spring_eps=self.leg_spring_eps
+        )
 
 	## soft sphere repulsion between spider and shell
 
@@ -376,7 +388,11 @@ class Complex:
         ## Construct the energy function
 
         ### Get the contribution from the spider
-        spider_energy_fn = self.spider.get_energy_fn(add_bonds=self.add_spider_bonds)
+        spider_energy_fn = self.spider.get_energy_fn(
+            add_bonds=self.add_spider_bonds,
+            opt_leg_springs=self.opt_leg_springs,
+            leg_spring_eps=self.leg_spring_eps
+        )
 
         ### Note: no contribution from just the vertex
 
@@ -478,8 +494,12 @@ class Complex:
             rep_val += single_leg_rep(4, spider_space_frame_pos, vertex_to_bind_center)
             if self.add_spider_bonds:
                 rep_val += base_bond_rep(jnp.array([0, 1]), spider_space_frame_pos, vertex_to_bind_center)
-                rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, vertex_to_bind_center)
                 rep_val += base_bond_rep(jnp.array([1, 2]), spider_space_frame_pos, vertex_to_bind_center)
+                rep_val += base_bond_rep(jnp.array([3, 4]), spider_space_frame_pos, vertex_to_bind_center)
+
+                if self.opt_leg_springs:
+                    rep_val += base_bond_rep(jnp.array([2, 3]), spider_space_frame_pos, shell_vertex_centers)
+                    rep_val += base_bond_rep(jnp.array([4, 0]), spider_space_frame_pos, shell_vertex_centers)
             return rep_val
 
         def pointwise_interaction_energy_fn(body: rigid_body.RigidBody, **kwargs):

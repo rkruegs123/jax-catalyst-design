@@ -101,7 +101,7 @@ class Spider:
         self.shape = spider_shape
 
 
-    def get_energy_fn(self, add_bonds=True):
+    def get_energy_fn(self, add_bonds=True, opt_leg_springs=False, leg_spring_eps=None):
         # Morse attraction between heads
         morse_alpha = 4.0
         # morse_eps = 100.0
@@ -135,16 +135,40 @@ class Spider:
 
         if add_bonds:
             flattened_base_idxs = onp.arange(2, self.n_legs*3)[::3]
-            bonds = jnp.array([[flattened_base_idxs[0], flattened_base_idxs[1]],
-                               [flattened_base_idxs[1], flattened_base_idxs[2]],
-                               # [flattened_base_idxs[2], flattened_base_idxs[3]],
-                               [flattened_base_idxs[3], flattened_base_idxs[4]]
-            ])
-            pair_energy_bond = energy.simple_spring_bond(self.displacement_fn, bonds, length=self.target_position_dx, epsilon=100000.)
-            bonds_two_away = jnp.array([
-                [flattened_base_idxs[0], flattened_base_idxs[2]]
-            ])
-            pair_energy_bond_two_away = energy.simple_spring_bond(self.displacement_fn, bonds_two_away, length=self.target_position_dx_two_away, epsilon=100000.)
+            if opt_leg_springs:
+                assert(leg_spring_eps is not None and leg_spring_eps.shape[0] == 10)
+                leg_spring_eps_single = leg_spring_eps[:5]
+                bonds = jnp.array([[flattened_base_idxs[0], flattened_base_idxs[1]],
+                                   [flattened_base_idxs[1], flattened_base_idxs[2]],
+                                   [flattened_base_idxs[2], flattened_base_idxs[3]],
+                                   [flattened_base_idxs[3], flattened_base_idxs[4]],
+                                   [flattened_base_idxs[4], flattened_base_idxs[0]],
+                ])
+            else:
+                bonds = jnp.array([[flattened_base_idxs[0], flattened_base_idxs[1]],
+                                   [flattened_base_idxs[1], flattened_base_idxs[2]],
+                                   # [flattened_base_idxs[2], flattened_base_idxs[3]],
+                                   [flattened_base_idxs[3], flattened_base_idxs[4]]
+                ])
+                leg_spring_eps_single = 100000.
+            # pair_energy_bond = energy.simple_spring_bond(self.displacement_fn, bonds, length=self.target_position_dx, epsilon=100000.)
+            pair_energy_bond = energy.simple_spring_bond(self.displacement_fn, bonds, length=self.target_position_dx, epsilon=leg_spring_eps_single)
+
+            if opt_leg_springs:
+                leg_spring_eps_double = leg_spring_eps[5:]
+                bonds_two_away = jnp.array([
+                    [flattened_base_idxs[0], flattened_base_idxs[2]],
+                    [flattened_base_idxs[1], flattened_base_idxs[3]],
+                    [flattened_base_idxs[2], flattened_base_idxs[4]],
+                    [flattened_base_idxs[3], flattened_base_idxs[0]],
+                    [flattened_base_idxs[4], flattened_base_idxs[1]],
+                ])
+            else:
+                bonds_two_away = jnp.array([
+                    [flattened_base_idxs[0], flattened_base_idxs[2]]
+                ])
+                leg_spring_eps_double = 100000.
+            pair_energy_bond_two_away = energy.simple_spring_bond(self.displacement_fn, bonds_two_away, length=self.target_position_dx_two_away, epsilon=leg_spring_eps_double)
             pair_energy_fn_with_bonds = lambda R, **kwargs: pair_energy_fn(R, **kwargs) + pair_energy_bond(R, **kwargs) + pair_energy_bond_two_away(R, **kwargs)
             energy_fn = rigid_body.point_energy(pair_energy_fn_with_bonds, self.shape)
         else:

@@ -103,7 +103,7 @@ def optimize(args):
         fin_pointwise_energy = pointwise_interaction_energy_fn(traj[-1])
         release_loss = release_coeff*(-fin_pointwise_energy)
         loss = release_loss + extract_loss
-        
+
         return loss, (traj, release_loss, extract_loss)
         # return traj[-1].center.sum(), traj
 
@@ -232,6 +232,7 @@ def get_argparse():
     parser.add_argument('--init-rel-attr-pos', type=float, default=0.5,
                         help="Initial value for rel. attr pos")
     parser.add_argument('--min-head-radius', type=float, default=0.1, help="Minimum radius for spider head")
+
 
 
     return parser
