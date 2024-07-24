@@ -26,7 +26,7 @@ def run(args):
     batch_size = args['batch_size']
     n_iters = args['n_iters']
     n_steps = args['n_steps']
-    init_log_head_eps = args['init_log_head_eps']
+    init_log_attr_eps = args['init_log_attr_eps']
     init_alpha = args['init_alpha']
     init_head_height = args['init_head_height']
     data_dir = args['data_dir']
@@ -118,11 +118,11 @@ def run(args):
             spider_head_particle_radius=clipped_head_radius,
             spider_point_mass=1.0, spider_mass_err=1e-6,
             rel_attr_particle_pos=jnp.clip(params['rel_attr_pos'], 0.0, 1.0),
-            bond_radius=spider_leg_radius=spider_leg_radius,
+            bond_radius=spider_leg_radius,
             leg_spring_eps=leg_eps
         )
 
-        complex_energy_fn, pointwise_interaction_energy_fn = complex_.get_energy_fn(
+        complex_energy_fn = complex_.get_energy_fn(
             morse_attr_eps=jnp.exp(params['log_morse_attr_eps']),
             morse_attr_alpha=params['morse_attr_alpha'],
             morse_r_onset=params['morse_r_onset'],
@@ -152,7 +152,7 @@ def run(args):
         'spider_head_particle_radius': init_particle_radii,
 
         # catalyst energy
-        'log_morse_attr_eps': init_log_head_eps,
+        'log_morse_attr_eps': init_log_attr_eps,
         'morse_attr_alpha': init_alpha,
         'morse_r_onset': 10.0,
         'morse_r_cutoff': 12.0,
@@ -225,7 +225,7 @@ def run(args):
             spider_head_particle_radius=clipped_head_radius,
             spider_point_mass=1.0, spider_mass_err=1e-6,
             rel_attr_particle_pos=jnp.clip(params['rel_attr_pos'], 0.0, 1.0),
-            bond_radius=spider_leg_radius=spider_leg_radius
+            bond_radius=spider_leg_radius
         )
 
         if i % 10 == 0:
@@ -266,7 +266,7 @@ def get_argparse():
     parser.add_argument('--n-steps', type=int, default=1000, help="Num. steps per simulation")
     parser.add_argument('--vertex-to-bind', type=int, default=5, help="Index of vertex to bind")
     parser.add_argument('--lr', type=float, default=0.01, help="Learning rate for optimization")
-    parser.add_argument('--init-separate', type=float, default=2.5, help="Initial separation coefficient")
+    parser.add_argument('--init-separate', type=float, default=0.2, help="Initial separation coefficient")
     parser.add_argument('--spider-leg-radius', type=float, default=0.25, help="Spider leg radius")
 
     parser.add_argument('-d', '--data-dir', type=str,
@@ -288,10 +288,10 @@ def get_argparse():
     parser.add_argument('--run-name', type=str, nargs='?',
                         help='Name of run directory')
 
-    parser.add_argument('--init-log-head-eps', type=float, default=4.0,
-                        help="Initial value for parameter: log_morse_shell_center_spider_head_eps")
+    parser.add_argument('--init-log-attr-eps', type=float, default=4.0,
+                        help="Initial value for epsilon value for Morse")
     parser.add_argument('--init-alpha', type=float, default=1.5,
-                        help="Initial value for parameter: morse_shell_center_spider_head_alpha")
+                        help="Initial value for alpha parameter for morsoe potential")
 
     parser.add_argument('--init-head-height', type=float, default=10.0,
                         help="Initial value for spider head height")

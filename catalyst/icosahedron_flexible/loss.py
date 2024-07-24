@@ -16,7 +16,11 @@ def get_loss_fn(
         use_remaining_shell_vertices_loss=False, remaining_shell_vertices_loss_coeff=1.0
 ):
 
-    assert(use_abduction or use_remaining_shell_vertices_loss)
+    # assert(use_abduction or use_remaining_shell_vertices_loss)
+    if not use_abduction and not use_remaining_shell_vertices_loss:
+        loss_fn = lambda body, params, complex_: 0.0
+        loss_terms_fn = lambda body, params, complex_: (0.0, 0.0)
+        return loss_fn, loss_terms_fn
 
     d = vmap(displacement_fn, (0, None))
     def abduction_loss(body):
@@ -31,7 +35,8 @@ def get_loss_fn(
         head_remaining_shell_energy_fn = complex_.get_remaining_shell_morse_energy_fn(
             morse_attr_eps=jnp.exp(params['log_morse_attr_eps']),
             morse_attr_alpha=params['morse_attr_alpha'],
-            params["morse_r_onset"], params["morse_r_cutoff"])
+            morse_r_onset=params["morse_r_onset"],
+            morse_r_cutoff=params["morse_r_cutoff"])
         return head_remaining_shell_energy_fn(body)**2 * remaining_shell_vertices_loss_coeff
 
 
