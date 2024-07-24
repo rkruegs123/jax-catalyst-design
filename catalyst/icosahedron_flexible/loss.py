@@ -17,7 +17,7 @@ def get_loss_fn(
 ):
 
     # assert(use_abduction or use_remaining_shell_vertices_loss)
-    if not use_abduction and not use_remaining_shell_vertices_loss:
+    if (not use_abduction) and (not use_remaining_shell_vertices_loss):
         loss_fn = lambda body, params, complex_: 0.0
         loss_terms_fn = lambda body, params, complex_: (0.0, 0.0)
         return loss_fn, loss_terms_fn
@@ -44,7 +44,7 @@ def get_loss_fn(
     use_remaining_shell_vertices_bit = int(use_remaining_shell_vertices_loss)
 
     def loss_terms_fn(body, params, complex_):
-        abduction_term = abduction_loss(body)
+        abduction_term = abduction_loss(body)*use_abduction_bit
         remaining_energy_term = remaining_shell_vertices_loss(body, params, complex_)*use_remaining_shell_vertices_bit
         return abduction_term, remaining_energy_term
 
