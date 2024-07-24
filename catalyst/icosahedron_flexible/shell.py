@@ -304,8 +304,7 @@ class Shell:
     def body_to_injavis_lines(
             self, body, box_size,
             patch_radius=0.5,
-            vertex_color="43a5be", patch_color="4fb06d",
-            vertex_to_bind=None, to_bind_color="ffffff"
+            vertex_color="43a5be", patch_color="4fb06d"
     ):
 
         assert(len(body.center.shape) == 2)
@@ -323,17 +322,13 @@ class Shell:
         box_def = f"boxMatrix {box_size} 0 0 0 {box_size} 0 0 0 {box_size}"
         vertex_def = f"def V \"sphere {self.vertex_radius*2} {vertex_color}\""
         patch_def = f"def P \"sphere {patch_radius*2} {patch_color}\""
-        to_bind_def = f"def I \"sphere {self.vertex_radius*2} {to_bind_color}\""
 
         position_lines = list()
         for num_vertex in range(n_vertices):
             vertex_start_idx = num_vertex*6
 
             # vertex center
-            if vertex_to_bind is not None and num_vertex == vertex_to_bind:
-                v_type = "I"
-            else:
-                v_type = "V"
+            v_type = "V"
 
             vertex_center_pos = body_pos[vertex_start_idx]
             vertex_line = f"{v_type} {vertex_center_pos[0]} {vertex_center_pos[1]} {vertex_center_pos[2]}"
@@ -345,8 +340,8 @@ class Shell:
                 position_lines.append(patch_line)
 
         # Return: all lines, box info, particle types, positions
-        all_lines = [box_def, vertex_def, patch_def, to_bind_def] + position_lines + ["eof"]
-        return all_lines, box_def, [vertex_def, patch_def, to_bind_def], position_lines
+        all_lines = [box_def, vertex_def, patch_def] + position_lines + ["eof"]
+        return all_lines, box_def, [vertex_def, patch_def], position_lines
 
 
 class TestShell(unittest.TestCase):

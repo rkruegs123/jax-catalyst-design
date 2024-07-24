@@ -10,7 +10,13 @@ from jax.config import config
 config.update('jax_enable_x64', True)
 
 
-def get_loss_fn(displacement_fn, vertex_to_bind):
+def get_loss_fn(
+        displacement_fn, vertex_to_bind,
+        use_abduction=True,
+        use_remaining_shell_vertices_loss=False, remaining_shell_vertices_loss_coeff=1.0
+):
+
+    assert(use_abduction or use_remaining_shell_vertices_loss)
 
     d = vmap(displacement_fn, (0, None))
     def abduction_loss(body):
@@ -20,30 +26,25 @@ def get_loss_fn(displacement_fn, vertex_to_bind):
         vertex_far_from_icos = -jnp.sum(dists)
         return vertex_far_from_icos
 
-    """
-    def release_term(body, params, complex_):
-        init_rb = complex_.rigid_body
-        init_spider_rb, init_shell_rb = self.split_body(body)
 
-        init_vtx_to_bind = init_shell_rb[complex_.vertex_to_bind_idx]
-        init_leg0 = init_spider_rb[0]
-        init_spider_head = init_leg0.get_body_frame_positions(init_spider_rb[0])[0]
+    def remaining_shell_vertices_loss(body, params, complex_):
+        head_remaining_shell_energy_fn = complex_.get_remaining_shell_morse_energy_fn(
+            morse_attr_eps=jnp.exp(params['log_morse_attr_eps']),
+            morse_attr_alpha=params['morse_attr_alpha'],
+            params["morse_r_onset"], params["morse_r_cutoff"])
+        return head_remaining_shell_energy_fn(body)**2 * remaining_shell_vertices_loss_coeff
 
-        disp_vector = displacement_fn(init_vtx_to_bind, init_spider_head)
-        disp_vector_norm = disp_vector / space.distance(disp_vector)
 
-        dist_to_attr_site = init_leg0.leg_length * init_leg0.attr_particle_pos_norm
-    """
-        
+    use_abduction_bit = int(use_abduction)
+    use_remaining_shell_vertices_bit = int(use_remaining_shell_vertices_loss)
 
-    def loss_terms_fn(body, params, complex_info):
+    def loss_terms_fn(body, params, complex_):
         abduction_term = abduction_loss(body)
-        return abduction_term
+        remaining_energy_term = remaining_shell_vertices_loss(body, params, complex_)*use_remaining_shell_vertices_bit
+        return abduction_term, remaining_energy_term
 
     def loss_fn(body, params, complex_info):
-        t1 = loss_terms_fn(body, params, complex_info)
-        return t1
+        t1, t2 = loss_terms_fn(body, params, complex_info)
+        return t1 + t2
 
     return loss_fn, loss_terms_fn
-
-

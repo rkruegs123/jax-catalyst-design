@@ -74,6 +74,7 @@ class Complex:
         shell_body = body[:12]
         return spider_body, shell_body
 
+
     def load(self):
         self.shell = Shell(self.displacement_fn, self.shift_fn,
                            verbose=self.verbose) # note: won't change
@@ -115,12 +116,23 @@ class Complex:
 
         # Next
 
+        """
         init_spider_center = spider.rigid_body.center
         disp_vector = self.displacement_fn(vertex_to_bind.center,
                                            jnp.mean(self.shell.rigid_body.center, axis=0))
         disp_vector /= jnp.linalg.norm(disp_vector)
 
         leg_center = vertex_to_bind.center + disp_vector * self.shell.vertex_radius * self.initial_separation_coeff # shift spider away from vertex
+        spider_center = jnp.full((5, 3), leg_center)
+        """
+
+        init_spider_center = spider.rigid_body.center
+        disp_vector = self.displacement_fn(vertex_to_bind.center,
+                                           jnp.mean(self.shell.rigid_body.center, axis=0))
+        disp_vector /= jnp.linalg.norm(disp_vector)
+        # leg_center = vertex_to_bind.center + disp_vector * self.shell.vertex_radius * self.initial_separation_coeff
+        # leg_center = vertex_to_bind.center + disp_vector * self.spider_head_height
+        leg_center = vertex_to_bind.center + disp_vector * self.spider_head_height + disp_vector * self.shell.vertex_radius * self.initial_separation_coeff
         spider_center = jnp.full((5, 3), leg_center)
 
 
@@ -302,6 +314,51 @@ class Complex:
 
         return energy_fn
 
+    def get_remaining_shell_morse_energy_fn(
+            self,
+            # Shell-attr interaction parameters
+            morse_attr_eps=350.0, morse_attr_alpha=2.0, morse_r_onset=12.0, morse_r_cutoff=14.0):
+
+        zero_interaction = jnp.zeros((5, 5))
+
+        spider_pt_species = jnp.array([2, 3, 4])
+        sigma = zero_interaction.at[0, spider_pt_species].set(self.shell.vertex_radius + self.spider.particle_radii)
+        sigma = sigma.at[spider_pt_species, 0].set(self.shell.vertex_radius + self.spider.particle_radii)
+        sigma = jnp.where(sigma == 0.0, 1e-5, sigma) # avoids nans
+
+        morse_eps = zero_interaction.at[0, 3].set(morse_attr_eps)
+        morse_eps = morse_eps.at[3, 0].set(morse_attr_eps)
+
+        morse_alpha = zero_interaction.at[0, 3].set(morse_attr_alpha)
+        morse_alpha = morse_alpha.at[3, 0].set(morse_attr_alpha)
+
+        pair_energy_morse = energy.morse_pair(
+            self.displacement_fn,
+            species=5,
+            sigma=sigma, epsilon=morse_eps, alpha=morse_alpha,
+            r_onset=morse_r_onset, r_cutoff=morse_r_cutoff,
+        )
+
+        remaining_shell_shape_species = onp.array(list(onp.zeros(11)) + [1]*self.spider.n_legs, dtype=onp.int32).flatten()
+        morse_energy_fn = rigid_body.point_energy(pair_energy_morse, self.shape, remaining_shell_shape_species)
+
+        def remaining_shell_morse_energy_fn(body: rigid_body.RigidBody, **kwargs):
+            spider_body, shell_body = self.split_body(body)
+
+            shell_center = shell_body.center
+            shell_qvec = shell_body.orientation.vec
+            remaining_shell_center = jnp.concatenate([shell_center[:self.vertex_to_bind_idx], shell_center[self.vertex_to_bind_idx+1:]])
+            remaining_shell_qvec = jnp.concatenate([shell_qvec[:self.vertex_to_bind_idx], shell_qvec[self.vertex_to_bind_idx+1:]])
+            # remaining_shell_body = rigid_body.RigidBody(remaining_shell_center, rigid_body.Quaternion(remaining_shell_qvec))
+            remaining_shell_and_spider_center = jnp.concatenate([remaining_shell_center, spider_body.center])
+            remaining_shell_and_spider_qvec = jnp.concatenate([remaining_shell_qvec, spider_body.orientation.vec])
+            remaining_shell_and_spider = rigid_body.RigidBody(remaining_shell_and_spider_center, rigid_body.Quaternion(remaining_shell_and_spider_qvec))
+
+            val = morse_energy_fn(remaining_shell_and_spider)
+            return val
+
+        return remaining_shell_morse_energy_fn
+
 
     def body_to_injavis_lines(
             self, body, box_size,
@@ -313,7 +370,7 @@ class Complex:
         _, spider_box_def, spider_type_defs, spider_pos = self.spider.body_to_injavis_lines(
             spider_body, box_size)
         _, shell_box_def, shell_type_defs, shell_pos = self.shell.body_to_injavis_lines(
-            shell_body, box_size, shell_patch_radius, vertex_to_bind=self.vertex_to_bind_idx)
+            shell_body, box_size, shell_patch_radius)
 
         assert(spider_box_def == shell_box_def)
         box_def = spider_box_def
@@ -323,14 +380,13 @@ class Complex:
         return all_lines, box_def, type_defs, positions
 
 
-
 class TestComplex(unittest.TestCase):
 
     def test_init(self):
         displacement_fn, shift_fn = space.free()
         complex_ = Complex(
             # initial_separation_coeff=5.5,
-            initial_separation_coeff=0.0,
+            initial_separation_coeff=0.2,
             vertex_to_bind_idx=5,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=5.0, spider_head_height=10.0,
@@ -352,7 +408,13 @@ class TestComplex(unittest.TestCase):
         with open("init.pos", 'w+') as of:
             of.write('\n'.join(init_injavis_lines))
 
+
+        remaining_energy_fn = complex_.get_remaining_shell_morse_energy_fn(morse_attr_eps=350.0, morse_attr_alpha=1.0)
+        remaining_energy = remaining_energy_fn(rb)
+        print(f"Remaining energy: {remaining_energy}")
+
         return
+
 
     def test_simulate(self):
 
@@ -361,7 +423,7 @@ class TestComplex(unittest.TestCase):
 
         displacement_fn, shift_fn = space.free()
         complex_ = Complex(
-            initial_separation_coeff=5.5, vertex_to_bind_idx=5,
+            initial_separation_coeff=0.2, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=5.0, spider_head_height=10.0,
             spider_base_particle_radius=0.5, spider_attr_particle_radius=0.5,
@@ -388,7 +450,7 @@ class TestComplex(unittest.TestCase):
 
         trajectory = list()
         # n_steps = 25000 # 50000
-        n_steps = 50000
+        n_steps = 10000
         energies = list()
         for _ in tqdm(range(n_steps)):
             state = step_fn(state)

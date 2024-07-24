@@ -36,3 +36,15 @@ def dist_point_to_line_segment(line_points, point, displacement_fn):
 
     return space.distance(d_pt)
 mapped_dist_point_to_line = vmap(vmap(dist_point_to_line_segment, (0, None, None)), (None, 0, None))
+
+
+def traj_to_pos_file(traj, complex_, traj_path, box_size=30.0):
+    assert(len(traj.center.shape) == 3)
+    n_states = traj.center.shape[0]
+
+    traj_injavis_lines = list()
+    for i in tqdm(range(n_states), desc="Generating injavis output"):
+        s = traj[i]
+        traj_injavis_lines += complex_.body_to_injavis_lines(s, box_size=box_size)[0]
+    with open(traj_path, 'w+') as of:
+        of.write('\n'.join(traj_injavis_lines))
