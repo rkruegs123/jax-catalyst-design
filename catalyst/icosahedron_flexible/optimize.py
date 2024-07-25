@@ -51,9 +51,19 @@ def run(args):
     use_abduction_loss = args['use_abduction_loss']
     use_remaining_shell_vertices_loss = args['use_remaining_shell_vertices_loss']
     remaining_shell_vertices_loss_coeff = args['remaining_shell_vertices_loss_coeff']
+
     use_release_loss = args['use_release_loss']
     release_loss_coeff = args['release_loss_coeff']
-    assert(not use_release_loss)
+    release_loss_final_state = args['release_loss_final_state']
+    release_loss_average = args['release_loss_average']
+    release_loss_average_start = args['release_loss_average_start']
+    release_loss_average_freq = args['release_loss_average_freq']
+    if use_release_loss:
+        assert(int(release_loss_final_state) + int(release_loss_average) == 1)
+        if release_loss_average:
+            assert(release_loss_average_start > n_steps)
+            diff = release_loss_average_start - n_steps
+            assert(diff % release_loss_average_freq == 0)
 
     vis_frame_rate = args['vis_frame_rate']
     assert(n_steps % vis_frame_rate == 0)
@@ -71,6 +81,14 @@ def run(args):
         displacement_fn, vertex_to_bind_idx,
         use_abduction=use_abduction_loss,
         use_remaining_shell_vertices_loss=False
+    )
+
+    release_state_loss_fn, release_state_loss_terms_fn = get_loss_fn(
+        displacement_fn, vertex_to_bind_idx,
+        use_abduction=False,
+        use_remaining_shell_vertices_loss=False,
+        use_release_loss=use_release_loss,
+        release_loss_coeff=release_loss_coeff
     )
 
 
@@ -99,8 +117,6 @@ def run(args):
     keys = random.split(key, n_iters)
 
 
-
-    # Dummy loss function for now
     def loss_fn(params, key):
 
         clipped_head_radius = jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']]))
@@ -135,11 +151,21 @@ def run(args):
                                      n_steps, gamma, kT, shift_fn, dt, key)
         init_state = traj[0]
 
-        # extract_loss = state_loss_fn(fin_state, params, complex_)
+
         _, remaining_energy_loss, _ = init_state_loss_terms_fn(init_state, params, complex_)
         extract_loss, _, _ = fin_state_loss_terms_fn(fin_state, params, complex_)
-        loss = extract_loss + remaining_energy_loss
-        return loss, (traj, extract_loss, remaining_energy_loss)
+        if not use_release_loss:
+            release_loss = 0.0
+        elif release_loss_final_state:
+            _, _, release_loss = release_state_loss_terms_fn(fin_state, params, complex_)
+        elif release_loss_average:
+            release_loss_states = traj[release_loss_average_start:][::release_loss_average_freq]
+            _, _, release_losses = vmap(release_state_loss_terms_fn, (0, None, None))(release_loss_states, params, complex_)
+            release_loss = release_losses.mean()
+        else:
+            raise RuntimeError("Invalid release loss settings")
+        loss = extract_loss + remaining_energy_loss + release_loss
+        return loss, (traj, extract_loss, remaining_energy_loss, release_loss)
 
     grad_fn = value_and_grad(loss_fn, has_aux=True)
     batched_grad_fn = jit(vmap(grad_fn, in_axes=(None, 0)))
@@ -170,6 +196,7 @@ def run(args):
     loss_terms_path = run_dir / "loss_terms.txt"
     extract_loss_path = run_dir / "extract_loss.txt"
     remaining_energy_loss_path = run_dir / "remaining_energy_loss.txt"
+    release_loss_path = run_dir / "release_loss.txt"
     grads_path = run_dir / "grads.txt"
     losses_path = run_dir / "losses.txt"
     times_path = run_dir / "times.txt"
@@ -183,7 +210,7 @@ def run(args):
         iter_key = keys[i]
         batch_keys = random.split(iter_key, batch_size)
         start = time.time()
-        (vals, (trajs, extract_losses, remaining_energy_losses)), grads = batched_grad_fn(params, batch_keys)
+        (vals, (trajs, extract_losses, remaining_energy_losses, release_losses)), grads = batched_grad_fn(params, batch_keys)
         end = time.time()
 
         avg_grads = {k: jnp.mean(grads[k], axis=0) for k in grads}
@@ -199,6 +226,8 @@ def run(args):
             f.write(f"{onp.mean(extract_losses)}\n")
         with open(remaining_energy_loss_path, "a") as f:
             f.write(f"{onp.mean(remaining_energy_losses)}\n")
+        with open(release_loss_path, "a") as f:
+            f.write(f"{onp.mean(release_losses)}\n")
         with open(times_path, "a") as f:
             f.write(f"{end - start}\n")
         all_params.append(params)
@@ -239,9 +268,9 @@ def run(args):
 
 
         loss_terms_str = f"\nIteration {i}:\n"
-        loss_terms_str += f"- Best:\n\t- Extraction: {extract_losses[min_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[min_loss_sample_idx]}\n"
-        loss_terms_str += f"- Worst:\n\t- Extraction: {extract_losses[max_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[max_loss_sample_idx]}\n"
-        loss_terms_str += f"- Average:\n\t- Extraction: {onp.mean(extract_losses)}\n\t- Remaining Energy: {onp.mean(remaining_energy_losses)}"
+        loss_terms_str += f"- Best:\n\t- Extraction: {extract_losses[min_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[min_loss_sample_idx]}\n\t- Release: {release_losses[min_loss_sample_idx]}\n"
+        loss_terms_str += f"- Worst:\n\t- Extraction: {extract_losses[max_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[max_loss_sample_idx]}\n\t- Release: {release_losses[max_loss_sample_idx]}\n"
+        loss_terms_str += f"- Average:\n\t- Extraction: {onp.mean(extract_losses)}\n\t- Remaining Energy: {onp.mean(remaining_energy_losses)}\n\t- Release: {onp.mean(release_losses)}"
         with open(loss_terms_path, "a") as f:
             f.write(loss_terms_str + '\n')
 
@@ -283,9 +312,6 @@ def get_argparse():
     parser.add_argument('--use-remaining-shell-vertices-loss', action='store_true')
     parser.add_argument('--remaining-shell-vertices-loss-coeff', type=float, default=1.0,
                         help="Multiplicative scalar for the remaining energy loss term")
-    parser.add_argument('--use-release-loss', action='store_true')
-    parser.add_argument('--release-loss-coeff', type=float, default=1.0,
-                        help="Multiplicative scalar for the release loss term")
 
 
     parser.add_argument('--vis-frame-rate', type=int, default=100,
@@ -314,6 +340,17 @@ def get_argparse():
     parser.add_argument('--opt-log-leg-spring-eps', action='store_true')
     parser.add_argument('--init-log-leg-spring-eps', type=float, default=10.0,
                         help="Initial value for log of leg spring epsilons")
+
+    # Release loss details
+    parser.add_argument('--use-release-loss', action='store_true')
+    parser.add_argument('--release-loss-coeff', type=float, default=1.0,
+                        help="Multiplicative scalar for the release loss term")
+    parser.add_argument('--release-loss-final-state', action='store_true')
+    parser.add_argument('--release-loss-average', action='store_true')
+    parser.add_argument('--release-loss-average-start', type=int, default=1000, help="Where we start averaging for release loss")
+    parser.add_argument('--release-loss-average-freq', type=int, default=100,
+                        help="Sample frequency for average release loss")
+
 
 
 
