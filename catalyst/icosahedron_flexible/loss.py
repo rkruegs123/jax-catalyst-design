@@ -38,7 +38,7 @@ def get_loss_fn(
             morse_attr_alpha=params['morse_attr_alpha'],
             morse_r_onset=params["morse_r_onset"],
             morse_r_cutoff=params["morse_r_cutoff"])
-        return head_remaining_shell_energy_fn(body)**2 * remaining_shell_vertices_loss_coeff
+        return jnp.sqrt(head_remaining_shell_energy_fn(body)**2) * remaining_shell_vertices_loss_coeff
 
     def release_loss(body, params, complex_):
         vtx_to_bind_energy_fn = complex_.get_vtx_to_bind_morse_energy_fn(
@@ -46,7 +46,7 @@ def get_loss_fn(
             morse_attr_alpha=params['morse_attr_alpha'],
             morse_r_onset=params["morse_r_onset"],
             morse_r_cutoff=params["morse_r_cutoff"])
-        return vtx_to_bind_energy_fn(body)**2 * release_loss_coeff
+        return jnp.sqrt(vtx_to_bind_energy_fn(body)**2) * release_loss_coeff
 
 
     use_abduction_bit = int(use_abduction)
