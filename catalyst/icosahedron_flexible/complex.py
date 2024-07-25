@@ -393,8 +393,8 @@ class Complex:
             shell_center = shell_body.center
             shell_qvec = shell_body.orientation.vec
 
-            vtx_to_bind_center = shell_center[vertex_to_bind_idx].reshape(-1, 3)
-            vtx_to_bind_qvec = shell_qvec[vertex_to_bind_idx].reshape(-1, 4)
+            vtx_to_bind_center = shell_center[self.vertex_to_bind_idx].reshape(-1, 3)
+            vtx_to_bind_qvec = shell_qvec[self.vertex_to_bind_idx].reshape(-1, 4)
 
             vtx_to_bind_and_spider_center = jnp.concatenate([vtx_to_bind_center, spider_body.center])
             vtx_to_bind_and_spider_qvec = jnp.concatenate([vtx_to_bind_qvec, spider_body.orientation.vec])
