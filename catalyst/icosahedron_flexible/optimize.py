@@ -136,8 +136,8 @@ def run(args):
         init_state = traj[0]
 
         # extract_loss = state_loss_fn(fin_state, params, complex_)
-        _, remaining_energy_loss = init_state_loss_terms_fn(init_state, params, complex_)
-        extract_loss, _ = fin_state_loss_terms_fn(fin_state, params, complex_)
+        _, remaining_energy_loss, _ = init_state_loss_terms_fn(init_state, params, complex_)
+        extract_loss, _, _ = fin_state_loss_terms_fn(fin_state, params, complex_)
         loss = extract_loss + remaining_energy_loss
         return loss, (traj, extract_loss, remaining_energy_loss)
 
