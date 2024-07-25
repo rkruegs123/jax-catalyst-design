@@ -46,7 +46,9 @@ def get_loss_fn(
     def loss_terms_fn(body, params, complex_):
         abduction_term = abduction_loss(body)*use_abduction_bit
         remaining_energy_term = remaining_shell_vertices_loss(body, params, complex_)*use_remaining_shell_vertices_bit
-        return abduction_term, remaining_energy_term
+
+        norm = 11
+        return abduction_term / norm, remaining_energy_term / norm
 
     def loss_fn(body, params, complex_info):
         t1, t2 = loss_terms_fn(body, params, complex_info)
