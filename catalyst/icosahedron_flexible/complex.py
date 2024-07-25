@@ -359,6 +359,51 @@ class Complex:
 
         return remaining_shell_morse_energy_fn
 
+    def get_vtx_to_bind_morse_energy_fn(
+            self,
+            # Shell-attr interaction parameters
+            morse_attr_eps=350.0, morse_attr_alpha=2.0, morse_r_onset=12.0, morse_r_cutoff=14.0):
+
+        zero_interaction = jnp.zeros((5, 5))
+
+        spider_pt_species = jnp.array([2, 3, 4])
+        sigma = zero_interaction.at[0, spider_pt_species].set(self.shell.vertex_radius + self.spider.particle_radii)
+        sigma = sigma.at[spider_pt_species, 0].set(self.shell.vertex_radius + self.spider.particle_radii)
+        sigma = jnp.where(sigma == 0.0, 1e-5, sigma) # avoids nans
+
+        morse_eps = zero_interaction.at[0, 3].set(morse_attr_eps)
+        morse_eps = morse_eps.at[3, 0].set(morse_attr_eps)
+
+        morse_alpha = zero_interaction.at[0, 3].set(morse_attr_alpha)
+        morse_alpha = morse_alpha.at[3, 0].set(morse_attr_alpha)
+
+        pair_energy_morse = energy.morse_pair(
+            self.displacement_fn,
+            species=5,
+            sigma=sigma, epsilon=morse_eps, alpha=morse_alpha,
+            r_onset=morse_r_onset, r_cutoff=morse_r_cutoff,
+        )
+
+        vtx_to_bind_shape_species = onp.array(list(onp.zeros(1)) + [1]*self.spider.n_legs, dtype=onp.int32).flatten() # FIXME
+        morse_energy_fn = rigid_body.point_energy(pair_energy_morse, self.shape, vtx_to_bind_shape_species)
+
+        def vtx_to_bind_morse_energy_fn(body: rigid_body.RigidBody, **kwargs):
+            spider_body, shell_body = self.split_body(body)
+
+            shell_center = shell_body.center
+            shell_qvec = shell_body.orientation.vec
+
+            vtx_to_bind_center = shell_center[vertex_to_bind_idx].reshape(-1, 3)
+            vtx_to_bind_qvec = shell_qvec[vertex_to_bind_idx].reshape(-1, 4)
+
+            vtx_to_bind_and_spider_center = jnp.concatenate([vtx_to_bind_center, spider_body.center])
+            vtx_to_bind_and_spider_qvec = jnp.concatenate([vtx_to_bind_qvec, spider_body.orientation.vec])
+            vtx_to_bind_and_spider = rigid_body.RigidBody(vtx_to_bind_and_spider_center, rigid_body.Quaternion(vtx_to_bind_and_spider_qvec))
+
+            val = morse_energy_fn(vtx_to_bind_and_spider)
+            return val
+
+        return vtx_to_bind_morse_energy_fn
 
     def body_to_injavis_lines(
             self, body, box_size,
@@ -418,8 +463,9 @@ class TestComplex(unittest.TestCase):
 
     def test_simulate(self):
 
-        # leg_spring_eps = 100000.
-        leg_spring_eps = jnp.array([1. for _ in range(10)])
+        leg_spring_eps = 100000.
+        # leg_spring_eps = jnp.array([1. for _ in range(10)])
+        # leg_spring_eps = jnp.array([0.1 for _ in range(10)])
 
         displacement_fn, shift_fn = space.free()
         complex_ = Complex(
@@ -432,7 +478,8 @@ class TestComplex(unittest.TestCase):
             leg_spring_eps=leg_spring_eps
         )
 
-        log_morse_eps = 5.5
+        # log_morse_eps = 5.5
+        log_morse_eps = 2.0
         morse_alpha = 1.0
         energy_fn = complex_.get_energy_fn(morse_attr_eps=jnp.exp(log_morse_eps), morse_attr_alpha=morse_alpha)
         energy_fn = jit(energy_fn)
@@ -449,8 +496,8 @@ class TestComplex(unittest.TestCase):
         state = init_fn(key, complex_.rigid_body, mass=mass)
 
         trajectory = list()
-        # n_steps = 25000 # 50000
-        n_steps = 10000
+        n_steps = 25000 # 50000
+        # n_steps = 5000
         energies = list()
         for _ in tqdm(range(n_steps)):
             state = step_fn(state)

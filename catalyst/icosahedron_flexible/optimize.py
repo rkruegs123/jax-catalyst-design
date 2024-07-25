@@ -51,6 +51,9 @@ def run(args):
     use_abduction_loss = args['use_abduction_loss']
     use_remaining_shell_vertices_loss = args['use_remaining_shell_vertices_loss']
     remaining_shell_vertices_loss_coeff = args['remaining_shell_vertices_loss_coeff']
+    use_release_loss = args['use_release_loss']
+    release_loss_coeff = args['release_loss_coeff']
+    assert(not use_release_loss)
 
     vis_frame_rate = args['vis_frame_rate']
     assert(n_steps % vis_frame_rate == 0)
@@ -280,6 +283,10 @@ def get_argparse():
     parser.add_argument('--use-remaining-shell-vertices-loss', action='store_true')
     parser.add_argument('--remaining-shell-vertices-loss-coeff', type=float, default=1.0,
                         help="Multiplicative scalar for the remaining energy loss term")
+    parser.add_argument('--use-release-loss', action='store_true')
+    parser.add_argument('--release-loss-coeff', type=float, default=1.0,
+                        help="Multiplicative scalar for the release loss term")
+
 
     parser.add_argument('--vis-frame-rate', type=int, default=100,
                         help="The sample rate for saving a representative trajectory from each optimization iteration")
