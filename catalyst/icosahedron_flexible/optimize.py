@@ -58,12 +58,15 @@ def run(args):
     release_loss_average = args['release_loss_average']
     release_loss_average_start = args['release_loss_average_start']
     release_loss_average_freq = args['release_loss_average_freq']
+    extraction_state_idx = -1
     if use_release_loss:
         assert(int(release_loss_final_state) + int(release_loss_average) == 1)
         if release_loss_average:
             assert(release_loss_average_start > n_steps)
             diff = release_loss_average_start - n_steps
             assert(diff % release_loss_average_freq == 0)
+
+            extraction_state_idx = release_loss_average_start
 
     vis_frame_rate = args['vis_frame_rate']
     assert(n_steps % vis_frame_rate == 0)
@@ -77,7 +80,7 @@ def run(args):
         remaining_shell_vertices_loss_coeff=remaining_shell_vertices_loss_coeff
     )
 
-    fin_state_loss_fn, fin_state_loss_terms_fn = get_loss_fn(
+    extraction_state_loss_fn, extraction_state_loss_terms_fn = get_loss_fn(
         displacement_fn, vertex_to_bind_idx,
         use_abduction=use_abduction_loss,
         use_remaining_shell_vertices_loss=False
@@ -151,9 +154,10 @@ def run(args):
                                      n_steps, gamma, kT, shift_fn, dt, key)
         init_state = traj[0]
 
+        extraction_state = traj[extraction_state_idx]
 
         _, remaining_energy_loss, _ = init_state_loss_terms_fn(init_state, params, complex_)
-        extract_loss, _, _ = fin_state_loss_terms_fn(fin_state, params, complex_)
+        extract_loss, _, _ = extraction_state_loss_terms_fn(extraction_state, params, complex_)
         if not use_release_loss:
             release_loss = 0.0
         elif release_loss_final_state:
