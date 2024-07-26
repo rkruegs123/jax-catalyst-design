@@ -44,6 +44,8 @@ def run(args):
     opt_log_leg_spring_eps = args['opt_log_leg_spring_eps']
     init_log_leg_spring_eps = args['init_log_leg_spring_eps']
 
+    init_fig3_params = args['init_fig3_params']
+
 
     init_particle_radii = args['init_particle_radii']
     init_attr_site_radius = args['init_attr_site_radius']
@@ -62,7 +64,7 @@ def run(args):
     if use_release_loss:
         assert(int(release_loss_final_state) + int(release_loss_average) == 1)
         if release_loss_average:
-            assert(release_loss_average_start > n_steps)
+            assert(release_loss_average_start < n_steps)
             diff = release_loss_average_start - n_steps
             assert(diff % release_loss_average_freq == 0)
 
@@ -119,7 +121,7 @@ def run(args):
     key = random.PRNGKey(key_seed)
     keys = random.split(key, n_iters)
 
-
+    default_leg_spring_eps = float(jnp.exp(init_log_leg_spring_eps))
     def loss_fn(params, key):
 
         clipped_head_radius = jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']]))
@@ -127,7 +129,8 @@ def run(args):
         if opt_log_leg_spring_eps:
             leg_eps = jnp.exp(params['log_leg_spring_eps'])
         else:
-            leg_eps = 100000.
+            # leg_eps = 100000.
+            leg_eps = default_leg_spring_eps
 
         complex_ = Complex(
             initial_separation_coeff=initial_separation_coefficient,
@@ -176,24 +179,44 @@ def run(args):
 
     optimizer = optax.adam(lr)
     init_log_leg_spring_eps_vals = jnp.array([init_log_leg_spring_eps for _ in range(10)])
-    params = {
-        # catalyst shape
-        'spider_base_radius': 5.0,
-        'spider_head_height': init_head_height,
-        'spider_base_particle_radius': init_particle_radii,
-        'spider_attr_particle_radius': init_attr_site_radius,
-        'spider_head_particle_radius': init_particle_radii,
+    if init_fig3_params:
+        # ext-rigid-tagged-test-eps3-bigger-radius-start-rc0.001,
+        params = {
+            # catalyst shape
+            "spider_base_radius": 4.642459866397608,
+            "spider_head_height": 9.355803312442202,
+            "spider_base_particle_radius": 1.4979135216810637,
+            "spider_attr_particle_radius": 1.4752831792315242,
+            "spider_head_particle_radius": 1.0,
 
-        # catalyst energy
-        'log_morse_attr_eps': init_log_attr_eps,
-        'morse_attr_alpha': init_alpha,
-        'morse_r_onset': 10.0,
-        'morse_r_cutoff': 12.0,
+            # catalyst energy
+            "log_morse_attr_eps": 4.286391530030283,
+            "morse_attr_alpha": 1.4193355362346702,
+            "morse_r_cutoff": 12.0,
+            "morse_r_onset": 10.0,
+            
+            "rel_attr_pos": 0.3632382047051499
+        }
+        params['log_leg_spring_eps'] = init_log_leg_spring_eps_vals
+    else:
+        params = {
+            # catalyst shape
+            'spider_base_radius': 5.0,
+            'spider_head_height': init_head_height,
+            'spider_base_particle_radius': init_particle_radii,
+            'spider_attr_particle_radius': init_attr_site_radius,
+            'spider_head_particle_radius': init_particle_radii,
 
-        'rel_attr_pos': init_rel_attr_pos,
+            # catalyst energy
+            'log_morse_attr_eps': init_log_attr_eps,
+            'morse_attr_alpha': init_alpha,
+            'morse_r_onset': 10.0,
+            'morse_r_cutoff': 12.0,
 
-        'log_leg_spring_eps': init_log_leg_spring_eps_vals
-    }
+            'rel_attr_pos': init_rel_attr_pos,
+
+            'log_leg_spring_eps': init_log_leg_spring_eps_vals
+        }
     opt_state = optimizer.init(params)
 
     loss_path = run_dir / "loss.txt"
@@ -356,6 +379,7 @@ def get_argparse():
                         help="Sample frequency for average release loss")
 
 
+    parser.add_argument('--init-fig3-params', action='store_true')
 
 
     return parser
