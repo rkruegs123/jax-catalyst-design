@@ -6,6 +6,7 @@ import time
 import pdb
 import numpy as onp
 import pprint
+from copy import deepcopy
 
 from jax import random, grad, jit, vmap, value_and_grad
 import jax.numpy as jnp
@@ -22,7 +23,9 @@ config.update('jax_enable_x64', True)
 
 
 
+# {"x": 3.0, "y": 4.0} | {"x": 2.0} # x will become 2.0
 def run(args):
+    only_spring_opt = args['only_spring_opt']
     batch_size = args['batch_size']
     n_iters = args['n_iters']
     n_steps = args['n_steps']
@@ -121,6 +124,24 @@ def run(args):
     key = random.PRNGKey(key_seed)
     keys = random.split(key, n_iters)
 
+    # ext-rigid-tagged-test-eps3-bigger-radius-start-rc0.001,
+    fig3_params = {
+        # catalyst shape
+        "spider_base_radius": 4.642459866397608,
+        "spider_head_height": 9.355803312442202,
+        "spider_base_particle_radius": 1.4979135216810637,
+        "spider_attr_particle_radius": 1.4752831792315242,
+        "spider_head_particle_radius": 1.0,
+
+        # catalyst energy
+        "log_morse_attr_eps": 4.286391530030283,
+        "morse_attr_alpha": 1.4193355362346702,
+        "morse_r_cutoff": 12.0,
+        "morse_r_onset": 10.0,
+
+        "rel_attr_pos": 0.3632382047051499
+    }
+
     default_leg_spring_eps = float(jnp.exp(init_log_leg_spring_eps))
     def loss_fn(params, key):
 
@@ -128,6 +149,9 @@ def run(args):
 
         if opt_log_leg_spring_eps:
             leg_eps = jnp.exp(params['log_leg_spring_eps'])
+        elif only_spring_opt:
+            leg_eps = jnp.exp(params['log_leg_spring_eps'])
+            params = params | fig3_params
         else:
             # leg_eps = 100000.
             leg_eps = default_leg_spring_eps
@@ -179,24 +203,8 @@ def run(args):
 
     optimizer = optax.adam(lr)
     init_log_leg_spring_eps_vals = jnp.array([init_log_leg_spring_eps for _ in range(10)])
-    if init_fig3_params:
-        # ext-rigid-tagged-test-eps3-bigger-radius-start-rc0.001,
-        params = {
-            # catalyst shape
-            "spider_base_radius": 4.642459866397608,
-            "spider_head_height": 9.355803312442202,
-            "spider_base_particle_radius": 1.4979135216810637,
-            "spider_attr_particle_radius": 1.4752831792315242,
-            "spider_head_particle_radius": 1.0,
-
-            # catalyst energy
-            "log_morse_attr_eps": 4.286391530030283,
-            "morse_attr_alpha": 1.4193355362346702,
-            "morse_r_cutoff": 12.0,
-            "morse_r_onset": 10.0,
-            
-            "rel_attr_pos": 0.3632382047051499
-        }
+    if init_fig3_params or only_spring_opt:
+        params = deepcopy(fig3_params)
         params['log_leg_spring_eps'] = init_log_leg_spring_eps_vals
     else:
         params = {
@@ -262,8 +270,6 @@ def run(args):
             f.write(f"{pprint.pformat(params)}\n")
         with open(grads_path, "a") as f:
             f.write(f"{pprint.pformat(avg_grads)}\n")
-
-
 
         box_size = 30.0
         min_loss_sample_idx = onp.argmin(vals)
@@ -380,6 +386,7 @@ def get_argparse():
 
 
     parser.add_argument('--init-fig3-params', action='store_true')
+    parser.add_argument('--only-spring-opt', action='store_true')
 
 
     return parser
