@@ -49,6 +49,17 @@ def run(args):
 
     init_fig3_params = args['init_fig3_params']
 
+    activate_extract_loss = args['activate_extract_loss']
+    activate_coeff = args['activate_coeff']
+    extract_loss_threshold = args['extract_loss_threshold']
+
+    if activate_extract_loss:
+        def activate_fn(extract_loss):
+            return jnp.where(extract_loss >= extract_loss_threshold, extract_loss,
+                             extract_loss_threshold + extract_loss*activate_coeff)
+    else:
+        def activate_fn(extract_loss):
+            return extract_loss
 
     init_particle_radii = args['init_particle_radii']
     init_attr_site_radius = args['init_attr_site_radius']
@@ -195,8 +206,9 @@ def run(args):
             release_loss = release_losses.mean()
         else:
             raise RuntimeError("Invalid release loss settings")
-        loss = extract_loss + remaining_energy_loss + release_loss
-        return loss, (traj, extract_loss, remaining_energy_loss, release_loss)
+        activated_extract_loss = activate_fn(extract_loss)
+        loss = activated_extract_loss + remaining_energy_loss + release_loss
+        return loss, (traj, extract_loss, remaining_energy_loss, release_loss, activated_extract_loss)
 
     grad_fn = value_and_grad(loss_fn, has_aux=True)
     batched_grad_fn = jit(vmap(grad_fn, in_axes=(None, 0)))
@@ -230,6 +242,7 @@ def run(args):
     loss_path = run_dir / "loss.txt"
     loss_terms_path = run_dir / "loss_terms.txt"
     extract_loss_path = run_dir / "extract_loss.txt"
+    activated_extract_loss_path = run_dir / "activated_extract_loss.txt"
     remaining_energy_loss_path = run_dir / "remaining_energy_loss.txt"
     release_loss_path = run_dir / "release_loss.txt"
     grads_path = run_dir / "grads.txt"
@@ -245,7 +258,7 @@ def run(args):
         iter_key = keys[i]
         batch_keys = random.split(iter_key, batch_size)
         start = time.time()
-        (vals, (trajs, extract_losses, remaining_energy_losses, release_losses)), grads = batched_grad_fn(params, batch_keys)
+        (vals, (trajs, extract_losses, remaining_energy_losses, release_losses, activated_extract_losses)), grads = batched_grad_fn(params, batch_keys)
         end = time.time()
 
         avg_grads = {k: jnp.mean(grads[k], axis=0) for k in grads}
@@ -259,6 +272,8 @@ def run(args):
             f.write(f"{avg_loss}\n")
         with open(extract_loss_path, "a") as f:
             f.write(f"{onp.mean(extract_losses)}\n")
+        with open(activated_extract_loss_path, "a") as f:
+            f.write(f"{onp.mean(activated_extract_losses)}\n")
         with open(remaining_energy_loss_path, "a") as f:
             f.write(f"{onp.mean(remaining_energy_losses)}\n")
         with open(release_loss_path, "a") as f:
@@ -301,9 +316,9 @@ def run(args):
 
 
         loss_terms_str = f"\nIteration {i}:\n"
-        loss_terms_str += f"- Best:\n\t- Extraction: {extract_losses[min_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[min_loss_sample_idx]}\n\t- Release: {release_losses[min_loss_sample_idx]}\n"
-        loss_terms_str += f"- Worst:\n\t- Extraction: {extract_losses[max_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[max_loss_sample_idx]}\n\t- Release: {release_losses[max_loss_sample_idx]}\n"
-        loss_terms_str += f"- Average:\n\t- Extraction: {onp.mean(extract_losses)}\n\t- Remaining Energy: {onp.mean(remaining_energy_losses)}\n\t- Release: {onp.mean(release_losses)}"
+        loss_terms_str += f"- Best:\n\t- Extraction: {activated_extract_losses[min_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[min_loss_sample_idx]}\n\t- Release: {release_losses[min_loss_sample_idx]}\n"
+        loss_terms_str += f"- Worst:\n\t- Extraction: {activated_extract_losses[max_loss_sample_idx]}\n\t- Remaining Energy: {remaining_energy_losses[max_loss_sample_idx]}\n\t- Release: {release_losses[max_loss_sample_idx]}\n"
+        loss_terms_str += f"- Average:\n\t- Extraction: {onp.mean(activated_extract_losses)}\n\t- Remaining Energy: {onp.mean(remaining_energy_losses)}\n\t- Release: {onp.mean(release_losses)}"
         with open(loss_terms_path, "a") as f:
             f.write(loss_terms_str + '\n')
 
@@ -387,6 +402,12 @@ def get_argparse():
 
     parser.add_argument('--init-fig3-params', action='store_true')
     parser.add_argument('--only-spring-opt', action='store_true')
+
+    parser.add_argument('--activate-extract-loss', action='store_true')
+    parser.add_argument('--activate-coeff', type=float, default=0.01,
+                        help="Coefficient for activation")
+    parser.add_argument('--extract-loss-threshold', type=float, default=-7.0,
+                        help="Threshold for activating the extract loss")
 
 
     return parser
