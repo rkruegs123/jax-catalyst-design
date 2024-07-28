@@ -25,6 +25,7 @@ config.update('jax_enable_x64', True)
 
 # {"x": 3.0, "y": 4.0} | {"x": 2.0} # x will become 2.0
 def run(args):
+    couple_constants = args['couple_constants']
     only_spring_opt = args['only_spring_opt']
     batch_size = args['batch_size']
     n_iters = args['n_iters']
@@ -157,6 +158,10 @@ def run(args):
     def loss_fn(params, key):
 
         clipped_head_radius = jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']]))
+
+        if couple_constants:
+            params['log_leg_spring_eps'] = params['log_leg_spring_eps'].at[:5].set(params['log_leg_spring_eps'][0])
+            params['log_leg_spring_eps'] = params['log_leg_spring_eps'].at[5:].set(params['log_leg_spring_eps'][5])
 
         if opt_log_leg_spring_eps:
             leg_eps = jnp.exp(params['log_leg_spring_eps'])
@@ -408,6 +413,8 @@ def get_argparse():
                         help="Coefficient for activation")
     parser.add_argument('--extract-loss-threshold', type=float, default=-7.0,
                         help="Threshold for activating the extract loss")
+
+    parser.add_argument('--couple-constants', action='store_true')
 
 
     return parser
