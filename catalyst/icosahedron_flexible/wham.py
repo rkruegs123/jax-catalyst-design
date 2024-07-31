@@ -182,6 +182,31 @@ def run(args, sim_params):
             disps = vmap(displacement_fn, (None, 0))(vertex_com, attr_site_pos)
             drs = vmap(space.distance)(disps)
             return jnp.mean(drs)
+    elif op_name == "attr-v2":
+        def get_new_vertex_com(R, dist):
+            leg_rbs = R[-5:] # the spider
+            spider_space_frame_pos = vmap(complex_.spider.legs[0].get_body_frame_positions)(leg_rbs).reshape(-1, 3)
+            attr_site_pos = spider_space_frame_pos[1::3]
+            avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+
+            a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
+            b = jnp.sqrt(dist**2 - a**2) # pythag
+
+            vertex_com = R[0].center
+            avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
+            dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
+            new_vertex_pos = avg_attr_site_pos - dir_*b
+            return new_vertex_pos
+
+        def order_param_fn(R):
+            leg_rbs = R[-5:] # the spider
+            spider_space_frame_pos = vmap(complex_.spider.legs[0].get_body_frame_positions)(leg_rbs).reshape(-1, 3)
+            attr_site_pos = spider_space_frame_pos[1::3]
+            avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+
+            vertex_com = R[0].center
+            dr = space.distance(displacement_fn(vertex_com, avg_attr_site_pos))
+            return dr
     elif op_name == "head":
         def get_new_vertex_com(R, dist):
             leg_rbs = R[-5:] # the spider
@@ -570,7 +595,7 @@ def get_parser():
 
     parser.add_argument('--spider-leg-radius', type=float, default=0.25, help="Spider leg radius")
     parser.add_argument('--op-name', type=str, help='Name of order parameter',
-                        choices=["attr", "head"],
+                        choices=["attr", "head", "attr-v2"],
                         default="attr")
 
     parser.add_argument('--use-split-point', action='store_true')
@@ -625,7 +650,14 @@ if __name__ == "__main__":
     # params['log_leg_spring_eps'] = jnp.array([2., 2., 2., 2., 2., 2., 2., 2., 2., 2.])
     # params['log_leg_spring_eps'] = jnp.array([2.12905955, 2.93255421, 2.52175083, 1.94388605, 2.66300993,
     #                                           1.89700608, 1.42903803, 3.0076649 , 1.29637779, 3.80819132])
-    params['log_leg_spring_eps'] = jnp.array([1.66197225, 2.6277062 , 2.02201327, 2.29819641, 2.182375,
-                                              1.38864165, 1.56666561, 2.88627613, 1.24418831, 3.30555333]) # iter 500
+    # params['log_leg_spring_eps'] = jnp.array([1.66197225, 2.6277062 , 2.02201327, 2.29819641, 2.182375,
+    #                                           1.38864165, 1.56666561, 2.88627613, 1.24418831, 3.30555333]) # iter 500
+
+    # fig3-init-flexible-opt-1.5k-re-c0.01-release-avg-c0.1-with-legs-le2-only-spring-activated-ac0.001, final
+    # params['log_leg_spring_eps'] = jnp.array([-0.73345491,  2.39585624, -0.96931361, -1.12290946,  2.07906853,
+    #                                           -0.77915243, -1.0261328,  3.19219886, -2.43528705,  2.7845707])
+
+
+    params['log_leg_spring_eps'] = jnp.array([7., 7., 7., 7., 7., 7., 7., 7., 7., 7.])
 
     run(args, params)

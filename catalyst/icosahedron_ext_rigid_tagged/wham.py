@@ -201,6 +201,19 @@ def run(args, sim_params):
             disps = vmap(displacement_fn, (None, 0))(vertex_com, attr_site_pos)
             drs = vmap(space.distance)(disps)
             return jnp.mean(drs)
+    elif op_name == "attr-v2":
+        def order_param_fn(R):
+            spider_body = R[-1]
+            vertex_body = R[0]
+            spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+            # head_pos = spider_body_pos[-1]
+
+            attr_site_pos = spider_body_pos[5:10]
+            avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+            vertex_com = vertex_body.center
+
+            dr = space.distance(displacement_fn(vertex_com, avg_attr_site_pos))
+            return dr
     elif op_name == "head":
         def order_param_fn(R):
             spider_body = R[-1]
@@ -262,7 +275,7 @@ def run(args, sim_params):
             return eq_state.position
 
 
-    if op_name == "attr":
+    if op_name == "attr" or op_name == "attr-v2":
         def get_new_vertex_com(R, dist):
             spider_body = R[-1]
             vertex_body = R[0]
@@ -576,7 +589,7 @@ def get_parser():
 
     parser.add_argument('--spider-leg-radius', type=float, default=0.25, help="Spider leg radius")
     parser.add_argument('--op-name', type=str, help='Name of order parameter',
-                        choices=["attr", "head"],
+                        choices=["attr", "head", "attr-v2"],
                         default="attr")
 
     parser.add_argument('--use-split-point', action='store_true')
@@ -639,6 +652,7 @@ if __name__ == "__main__":
         "morse_r_cutoff": 12.0,
         "morse_r_onset": 10.0,
         "spider_attr_particle_pos_norm": 0.3632382047051499,
+        # "spider_attr_particle_pos_norm": 0.75,
         "spider_attr_site_radius": 1.4752831792315242,
         "spider_base_particle_radius": 1.4979135216810637,
         "spider_base_radius": 4.642459866397608,
