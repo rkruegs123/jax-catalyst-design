@@ -559,7 +559,7 @@ class TestComplex(unittest.TestCase):
         spider_leg_radius = 0.25
         min_head_radius = 0.1
         complex_ = Complex(
-            initial_separation_coeff=0.1, vertex_to_bind_idx=5,
+            initial_separation_coeff=0.2, vertex_to_bind_idx=5,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=sim_params["spider_base_radius"],
             spider_head_height=sim_params["spider_head_height"],
@@ -582,7 +582,8 @@ class TestComplex(unittest.TestCase):
         base_energy_fn = jit(base_energy_fn)
         leg_energy_fn = jit(leg_energy_fn)
 
-        op_dist_name = "attr"
+        # op_dist_name = "attr"
+        op_dist_name = "attr-v2"
         # op_dist_name = "head"
 
         if op_dist_name == "attr":
@@ -615,6 +616,34 @@ class TestComplex(unittest.TestCase):
                 dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
                 new_vertex_pos = avg_attr_site_pos - dir_*b
                 return new_vertex_pos
+        elif op_dist_name == "attr-v2":
+
+            def order_param_fn(R):
+                spider_body = R[-1]
+                vertex_body = R[0]
+                spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+                # head_pos = spider_body_pos[-1]
+
+                attr_site_pos = spider_body_pos[5:10]
+                avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+                vertex_com = vertex_body.center
+
+                dr = space.distance(displacement_fn(vertex_com, avg_attr_site_pos))
+                return dr
+
+            def get_new_vertex_com(R, dist):
+                spider_body = R[-1]
+                vertex_body = R[0]
+                spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+                attr_site_pos = spider_body_pos[5:10]
+                avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+
+                vertex_com = vertex_body.center
+                avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
+                dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
+                new_vertex_pos = avg_attr_site_pos - dir_*dist
+                return new_vertex_pos
+
         elif op_dist_name == "head":
             @jit
             def order_param_fn(R):
@@ -649,9 +678,10 @@ class TestComplex(unittest.TestCase):
             return rigid_body.RigidBody(new_center, R.orientation)
 
         # k_bias = 500000
-        k_bias = 0.0
-        # k_bias = 5000
-        target_op = 4.0
+        # k_bias = 0.0
+        k_bias = 5000
+        # target_op = 3.2
+        target_op = 1.8
         init_body = get_init_body(init_body, target_op)
         def _harmonic_bias(op):
             return 1/2*k_bias * (target_op - op)**2
@@ -666,7 +696,7 @@ class TestComplex(unittest.TestCase):
             return bias_val + base_val
         energy_fn = jit(energy_fn)
 
-        dt = 1e-4
+        dt = 1e-3
         kT = 1.0
         gamma = 10.0
         gamma_rb = rigid_body.RigidBody(jnp.array([gamma]), jnp.array([gamma/3]))

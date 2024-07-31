@@ -190,13 +190,10 @@ def run(args, sim_params):
             attr_site_pos = spider_space_frame_pos[1::3]
             avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
 
-            a = space.distance(displacement_fn(avg_attr_site_pos, attr_site_pos[0]))
-            b = jnp.sqrt(dist**2 - a**2) # pythag
-
             vertex_com = R[0].center
             avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
             dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
-            new_vertex_pos = avg_attr_site_pos - dir_*b
+            new_vertex_pos = avg_attr_site_pos - dir_*dist
             return new_vertex_pos
 
         def order_param_fn(R):

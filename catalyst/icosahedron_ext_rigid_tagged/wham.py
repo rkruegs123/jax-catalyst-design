@@ -275,7 +275,7 @@ def run(args, sim_params):
             return eq_state.position
 
 
-    if op_name == "attr" or op_name == "attr-v2":
+    if op_name == "attr":
         def get_new_vertex_com(R, dist):
             spider_body = R[-1]
             vertex_body = R[0]
@@ -290,6 +290,19 @@ def run(args, sim_params):
             avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
             dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
             new_vertex_pos = avg_attr_site_pos - dir_*b
+            return new_vertex_pos
+    elif op_name == "attr-v2":
+        def get_new_vertex_com(R, dist):
+            spider_body = R[-1]
+            vertex_body = R[0]
+            spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+            attr_site_pos = spider_body_pos[5:10]
+            avg_attr_site_pos = jnp.mean(attr_site_pos, axis=0)
+
+            vertex_com = vertex_body.center
+            avg_attr_site_to_vertex = displacement_fn(avg_attr_site_pos, vertex_com)
+            dir_ = avg_attr_site_to_vertex / jnp.linalg.norm(avg_attr_site_to_vertex)
+            new_vertex_pos = avg_attr_site_pos - dir_*dist
             return new_vertex_pos
     elif op_name == "head":
         def get_new_vertex_com(R, dist):
