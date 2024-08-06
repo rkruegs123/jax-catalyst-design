@@ -650,11 +650,11 @@ if __name__ == "__main__":
     # params['log_leg_spring_eps'] = jnp.array([1.66197225, 2.6277062 , 2.02201327, 2.29819641, 2.182375,
     #                                           1.38864165, 1.56666561, 2.88627613, 1.24418831, 3.30555333]) # iter 500
 
-    # fig3-init-flexible-opt-1.5k-re-c0.01-release-avg-c0.1-with-legs-le2-only-spring-activated-ac0.001, final
-    # params['log_leg_spring_eps'] = jnp.array([-0.73345491,  2.39585624, -0.96931361, -1.12290946,  2.07906853,
-    #                                           -0.77915243, -1.0261328,  3.19219886, -2.43528705,  2.7845707])
+    # fig3-init-flexible-opt-1.5k-re-c0.01-release-avg-c0.1-with-legs-le2-only-spring-activated-ac0.001, final    
+    params['log_leg_spring_eps'] = jnp.array([-0.73345491,  2.39585624, -0.96931361, -1.12290946,  2.07906853,
+                                              -0.77915243, -1.0261328,  3.19219886, -2.43528705,  2.7845707])
 
 
-    params['log_leg_spring_eps'] = jnp.array([7., 7., 7., 7., 7., 7., 7., 7., 7., 7.])
+    # params['log_leg_spring_eps'] = jnp.array([7., 7., 7., 7., 7., 7., 7., 7., 7., 7.])
 
     run(args, params)
