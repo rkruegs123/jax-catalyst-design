@@ -77,25 +77,20 @@ def read_fes(wham_out_path, n_bins):
     return all_ex_ops, all_ex_fes
 
 
-basedir = Path(f"figures/revisions/data/fig3/")
-output_basedir = Path("figures/revisions/output/fig3/")
+basedir = Path(f"figures/revisions/data/fig4/")
+output_basedir = Path("figures/revisions/output/fig4/")
 assert(output_basedir.exists())
 
-for figsize_x, figsize_y in [(12, 10), (12, 12), (10, 12)]:
+for figsize_x, figsize_y in [(12, 10), (14, 10)]:
 
     fig, ax = plt.subplots(figsize=(figsize_x, figsize_y))
 
-    colors = ["#D81B60", "#1E88E5", "#004D40"]
-    modes = ["rigid", "flexible23", "flexible"]
-    labels = ["Rigid", "Flexible (partial)", "Flexible"]
+    colors = ["#005AB5", "#DC3220"]
+    modes = ["init-fe", "opt-fe"]
+    labels = ["Initial", "Optimized"]
     for color, mode, label in zip(colors, modes, labels):
 
         ops, fes = read_fes(basedir / f"{mode}/wham/analysis.txt", 500)
-
-        if mode == "rigid":
-            n_skip = 20
-            ops = ops[n_skip:]
-            fes = fes[n_skip:]
 
         # ax.plot(ops_op1, fes_op1, label=r"$r_{v,\bar{a}}$")
         ax.plot(ops, fes, label=label, color=color)
@@ -105,11 +100,13 @@ for figsize_x, figsize_y in [(12, 10), (12, 12), (10, 12)]:
 
     ax.set_xlabel("Order Parameter")
     ax.set_ylabel("Free Energy (kT)")
-    y_ticks = [0, 100, 200, 300, 400]
+    # y_ticks = [0, 100, 200, 300, 400]
+    y_ticks = [0, 100, 200, 300]
     ax.set_yticks(y_ticks)
     ax.legend()
 
     # plt.tight_layout()
+
     plt.savefig(save_fpath)
     plt.clf()
 

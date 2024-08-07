@@ -51,7 +51,7 @@ shell_vertex_radius = 2.0
 lo_sigma = shell_vertex_radius + lo_params['spider_head_particle_radius']
 hi_sigma = shell_vertex_radius + hi_params['spider_head_particle_radius']
 
-test_distances = onp.linspace(onp.max([lo_sigma, hi_sigma]) - 0.35, 7.0, 100)
+test_distances = onp.linspace(onp.max([lo_sigma, hi_sigma]) - 0.35, 12.0, 250)
 
 lo_morse_fn = lambda r: energy.multiplicative_isotropic_cutoff(
     energy.morse,

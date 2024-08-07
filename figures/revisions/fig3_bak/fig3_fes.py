@@ -77,41 +77,45 @@ def read_fes(wham_out_path, n_bins):
     return all_ex_ops, all_ex_fes
 
 
-basedir = Path(f"figures/revisions/data/fig3/")
-output_basedir = Path("figures/revisions/output/fig3/")
-assert(output_basedir.exists())
+op1_basedir = Path(f"figures/revisions/data/fig3/wham-op1")
+op2_basedir = Path(f"figures/revisions/data/fig3/wham-op2")
 
 for figsize_x, figsize_y in [(12, 10), (12, 12), (10, 12)]:
 
-    fig, ax = plt.subplots(figsize=(figsize_x, figsize_y))
+    for mode in ["rigid", "flexible-23", "flexible-all"]:
 
-    colors = ["#D81B60", "#1E88E5", "#004D40"]
-    modes = ["rigid", "flexible23", "flexible"]
-    labels = ["Rigid", "Flexible (partial)", "Flexible"]
-    for color, mode, label in zip(colors, modes, labels):
-
-        ops, fes = read_fes(basedir / f"{mode}/wham/analysis.txt", 500)
+        ops_op1, fes_op1 = read_fes(op1_basedir / f"{mode}/wham/analysis.txt", 500)
+        ops_op2, fes_op2 = read_fes(op2_basedir / f"{mode}/wham/analysis.txt", 500)
 
         if mode == "rigid":
             n_skip = 20
-            ops = ops[n_skip:]
-            fes = fes[n_skip:]
+            ops_op2 = ops_op2[n_skip:]
+            fes_op2 = fes_op2[n_skip:]
 
-        # ax.plot(ops_op1, fes_op1, label=r"$r_{v,\bar{a}}$")
-        ax.plot(ops, fes, label=label, color=color)
+        if mode == "rigid":
+            output_basedir = Path("figures/revisions/output/fig3/c")
+        elif mode == "flexible-23":
+            output_basedir = Path("figures/revisions/output/fig3/d")
+        elif mode == "flexible-all":
+            output_basedir = Path("figures/revisions/output/fig3/e")
+        assert(output_basedir.exists())
 
-    save_fname = f"fes_{figsize_x}_{figsize_y}.pdf"
-    save_fpath = str(output_basedir / save_fname)
 
-    ax.set_xlabel("Order Parameter")
-    ax.set_ylabel("Free Energy (kT)")
-    y_ticks = [0, 100, 200, 300, 400]
-    ax.set_yticks(y_ticks)
-    ax.legend()
+        save_fname = f"fes_{figsize_x}_{figsize_y}.pdf"
+        save_fpath = str(output_basedir / save_fname)
+        fig, ax = plt.subplots(figsize=(figsize_x, figsize_y))
+        ax.plot(ops_op1, fes_op1, label=r"$r_{v,\bar{a}}$")
+        ax.plot(ops_op2, fes_op2, label=r"$r_{v,h}$")
+        ax.set_xlabel("Order Parameter")
+        ax.set_ylabel("Free Energy (kT)")
+        y_ticks = [0, 100, 200, 300, 400]
+        ax.set_yticks(y_ticks)
+        ax.legend()
 
-    # plt.tight_layout()
-    plt.savefig(save_fpath)
-    plt.clf()
+        # plt.tight_layout()
 
-    # plt.show()
-    # plt.close()
+        plt.savefig(save_fpath)
+        plt.clf()
+
+        # plt.show()
+        # plt.close()
