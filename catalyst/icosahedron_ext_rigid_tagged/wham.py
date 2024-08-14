@@ -372,7 +372,6 @@ def run(args, sim_params):
 
 
     traj_injavis_lines = list()
-    # box_size = 30.0
     box_size = args['box_size']
     dist_string = ""
     bad_dists = list()
@@ -386,7 +385,6 @@ def run(args, sim_params):
         dist_string += f"Eq dist: {s_op}\n"
         print(f"Target dist: {center}")
         print(f"Eq dist: {s_op}")
-
         if onp.abs(center - s_op) > bad_dist_tol:
             bad_dists.append(center)
             if last_good is not None:
@@ -409,9 +407,7 @@ def run(args, sim_params):
         of.write('\n'.join(traj_injavis_lines))
 
 
-    # sample_every = 100
     sample_every = args['sample_every']
-    # n_sample_states_per_sim = 50
     n_sample_states_per_sim = args['n_sample_states_per_sim']
     def sim_fn(R_init, center_idx, sim_key):
         def energy_fn(R):

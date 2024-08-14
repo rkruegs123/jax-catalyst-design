@@ -16,7 +16,7 @@ import jax.numpy as jnp
 
 
 from catalyst.icosahedron.complex_getter import ComplexInfo, PENTAPOD_LEGS, BASE_LEGS, combined_body_to_injavis_lines
-
+from catalyst.icosahedron import utils
 
 
 def plot_fe(wham_out_path, n_bins, savepath):
@@ -89,15 +89,19 @@ def plot_fe(wham_out_path, n_bins, savepath):
 
 def run(args, sim_params):
 
+    min_head_radius = args['min_head_radius']
+    spider_leg_radius = args['spider_leg_radius']
+    init_sep_coeff = args['init_sep_coeff']
+    n_bins = args['n_bins']
+
+    use_split_point = args['use_split_point']
+    split_point = args['split_point']
+
     wham_basedir = Path(args['wham_basedir'])
     assert(wham_basedir.exists() and wham_basedir.is_dir())
     wham_exec_path = wham_basedir / "wham" / "wham"
     assert(wham_exec_path.exists())
     wham_tol = args['wham_tol']
-    min_head_radius = args['min_head_radius']
-    spider_leg_radius = args['spider_leg_radius']
-    init_sep_coeff = args['init_sep_coeff']
-    n_bins = args['n_bins']
 
     run_name = args['run_name']
     output_basedir = Path(args['output_basedir'])
@@ -148,33 +152,33 @@ def run(args, sim_params):
     )
 
 
-    combined_body, base_energy_fn, leg_energy_fn = complex_.get_extracted_rb_info(
-        morse_shell_center_spider_head_eps=jnp.exp(sim_params['log_morse_shell_center_spider_head_eps']),
-        morse_shell_center_spider_head_alpha=sim_params['morse_shell_center_spider_head_alpha'],
-        morse_r_onset=sim_params['morse_r_onset'],
-        morse_r_cutoff=sim_params['morse_r_cutoff']
-    )
-    init_energy = base_energy_fn(combined_body)
-    base_energy_fn = jit(base_energy_fn)
-
-    mass = complex_.shape.mass(onp.array([0, 1]))
-
-
-
     # Do WHAM
     min_center = args['min_center']
     max_center = args['max_center']
-    bin_centers = list(onp.linspace(min_center, max_center, n_bins))
-    num_centers = len(bin_centers)
-    bin_centers= jnp.array(bin_centers)
-    n_bins = len(bin_centers)
-
-    k_biases = list()
-    # k_bias = 5e4
     k_bias = args['k_bias']
-    for center in bin_centers:
-        k_biases.append(k_bias)
-    k_biases = jnp.array(k_biases)
+
+    if not use_split_point:
+        bin_centers = list(onp.linspace(min_center, max_center, n_bins))
+        num_centers = len(bin_centers)
+        bin_centers = jnp.array(bin_centers)
+
+        k_biases = list()
+        for center in bin_centers:
+            k_biases.append(k_bias)
+        k_biases = jnp.array(k_biases)
+    else:
+        assert(split_point > min_center and split_point < max_center)
+        k_bias_split_point = args['k_bias_split_point']
+        bin_centers_lo = list(onp.linspace(min_center, split_point, n_bins))
+        k_biases_lo = [k_bias_split_point for _ in range(n_bins)]
+
+        bin_centers_hi = list(onp.linspace(split_point, max_center, n_bins))
+        k_biases_hi = [k_bias for _ in range(n_bins)]
+
+        bin_centers = jnp.array(bin_centers_lo + bin_centers_hi)
+        k_biases = jnp.array(k_biases_lo + k_biases_hi)
+        num_centers = len(bin_centers)
+        n_bins *= 2
 
 
     def order_param_fn(R):
@@ -188,7 +192,6 @@ def run(args, sim_params):
         return r
     get_traj_order_params = vmap(order_param_fn)
 
-
     def _harmonic_bias(op, center_idx):
         center = bin_centers[center_idx]
         k_bias = k_biases[center_idx]
@@ -198,8 +201,6 @@ def run(args, sim_params):
         op = order_param_fn(R)
         return _harmonic_bias(op, center_idx)
 
-
-    # n_eq_steps = 5000
     n_eq_steps = args['n_eq_steps']
     def eq_fn(R_init, center_idx, eq_key):
 
@@ -218,19 +219,61 @@ def run(args, sim_params):
         return eq_state.position
 
 
+    def get_new_vertex_com(R, dist):
+        spider_body = R[-1]
+        vertex_body = R[0]
+        vertex_com = vertex_body.center
+        spider_body_pos = complex_.spider_info.get_body_frame_positions(spider_body)
+        head_pos = spider_body_pos[-1]
+
+        head_to_vertex = displacement_fn(head_pos, vertex_com)
+        dir_ = head_to_vertex / jnp.linalg.norm(head_to_vertex)
+
+        new_vertex_pos = head_pos - dir_*dist
+        return new_vertex_pos
+
+    @jit
+    def get_init_body(R, dist):
+        new_vertex_pos = get_new_vertex_com(R, dist)
+        new_center = R.center.at[0].set(new_vertex_pos)
+        return rigid_body.RigidBody(new_center, R.orientation)
+
+
+    combined_body, base_energy_fn, leg_energy_fn = complex_.get_extracted_rb_info(
+        morse_shell_center_spider_head_eps=jnp.exp(sim_params['log_morse_shell_center_spider_head_eps']),
+        morse_shell_center_spider_head_alpha=sim_params['morse_shell_center_spider_head_alpha'],
+        morse_r_onset=sim_params['morse_r_onset'],
+        morse_r_cutoff=sim_params['morse_r_cutoff']
+    )
+    init_energy = base_energy_fn(combined_body)
+    base_energy_fn = jit(base_energy_fn)
+
+    # box_size = 30.0
+    box_size = args['box_size']
+
+    mass = complex_.shape.mass(onp.array([0, 1]))
+
+    R_eq_inits = list()
+    r_eq_init_injavis_lines = list()
+    for c_idx in jnp.arange(num_centers):
+        dist = bin_centers[c_idx]
+        c_body = get_init_body(combined_body, dist)
+        R_eq_inits.append(c_body)
+        r_eq_init_injavis_lines += combined_body_to_injavis_lines(complex_, c_body, box_size=box_size)[0]
+    R_eq_inits = utils.tree_stack(R_eq_inits)
+    with open(run_dir / "r_eq_init_states.pos", 'w+') as of:
+        of.write('\n'.join(r_eq_init_injavis_lines))
+
+
     key, eq_key = random.split(key)
     eq_keys = random.split(eq_key, num_centers)
     start = time.time()
-    # R_eq = vmap(eq_fn, (None, 0, 0))(combined_body, bin_centers, eq_keys)
-    R_eq = vmap(eq_fn, (None, 0, 0))(combined_body, jnp.arange(num_centers), eq_keys)
+    R_eq = vmap(eq_fn, (0, 0, 0))(R_eq_inits, jnp.arange(num_centers), eq_keys)
     end = time.time()
     eq_time = end - start
 
 
-
     traj_injavis_lines = list()
-    # box_size = 30.0
-    box_size = args['box_size']
     dist_string = ""
     bad_dists = list()
     bad_dist_tol = 0.5
@@ -265,9 +308,7 @@ def run(args, sim_params):
         of.write('\n'.join(traj_injavis_lines))
 
 
-    # sample_every = 100
     sample_every = args['sample_every']
-    # n_sample_states_per_sim = 50
     n_sample_states_per_sim = args['n_sample_states_per_sim']
     def sim_fn(R_init, center_idx, sim_key):
         def energy_fn(R):
@@ -299,6 +340,17 @@ def run(args, sim_params):
     end = time.time()
     sim_time = end - start
 
+    traj_injavis_lines = list()
+    num_repr_points = 2
+    every_n = n_sample_states_per_sim // num_repr_points
+    s_idxs = [(every_n - 1) + every_n*i for i in range(num_repr_points)]
+    for t_idx in range(num_centers):
+        traj = all_traj[t_idx]
+        for s_idx in s_idxs:
+            s = traj[s_idx]
+            traj_injavis_lines += combined_body_to_injavis_lines(complex_, s, box_size=box_size)[0]
+    with open(run_dir / "repr_traj.pos", 'w+') as of:
+        of.write('\n'.join(traj_injavis_lines))
 
     all_traj_order_params = list()
     all_traj_bias_vals = list()
@@ -344,8 +396,6 @@ def run(args, sim_params):
         if not all_traj_order_params[t_idx].max() > all_traj_order_params[t_idx+1].min():
             print(f"WARNING: no overlap between windows {t_idx} and {t_idx+1}")
 
-
-    # pdb.set_trace()
 
 
     def write_wham_timeseries(times, ops, fpath):
@@ -404,65 +454,8 @@ def run(args, sim_params):
     with open(run_dir / "summary.txt", "a") as f:
         f.write(f"WHAM time: {wham_time}\n")
 
-
     plot_fe(wham_out_path, n_bins, run_dir / "fe.png")
 
-    """
-    ## Read in the free energies (per R) and free energies (per bin)
-    with open(wham_out_path, "r") as f:
-        wham_lines = f.readlines()
-    pmf_lines = wham_lines[:n_bins+1] # really free energies
-    hist_fe_lines = wham_lines[n_bins+1:]
-
-
-    ### pmf data (really free energies)
-    assert(pmf_lines[0][:5] == "#Coor")
-    header = pmf_lines[0][1:].split()
-    assert(header == ["Coor", "Free", "+/-", "Prob", "+/-"])
-    all_ex_ops = list()
-    all_ex_fes = list()
-    all_ex_probs = list()
-    for line in pmf_lines[1:]:
-        assert(line[0] != "#")
-        tokens = line.split()
-
-        op = float(tokens[0])
-        all_ex_ops.append(op)
-
-        fe = float(tokens[1])
-        all_ex_fes.append(fe)
-
-        prob = float(tokens[3])
-        all_ex_probs.append(prob)
-    all_ex_ops = onp.array(all_ex_ops)
-    all_ex_fes = onp.array(all_ex_fes)
-    all_ex_probs = onp.array(all_ex_probs)
-
-    assert(hist_fe_lines[0][:7] == "#Window")
-    header = hist_fe_lines[0][1:].split()
-    assert(header == ["Window", "Free", "+/-"])
-    bin_idxs = list()
-    bin_fes = list()
-    for line in hist_fe_lines[1:]:
-        assert(line[0] == "#")
-        tokens = line[1:].split()
-
-        bin_idx = int(tokens[0])
-        bin_idxs.append(bin_idx)
-
-        bin_fe = float(tokens[1])
-        bin_fes.append(bin_fe)
-    bin_idx = onp.array(bin_idxs)
-    bin_fes = onp.array(bin_fes)
-
-
-    plt.plot(all_ex_ops, all_ex_fes)
-    plt.xlabel("OP")
-    plt.ylabel("Free Energy (kT)")
-    plt.tight_layout()
-    plt.savefig(run_dir / "fe.png")
-    plt.clf()
-    """
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Do WHAM for a rigid spider")
@@ -474,12 +467,15 @@ def get_parser():
                         # default=1e-5,
                         default=0.25,
                         help="Tolerance for free energy convergence.")
-    parser.add_argument('--min-head-radius', type=float, default=0.1,
-                        help="Tolerance for free energy convergence.")
-    parser.add_argument('--init-sep-coeff', type=float, default=0.0,
-                        help="Initial separation coefficient.")
     parser.add_argument('--wham-basedir', type=str, help='Base directory for WHAM executable',
                         default="/n/home10/rkrueger/wham")
+
+    parser.add_argument('--init-sep-coeff', type=float, default=0.0,
+                        help="Initial separation coefficient.")
+    parser.add_argument('--min-head-radius', type=float, default=0.1,
+                        help="Tolerance for free energy convergence.")
+
+
     parser.add_argument('--min-center', type=float, default=2.5,
                         help="Minimum OP for WHAM.")
     parser.add_argument('--max-center', type=float, default=6.0,
@@ -503,6 +499,12 @@ def get_parser():
                         help="Timestep for simulation.")
 
     parser.add_argument('--spider-leg-radius', type=float, default=0.25, help="Spider leg radius")
+
+    parser.add_argument('--use-split-point', action='store_true')
+    parser.add_argument('--split-point', type=float, default=4.0,
+                        help="Point for splitting the centers.")
+    parser.add_argument('--k-bias-split-point', type=float, default=50000.0,
+                        help="Spring constant for centers between min_center and split_point.")
 
     return parser
 

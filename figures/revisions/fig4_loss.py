@@ -56,19 +56,19 @@ for i in range(n_iters):
 output_basedir = Path("figures/revisions/output/fig4/")
 assert(output_basedir.exists())
 # for figsize_x, figsize_y in [(12, 10), (12, 12), (10, 12)]:
-for figsize_x, figsize_y in [(14, 11)]:
+for figsize_x, figsize_y in [(14, 12)]:
     fig, ax = plt.subplots(figsize=(figsize_x, figsize_y))
 
-    ax.plot(release_losses, label="Release Term", color="#332288")
-    ax.plot(remaining_energy_losses, label="Remaining Energy Term", color="#44AA99")
-    ax.plot(losses, label="Total Loss", color="#DDCC77")
+    ax.plot(release_losses, label="Release", color="#332288")
+    ax.plot(remaining_energy_losses, label="Remaining Energy", color="#44AA99")
+    ax.plot(losses, label="Total", color="#DDCC77")
     # ax.plot(extraction_losses, label="Extraction Term", color="#AA4499")
-    ax.plot(activated_extraction_losses, label="Extraction Term", color="#AA4499")
+    ax.plot(activated_extraction_losses, label="Extraction", color="#AA4499")
 
 
     ax.set_xlabel("Iteration")
     ax.set_ylabel("Loss Value")
-    ax.legend(ncol=2, bbox_to_anchor=(0.1, 1.0), prop={'size': 28})
+    ax.legend(ncol=2, bbox_to_anchor=(0.9, 1.3), prop={'size': 28}, title="Loss Term")
     plt.tight_layout()
 
     # plt.show()

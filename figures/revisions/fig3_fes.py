@@ -98,7 +98,7 @@ for figsize_x, figsize_y in [(12, 10), (12, 12), (10, 12)]:
             fes = fes[n_skip:]
 
         # ax.plot(ops_op1, fes_op1, label=r"$r_{v,\bar{a}}$")
-        ax.plot(ops, fes, label=label, color=color)
+        ax.plot(ops, fes, label=label, color=color, linewidth=3)
 
     save_fname = f"fes_{figsize_x}_{figsize_y}.pdf"
     save_fpath = str(output_basedir / save_fname)
@@ -110,6 +110,7 @@ for figsize_x, figsize_y in [(12, 10), (12, 12), (10, 12)]:
     ax.legend()
 
     # plt.tight_layout()
+
     plt.savefig(save_fpath)
     plt.clf()
 

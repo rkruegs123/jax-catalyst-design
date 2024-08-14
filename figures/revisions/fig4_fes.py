@@ -81,7 +81,8 @@ basedir = Path(f"figures/revisions/data/fig4/")
 output_basedir = Path("figures/revisions/output/fig4/")
 assert(output_basedir.exists())
 
-for figsize_x, figsize_y in [(12, 10), (14, 10)]:
+# for figsize_x, figsize_y in [(12, 10), (14, 10)]:
+for figsize_x, figsize_y in [(14, 11.5)]:
 
     fig, ax = plt.subplots(figsize=(figsize_x, figsize_y))
 
@@ -93,7 +94,7 @@ for figsize_x, figsize_y in [(12, 10), (14, 10)]:
         ops, fes = read_fes(basedir / f"{mode}/wham/analysis.txt", 500)
 
         # ax.plot(ops_op1, fes_op1, label=r"$r_{v,\bar{a}}$")
-        ax.plot(ops, fes, label=label, color=color)
+        ax.plot(ops, fes, label=label, color=color, linewidth=3)
 
     save_fname = f"fes_{figsize_x}_{figsize_y}.pdf"
     save_fpath = str(output_basedir / save_fname)
@@ -103,9 +104,10 @@ for figsize_x, figsize_y in [(12, 10), (14, 10)]:
     # y_ticks = [0, 100, 200, 300, 400]
     y_ticks = [0, 100, 200, 300]
     ax.set_yticks(y_ticks)
-    ax.legend()
 
-    # plt.tight_layout()
+    ax.legend(ncol=2, bbox_to_anchor=(0.75, 1.125), prop={'size': 28})
+
+    plt.tight_layout()
 
     plt.savefig(save_fpath)
     plt.clf()
