@@ -62,6 +62,9 @@ all_plots_info = [
 ]
 
 
+output_basedir = Path("figures/revisions/output/supp/")
+assert(output_basedir.exists())
+
 for curr_basedir, title, prefix in all_plots_info:
 
     all_vals = dict()
@@ -91,5 +94,7 @@ for curr_basedir, title, prefix in all_plots_info:
     ax.set_title(title)
 
     plt.tight_layout()
+
     plt.show()
+    # plt.savefig(output_basedir / FIXME) # FIXME: need to set the right title
     plt.close()

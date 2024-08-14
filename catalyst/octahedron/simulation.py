@@ -85,6 +85,7 @@ class TestSimulate(unittest.TestCase):
     """
 
 
+    """
     sim_params = {
         # catalyst shape
         'spider_base_radius': 3.5840026373978295,
@@ -98,31 +99,61 @@ class TestSimulate(unittest.TestCase):
         'morse_r_onset': 9.634198891023516,
         'morse_r_cutoff': 10.955930086397101
     }
+    """
+
+    """
+    spider_leg_radius = 0.25
+    init_sep_coeff = 0.0
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 7.690132583217562,
+        "morse_r_cutoff": 11.521976582388042,
+        "morse_r_onset": 9.733183304707113,
+        "morse_shell_center_spider_head_alpha": 1.529859667379604,
+        "spider_base_particle_radius": 1.5762057465874462,
+        "spider_base_radius": 5.102267689179823,
+        "spider_head_height": 5.597703273684827,
+        "spider_head_particle_radius": 0.5324510035223027
+    }
+    """
+
+    spider_leg_radius = 0.25
+    init_sep_coeff = 0.0
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 8.758296191931812,
+        "morse_r_cutoff": 10.382437491337278,
+        "morse_r_onset": 10.510978449545942,
+        "morse_shell_center_spider_head_alpha": 1.930321343717097,
+        "spider_base_particle_radius": 1.391186767779682,
+        "spider_base_radius": 4.178444142102317,
+        "spider_head_height": 6.318318819619579,
+        "spider_head_particle_radius": 0.6063053889931045
+    }
+
+
 
 
     def test_simulate_complex(self):
 
         displacement_fn, shift_fn = space.free()
 
-        # both-stable-shell-loss-stiffness50 Iteration 99
         spider_bond_idxs = jnp.concatenate([TETRAPOD_LEGS, BASE_LEGS])
 
         complex_info = ComplexInfo(
-            initial_separation_coeff=0.0, vertex_to_bind_idx=utils.vertex_to_bind_idx,
+            initial_separation_coeff=self.init_sep_coeff, vertex_to_bind_idx=utils.vertex_to_bind_idx,
             displacement_fn=displacement_fn, shift_fn=shift_fn,
             spider_base_radius=self.sim_params["spider_base_radius"],
             spider_head_height=self.sim_params["spider_head_height"],
             spider_base_particle_radius=self.sim_params["spider_base_particle_radius"],
             spider_head_particle_radius=self.sim_params["spider_head_particle_radius"],
             spider_point_mass=1.0, spider_mass_err=1e-6,
-            spider_bond_idxs=spider_bond_idxs, spider_leg_radius=1.0
+            spider_bond_idxs=spider_bond_idxs, spider_leg_radius=self.spider_leg_radius
         )
         energy_fn = complex_info.get_energy_fn(
             morse_shell_center_spider_head_eps=jnp.exp(self.sim_params["log_morse_shell_center_spider_head_eps"]),
             morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
         )
 
-        n_steps = 10000
+        n_steps = 100000
         assert(n_steps % 100 == 0)
         key = random.PRNGKey(0)
         fin_state, traj = simulation(
