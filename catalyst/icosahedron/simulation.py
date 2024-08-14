@@ -352,7 +352,7 @@ class TestSimulate(unittest.TestCase):
     spider_leg_radius = 0.25
     key = 0
     traj_fname = f"production-sep0.2-eps5.5-alph1.5-no-ss-leg0.25-r1.0-iter130.pos"
-    
+
     sim_params = {
         "log_morse_shell_center_spider_head_eps": 5.719720538898884,
         "morse_r_cutoff": 11.687934442412624,
@@ -409,7 +409,7 @@ class TestSimulate(unittest.TestCase):
     spider_leg_radius = 0.25
     key = 0
     traj_fname = f"production-sep0.2-eps10.5-alph1.5-no-ss-leg0.25-r1.0-iter2500.pos"
-    
+
     sim_params = {
         "log_morse_shell_center_spider_head_eps": 10.042849714309009,
         "morse_r_cutoff": 11.785851382152478,
@@ -754,6 +754,7 @@ class TestSimulate(unittest.TestCase):
 
 
     # production-sep0.2-eps3.0-alph1.5-no-ss-leg0.25-r1.0, iteration 250
+    """
     init_sep_coeff = 0.2
     spider_leg_radius = 0.25
     key = 4
@@ -768,8 +769,78 @@ class TestSimulate(unittest.TestCase):
         "spider_head_height": 4.198054318168296,
         "spider_head_particle_radius": 1.801382346087309
     }
+    """
 
-    
+
+
+
+
+    # Initial, diffusive
+    init_sep_coeff = 0.2
+    spider_leg_radius = 0.25
+    key = 0
+    traj_fname = f"initial_diffusive.pos"
+    sim_params = {
+        "spider_base_radius": 5.0,
+        "spider_head_height": 5.0,
+        "spider_base_particle_radius": 1.0,
+        "spider_head_particle_radius": 1.0,
+        "log_morse_shell_center_spider_head_eps": 3.0,
+        "morse_shell_center_spider_head_alpha": 1.5,
+        "morse_r_onset": 10.0,
+        "morse_r_cutoff": 12.0
+    }
+
+    # production-sep0.2-eps3.0-alph1.5-no-ss-leg0.25-r1.0, iteration 3000
+    init_sep_coeff = 0.2
+    spider_leg_radius = 0.25
+    key = 0
+    traj_fname = f"production-sep0.2-eps3.0-alph1.5-no-ss-leg0.25-r1.0-iter3000.pos"
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 7.2612795505931995,
+        "morse_r_cutoff": 10.285149443604414,
+        "morse_r_onset": 9.736256086615986,
+        "morse_shell_center_spider_head_alpha": 1.910963444404297,
+        "spider_base_particle_radius": 1.0066685401207762,
+        "spider_base_radius": 4.7113923231913954,
+        "spider_head_height": 5.250512398201004,
+        "spider_head_particle_radius": 1.1670004853096905
+    }
+
+
+
+    # Initial, explosive
+    init_sep_coeff = 0.2
+    spider_leg_radius = 0.25
+    key = 0
+    traj_fname = f"initial_explosive.pos"
+    sim_params = {
+        "spider_base_radius": 5.0,
+        "spider_head_height": 5.0,
+        "spider_base_particle_radius": 1.0,
+        "spider_head_particle_radius": 1.0,
+        "log_morse_shell_center_spider_head_eps": 10.5,
+        "morse_shell_center_spider_head_alpha": 1.5,
+        "morse_r_onset": 10.0,
+        "morse_r_cutoff": 12.0
+    }
+
+    # production-sep0.2-eps10.5-alph1.5-no-ss-leg0.25-r1.0, iteration 3000
+    init_sep_coeff = 0.2
+    spider_leg_radius = 0.25
+    key = 0
+    traj_fname = f"production-sep0.2-eps10.5-alph1.5-no-ss-leg0.25-r1.0-iter3000.pos"
+    sim_params = {
+        "log_morse_shell_center_spider_head_eps": 10.050820502495156,
+        "morse_r_cutoff": 11.785817565552275,
+        "morse_r_onset": 9.830520893118434,
+        "morse_shell_center_spider_head_alpha": 1.9658923841667368,
+        "spider_base_particle_radius": 1.043954398657988,
+        "spider_base_radius": 4.530793332191613,
+        "spider_head_height": 5.688631121044829,
+        "spider_head_particle_radius": 0.33211407523071895
+    }
+
 
     def test_simulate_complex(self):
 
@@ -794,7 +865,7 @@ class TestSimulate(unittest.TestCase):
             morse_shell_center_spider_head_alpha=self.sim_params["morse_shell_center_spider_head_alpha"]
         )
 
-        n_steps = 100000
+        n_steps = 10000
         assert(n_steps % 100 == 0)
         key = random.PRNGKey(self.key)
         # key = random.PRNGKey(1)
@@ -840,7 +911,7 @@ class TestSimulate(unittest.TestCase):
 
         vis_traj_idxs = jnp.arange(0, n_steps+1, 100)
         traj = traj[vis_traj_idxs]
-        
+
         traj_to_pos_file(traj, complex_info, self.traj_fname, box_size=30.0)
 
 

@@ -531,6 +531,7 @@ if __name__ == "__main__":
     """
 
     # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 350
+    """
     params = {
         "log_morse_shell_center_spider_head_eps": 5.856055409600398,
         "morse_r_cutoff": 11.06205688820389,
@@ -541,6 +542,7 @@ if __name__ == "__main__":
         "spider_head_height": 4.5071973539472046,
         "spider_head_particle_radius": 0.9053049966101149
     }
+    """
 
     # production-sep0.2-eps5.5-alph1.5-no-ss, iteration 360
     """
@@ -581,6 +583,69 @@ if __name__ == "__main__":
         "morse_shell_center_spider_head_alpha": 1.5,
         "morse_r_onset": 10.0,
         "morse_r_cutoff": 12.0
+    }
+    """
+
+
+
+
+
+
+
+
+
+    # Initial, explosive
+    params = {
+        "spider_base_radius": 5.0,
+        "spider_head_height": 5.0,
+        "spider_base_particle_radius": 1.0,
+        "spider_head_particle_radius": 1.0,
+        "log_morse_shell_center_spider_head_eps": 10.5,
+        "morse_shell_center_spider_head_alpha": 1.5,
+        "morse_r_onset": 10.0,
+        "morse_r_cutoff": 12.0
+    }
+
+    # production-sep0.2-eps10.5-alph1.5-no-ss-leg0.25-r1.0, iteration 3000
+    """
+    params = {
+        "log_morse_shell_center_spider_head_eps": 10.050820502495156,
+        "morse_r_cutoff": 11.785817565552275,
+        "morse_r_onset": 9.830520893118434,
+        "morse_shell_center_spider_head_alpha": 1.9658923841667368,
+        "spider_base_particle_radius": 1.043954398657988,
+        "spider_base_radius": 4.530793332191613,
+        "spider_head_height": 5.688631121044829,
+        "spider_head_particle_radius": 0.33211407523071895
+    }
+    """
+
+
+    # Initial, diffusive
+    """
+    params = {
+        "spider_base_radius": 5.0,
+        "spider_head_height": 5.0,
+        "spider_base_particle_radius": 1.0,
+        "spider_head_particle_radius": 1.0,
+        "log_morse_shell_center_spider_head_eps": 3.0,
+        "morse_shell_center_spider_head_alpha": 1.5,
+        "morse_r_onset": 10.0,
+        "morse_r_cutoff": 12.0
+    }
+    """
+
+    # production-sep0.2-eps3.0-alph1.5-no-ss-leg0.25-r1.0, iteration 3000
+    """
+    params = {
+        "log_morse_shell_center_spider_head_eps": 7.2612795505931995,
+        "morse_r_cutoff": 10.285149443604414,
+        "morse_r_onset": 9.736256086615986,
+        "morse_shell_center_spider_head_alpha": 1.910963444404297,
+        "spider_base_particle_radius": 1.0066685401207762,
+        "spider_base_radius": 4.7113923231913954,
+        "spider_head_height": 5.250512398201004,
+        "spider_head_particle_radius": 1.1670004853096905
     }
     """
 
