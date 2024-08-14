@@ -620,6 +620,7 @@ if __name__ == "__main__":
 
 
     # Initial, diffusive
+    """
     params = {
         "spider_base_radius": 5.0,
         "spider_head_height": 5.0,
@@ -630,9 +631,9 @@ if __name__ == "__main__":
         "morse_r_onset": 10.0,
         "morse_r_cutoff": 12.0
     }
+    """
 
     # production-sep0.2-eps3.0-alph1.5-no-ss-leg0.25-r1.0, iteration 3000
-    """
     params = {
         "log_morse_shell_center_spider_head_eps": 7.2612795505931995,
         "morse_r_cutoff": 10.285149443604414,
@@ -643,7 +644,6 @@ if __name__ == "__main__":
         "spider_head_height": 5.250512398201004,
         "spider_head_particle_radius": 1.1670004853096905
     }
-    """
 
 
     # plot_fe("manual_analysis.txt", n_bins=800, savepath="check.png")
