@@ -429,7 +429,8 @@ def run(args, sim_params):
     for t_idx in range(num_centers):
         fpath = fpaths[t_idx]
         center = bin_centers[t_idx]
-        t_line = f"{fpath}\t{center}\t{k_bias}\n"
+        # t_line = f"{fpath}\t{center}\t{k_bias}\n"
+        t_line = f"{fpath}\t{center}\t{k_biases[t_idx]}\n"
         metadata_lines.append(t_line)
 
     metadata_path = wham_dir / "metadata.txt"
@@ -589,12 +590,8 @@ if __name__ == "__main__":
 
 
 
-
-
-
-
-
     # Initial, explosive
+    """
     params = {
         "spider_base_radius": 5.0,
         "spider_head_height": 5.0,
@@ -605,6 +602,7 @@ if __name__ == "__main__":
         "morse_r_onset": 10.0,
         "morse_r_cutoff": 12.0
     }
+    """
 
     # production-sep0.2-eps10.5-alph1.5-no-ss-leg0.25-r1.0, iteration 3000
     """
@@ -622,7 +620,6 @@ if __name__ == "__main__":
 
 
     # Initial, diffusive
-    """
     params = {
         "spider_base_radius": 5.0,
         "spider_head_height": 5.0,
@@ -633,7 +630,6 @@ if __name__ == "__main__":
         "morse_r_onset": 10.0,
         "morse_r_cutoff": 12.0
     }
-    """
 
     # production-sep0.2-eps3.0-alph1.5-no-ss-leg0.25-r1.0, iteration 3000
     """

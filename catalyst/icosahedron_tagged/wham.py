@@ -613,6 +613,9 @@ def get_parser():
 
 if __name__ == "__main__":
 
+    # plot_fe("analysis.txt", n_bins=500, savepath="tmp.png")
+    # pdb.set_trace()
+    
     # plot_fe("analysis-ext-smaller.txt", n_bins=100, savepath="ex_fe_ext.png")
     # plot_fe("analysis-tagged-smaller.txt", n_bins=100, savepath="ex_fe_tagged.png")
     # pdb.set_trace()
