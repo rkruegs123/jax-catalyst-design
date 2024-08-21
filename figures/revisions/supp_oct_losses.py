@@ -9,7 +9,7 @@ from matplotlib import rc
 
 rc('text', usetex=True)
 
-plt.rcParams.update({'font.size': 24})
+plt.rcParams.update({'font.size': 36})
 
 output_basedir = Path("figures/revisions/output/supp/")
 assert(output_basedir.exists())
@@ -33,14 +33,16 @@ losses = losses[:max_iter+1]
 
 legend_text_size = 22
 
+width, height = (14, 8)
+
 if mode == "diffusive":
-    fig, ax = plt.subplots(figsize=(14, 10))
+    fig, ax = plt.subplots(figsize=(width, height))
     ax.plot(losses, color="black")
     ax.set_xlabel("Iteration")
     ax.set_ylabel("Total Loss")
 elif mode == "explosive":
 
-    fig, ax = plt.subplots(figsize=(14, 10))
+    fig, ax = plt.subplots(figsize=(width, height))
 
     ax.set_xlabel("Iteration")
     ax.set_ylabel("Total Loss")

@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 import pdb
 import numpy as onp
 from matplotlib import rc
+import seaborn as sns
 
 
-font = {'size': 28}
+font = {'size': 36}
 rc('font', **font)
 rc('text', usetex=True)
 
@@ -65,6 +66,9 @@ all_plots_info = [
 output_basedir = Path("figures/revisions/output/supp/")
 assert(output_basedir.exists())
 
+
+all_all_vals = dict()
+
 for curr_name, title, prefix in all_plots_info:
 
     curr_basedir = supp_data_basedir / curr_name
@@ -87,16 +91,53 @@ for curr_name, title, prefix in all_plots_info:
             if k not in all_vals:
                 all_vals[k] = list()
             all_vals[k].append(v)
-    ax.set_xticks(xs)
+
+
+    all_all_vals[curr_name] = all_vals
+    plt.close()
+
+
+
+for mode in ["diffusive", "explosive"]:
+
+    if mode == "diffusive":
+        perturb_vals = all_all_vals["diffusive-perturb"]
+        key_vals = all_all_vals["diffusive-keys"]
+        title = "Weak Interaction Limit"
+    elif mode == "explosive":
+        perturb_vals = all_all_vals["explosive-perturb"]
+        key_vals = all_all_vals["explosive-keys"]
+        title = "Strong Interaction Limit"
+    else:
+        raise RuntimeError
+
+    fig, ax = plt.subplots(figsize=(16, 8))
+
+    # Create offsets for the box plots so that they are side by side
+    positions_perturb = xs - 0.2  # Slightly left
+    positions_keys = xs + 0.2  # Slightly right
+
+    # Plot the boxplots with the new positions
+    bp_perturb = ax.boxplot([perturb_vals[label_key] for label_key in label_keys],
+                            positions=positions_perturb, widths=0.4, patch_artist=True,
+                            boxprops=dict(facecolor="C0"))
+    bp_keys = ax.boxplot([key_vals[label_key] for label_key in label_keys],
+                         positions=positions_keys, widths=0.4, patch_artist=True,
+                         boxprops=dict(facecolor="C2"))
+
+    ax.set_xticks(xs)  # Set x-ticks in the middle of the grouped boxplots
     ax.set_xticklabels(labels)
-
     ax.set_xlabel("Parameter")
-    ax.set_ylabel("Parameter Value")
 
+    ax.set_yticks([0., 3., 6., 9., 12.])
+    ax.set_yticklabels([r'$0$', r'$3$', r'$6$', r'$9$', r'$12$'])
+
+    ax.set_ylabel("Parameter Value")
     ax.set_title(title)
 
-    plt.tight_layout()
+    ax.legend([bp_perturb["boxes"][0], bp_keys["boxes"][0]], ['Perturb', 'Keys'])
 
+    plt.tight_layout()
     # plt.show()
-    plt.savefig(output_basedir / f"{curr_name}.svg")
+    plt.savefig(output_basedir / f"{mode}-params-bps.svg")
     plt.close()
