@@ -22,7 +22,7 @@ config.update('jax_enable_x64', True)
 
 
 
-def optimize(args):
+def run(args):
     batch_size = args['batch_size']
     n_iters = args['n_iters']
     n_steps = args['n_steps']
@@ -44,6 +44,8 @@ def optimize(args):
     stable_shell_k = args['stable_shell_k']
     remaining_shell_vertices_loss_coeff = args['remaining_shell_vertices_loss_coeff']
     min_head_radius = args['min_head_radius']
+    spider_leg_radius = args['spider_leg_radius']
+    init_particle_radii = args['init_particle_radii']
     perturb_init_head_eps = args['perturb_init_head_eps']
 
     if perturb_init_head_eps:
@@ -114,7 +116,8 @@ def optimize(args):
             params['spider_base_radius'], params['spider_head_height'],
             params['spider_base_particle_radius'],
             jnp.max(jnp.array([min_head_radius, params['spider_head_particle_radius']])),
-            spider_point_mass=1.0, spider_mass_err=1e-6, spider_bond_idxs=spider_bond_idxs
+            spider_point_mass=1.0, spider_mass_err=1e-6, spider_bond_idxs=spider_bond_idxs,
+            spider_leg_radius=spider_leg_radius
         )
 
         complex_energy_fn = complex_info.get_energy_fn(
@@ -140,8 +143,8 @@ def optimize(args):
         # catalyst shape
         'spider_base_radius': 5.0,
         'spider_head_height': 5.0,
-        'spider_base_particle_radius': 0.5,
-        'spider_head_particle_radius': 0.5,
+        'spider_base_particle_radius': init_particle_radii,
+        'spider_head_particle_radius': init_particle_radii,
 
         # catalyst energy
         # 'log_morse_shell_center_spider_head_eps': 9.21, # ln(10000.0)
@@ -213,7 +216,8 @@ def optimize(args):
             params['spider_base_radius'], params['spider_head_height'],
             params['spider_base_particle_radius'], params['spider_head_particle_radius'],
             spider_point_mass=1.0, spider_mass_err=1e-6,
-            verbose=False
+            verbose=False,
+            spider_leg_radius=spider_leg_radius
         )
         rep_traj_fname = traj_dir / f"traj_i{i}_b{min_loss_sample_idx}.pos"
         rep_traj_fname_bad = traj_dir / f"traj_i{i}_maxloss_b{max_loss_sample_idx}.pos"
@@ -283,6 +287,11 @@ def get_argparse():
 
     parser.add_argument('--perturb-init-head-eps', action='store_true')
 
+    parser.add_argument('--spider-leg-radius', type=float, default=0.25, help="Spider leg radius")
+
+    parser.add_argument('--init-particle-radii', type=float, default=0.5,
+                        help="Initial value for base particle and head radii")
+
     return parser
 
 
@@ -290,4 +299,4 @@ if __name__ == "__main__":
     parser = get_argparse()
     args = vars(parser.parse_args())
 
-    optimize(args)
+    run(args)

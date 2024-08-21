@@ -1,6 +1,6 @@
 from tqdm import tqdm
 
-from jax import vmap
+from jax import vmap, tree_util
 import jax.numpy as jnp
 
 from jax_md import space
@@ -11,6 +11,8 @@ import catalyst.icosahedron.rigid_body as rigid_body
 from jax.config import config
 config.update('jax_enable_x64', True)
 
+def tree_stack(trees):
+    return tree_util.tree_map(lambda *v: jnp.stack(v), *trees)
 
 def get_body_frame_positions(rb, shape):
     body_pos = vmap(rigid_body.transform, (0, None))(rb, shape)

@@ -1,0 +1,5 @@
+difffusive-run is: production-sep0.2-eps3.0-alph1.5-no-ss-leg0.25-r1.0
+explosive-run is: production-sep0.2-eps10.5-alph1.5-no-ss-leg0.25-r1.0
+- explodes at iter 0
+- extracts but doesn't go away at 1250 (also at 625 -- not the exact tipping point)
+- goes away at 2500

@@ -1,0 +1,1 @@
+/n/home10/rkrueger/wham/wham/wham 7.0 20.0 500 0.001 1.0 0 output/fig3-rigid-op2-final-long-v1/wham/metadata.txt output/fig3-rigid-op2-final-long-v1/wham/analysis.txt

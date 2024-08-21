@@ -1,0 +1,3 @@
+Init base energy: -99249.46285846308
+Init spider energy: -100000.0
+Remaining energy: 750.5371415369154
